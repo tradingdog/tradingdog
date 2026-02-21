@@ -1,0 +1,147 @@
+19:03:35 - ============================================================
+19:03:35 - Qobuz 播放列表自动添加工具
+19:03:35 - 日志文件: qobuz_log_20260221_190335.txt
+19:03:35 - ============================================================
+19:03:35 - 
+19:03:35 - 已生成播放列表：
+19:03:35 - 1. Other (1首): Randy Edelman - My Cousin Vinny
+19:03:35 - 2. Q (17首)
+19:03:35 - 3. Other (4首)
+19:03:35 - 总计: 22 首
+19:03:35 - 输出文件：Q+20260221190335.txt
+19:03:35 - 
+============================================================
+19:03:35 - 开始添加歌曲到 Qobuz 播放列表...
+19:03:35 - ============================================================
+19:03:35 - 
+解析到 22 张专辑待添加
+19:03:35 - 将使用播放列表名称: Soft Horizon
+19:03:35 - 
+初始化浏览器...
+19:03:35 -   配置 Chrome 选项...
+19:03:35 -   启动 Chrome 浏览器...
+19:04:00 -   设置反检测属性...
+19:04:00 -   ✓ 浏览器初始化成功
+19:04:00 - 正在访问 Qobuz 登录页面...
+19:04:14 - 
+请在浏览器中完成登录，登录成功后输入 y 继续...
+19:05:56 - ✓ 登录成功
+19:05:58 - 
+创建播放列表: Soft Horizon
+19:06:16 - ✓ 播放列表创建成功: Soft Horizon
+19:06:16 - 
+[1/22] 处理: Randy Edelman - My Cousin Vinny
+19:06:16 - 搜索专辑: My Cousin Vinny (艺人: Randy Edelman)
+19:06:34 -   找到匹配专辑链接
+19:06:34 -   点击专辑链接: https://play.qobuz.com/album/hx6tepof4yuzj
+19:06:42 -   ✓ 已成功进入专辑页面: https://play.qobuz.com/album/hx6tepof4yuzj
+19:06:42 -   添加 12 首歌曲到播放列表 'Soft Horizon'...
+19:06:47 -   专辑共 21 首歌曲
+19:06:53 -     ! 第 1 首未找到更多按钮
+19:06:57 -     ! 第 3 首未找到更多按钮
+19:07:02 -     ! 第 4 首未找到更多按钮
+19:07:07 -     ! 第 7 首未找到更多按钮
+19:07:11 -     ! 第 10 首未找到更多按钮
+19:07:16 -     ! 第 11 首未找到更多按钮
+19:07:20 -     ! 第 13 首未找到更多按钮
+19:07:24 -     ! 第 14 首未找到更多按钮
+19:07:29 -     ! 第 15 首未找到更多按钮
+19:07:33 -     ! 第 16 首未找到更多按钮
+19:07:38 -     ! 第 17 首未找到更多按钮
+19:07:42 -     ! 第 20 首未找到更多按钮
+19:07:43 -   ✓ 已添加 0 首歌曲
+19:07:46 - 
+[2/22] 处理: Brindle Kesar - Fireside to Mountain Fire
+19:07:46 - 搜索专辑: Fireside to Mountain Fire (艺人: Brindle Kesar)
+19:08:05 -   找到匹配专辑链接
+19:08:05 -   点击专辑链接: https://play.qobuz.com/album/oewokcn2y913b
+19:08:15 -   ✓ 已成功进入专辑页面: https://play.qobuz.com/album/oewokcn2y913b
+19:08:15 -   添加 14 首歌曲到播放列表 'Soft Horizon'...
+19:08:20 -   专辑共 21 首歌曲
+19:08:26 -     ! 第 2 首未找到更多按钮
+19:08:32 -     ! 第 3 首未找到更多按钮
+19:08:39 -     ! 第 4 首未找到更多按钮
+19:08:46 -     ! 第 5 首未找到更多按钮
+19:08:52 -     ! 第 6 首未找到更多按钮
+19:08:59 -     ! 第 7 首未找到更多按钮
+19:09:06 -     ! 第 8 首未找到更多按钮
+19:09:12 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:09:16 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:09:20 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:09:29 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:09:33 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:09:37 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:09:45 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:09:49 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:09:53 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:10:01 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:10:06 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:10:10 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:10:14 -     ! 第 9 首未找到更多按钮
+19:10:19 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:10:23 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:10:27 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:10:35 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:10:39 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:10:43 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:10:51 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:10:56 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:11:00 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:11:09 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:11:13 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:11:17 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:11:25 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:11:29 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:11:33 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:11:41 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:11:45 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:11:49 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:11:54 -     ! 第 10 首未找到更多按钮
+19:11:58 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:12:02 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:12:07 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:12:15 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:12:19 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:12:23 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:12:31 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:12:35 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:12:39 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:12:50 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:12:54 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:12:58 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:13:06 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:13:11 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:13:15 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:13:19 -     ! 第 13 首未找到更多按钮
+19:13:24 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:13:32 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:13:36 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:13:40 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:13:49 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:13:53 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:13:57 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:14:05 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:14:10 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:14:14 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:14:22 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:14:26 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:14:30 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:14:34 -     ! 第 16 首未找到更多按钮
+19:14:39 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:14:43 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:14:47 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:14:55 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:14:59 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:15:03 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:15:13 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:15:17 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:15:21 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:15:29 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:15:33 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:15:37 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/element
+19:15:45 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:15:49 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:15:53 - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/execute/sync
+19:15:58 -     ! 第 17 首未找到更多按钮
+19:16:02 - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions
+19:16:06 - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=56987): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。")': /session/ce065372df1abeb3f926d30e6269f035/actions

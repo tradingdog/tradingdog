@@ -4,8 +4,37 @@ import secrets
 import time
 import re
 import random
+import logging
+import sys
 from datetime import datetime
 from pathlib import Path
+
+# ===== 日志配置 =====
+def setup_logging():
+    """配置日志，输出到文件"""
+    log_filename = f"qobuz_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    
+    # 创建日志格式
+    log_format = logging.Formatter('%(asctime)s - %(message)s', datefmt='%H:%M:%S')
+    
+    # 创建文件处理器（只输出到文件，不输出到控制台）
+    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+    file_handler.setFormatter(log_format)
+    file_handler.setLevel(logging.INFO)
+    
+    # 获取 root logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+    
+    return log_filename
+
+# 自定义 print 函数，同时输出到控制台和日志文件
+_original_print = print
+def print(*args, **kwargs):
+    message = ' '.join(str(arg) for arg in args)
+    logging.info(message)  # 写入日志文件
+    _original_print(*args, **kwargs)  # 输出到控制台
 
 try:
     import tidalapi
@@ -54,13 +83,13 @@ APPLE_DELAY_MAX = 3.5            # 操作间隔最大延迟（秒）
 # Qobuz 集成配置
 QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
 QOBUZ_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
-QOBUZ_DELAY_MIN = 1.5            # 操作间隔最小延迟（秒）
-QOBUZ_DELAY_MAX = 3.5            # 操作间隔最大延迟（秒）
+QOBUZ_DELAY_MIN = 0.3            # 操作间隔最小延迟（秒）
+QOBUZ_DELAY_MAX = 0.8            # 操作间隔最大延迟（秒）
 QOBUZ_LOGIN_URL = "https://play.qobuz.com/login"  # Qobuz 登录页
 
 # Qobuz 多语言支持（英语、法语、德语）
 QOBUZ_CREATE_BUTTON_TEXTS = ['Create', 'Créer', 'Erstellen', 'Anlegen']
-QOBUZ_ADD_TO_PLAYLIST_TEXTS = ['Add to playlists', 'Ajouter aux playlists', 'Zu Playlists hinzufügen', 'Add to playlist']
+QOBUZ_ADD_TO_PLAYLIST_TEXTS = ['Add to playlists', 'Ajouter aux playlists', 'Zu Playlists hinzufügen', 'Den Playlists hinzufügen', 'Add to playlist']
 QOBUZ_ADD_BUTTON_TEXTS = ['Add', 'Ajouter', 'Hinzufügen']
 
 # 平台与文件映射
@@ -1268,13 +1297,57 @@ def search_album_on_qobuz(driver, artist_name, album_name):
     print(f"搜索专辑: {album_name} (艺人: {artist_name})")
     
     try:
+        # ===== 先关闭可能存在的模态框 =====
+        try:
+            # 先按 ESC 关闭弹窗
+            ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+            qobuz_human_delay(0.5, 0.8)
+        except:
+            pass
+        
+        # 尝试关闭 modal-backdrop
+        try:
+            modal_backdrops = driver.find_elements(By.CSS_SELECTOR, "div.modal-backdrop, .modal.show, .modal-content")
+            if modal_backdrops:
+                print("  检测到模态框，尝试关闭...")
+                # 再按一次 ESC
+                ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+                qobuz_human_delay(1, 1.5)
+                # 尝试点击关闭按钮
+                close_btns = driver.find_elements(By.CSS_SELECTOR, "button.close, button.btn-close, [aria-label='Close'], .modal-header button")
+                for btn in close_btns:
+                    try:
+                        if btn.is_displayed():
+                            driver.execute_script("arguments[0].click();", btn)
+                            qobuz_human_delay(0.5, 0.8)
+                            break
+                    except:
+                        continue
+                # 再按一次 ESC 确保关闭
+                ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+                qobuz_human_delay(0.5, 0.8)
+        except:
+            pass
+        
         # 点击搜索框
         search_input = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "input.SearchBar__input"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input.SearchBar__input"))
         )
         qobuz_move_to_element(driver, search_input)
         qobuz_human_delay(0.5, 1)
-        search_input.click()
+        
+        # 尝试点击，如果被拦截则使用 JS 点击
+        try:
+            search_input.click()
+        except Exception as click_err:
+            if "intercepted" in str(click_err).lower():
+                print("  搜索框点击被拦截，尝试 JS 点击...")
+                # 再次尝试关闭模态框
+                ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+                qobuz_human_delay(0.5, 0.8)
+                driver.execute_script("arguments[0].click();", search_input)
+            else:
+                raise click_err
         qobuz_human_delay(0.5, 1)
         
         # 清空并输入搜索词
@@ -1328,9 +1401,22 @@ def search_album_on_qobuz(driver, artist_name, album_name):
             href = album_link.get_attribute("href") or ""
             print(f"  点击专辑链接: {href}")
             
+            # 先滚动到页面中央，避免被底部播放器进度条遮挡
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", album_link)
+            qobuz_human_delay(0.5, 1)
+            
             qobuz_move_to_element(driver, album_link)
             qobuz_human_delay(0.5, 1)
-            album_link.click()
+            
+            # 尝试点击，如果被拦截则使用 JS 点击
+            try:
+                album_link.click()
+            except Exception as click_err:
+                if "intercepted" in str(click_err).lower():
+                    print("  点击被拦截，使用 JS 点击...")
+                    driver.execute_script("arguments[0].click();", album_link)
+                else:
+                    raise click_err
             
             qobuz_human_delay(5, 8)
             
@@ -1471,38 +1557,65 @@ def add_songs_to_qobuz_playlist(driver, playlist_name, track_count):
     try:
         qobuz_human_delay(2, 3)
         
-        # 获取专辑中的所有歌曲行
-        track_selectors = [
-            "div[role='gridcell']",
-            "div.ListItem__titleWithArtist",
-            "[class*='ListItem']",
-        ]
+        # ===== 先滚动页面确保所有歌曲加载 =====
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        qobuz_human_delay(1, 1.5)
+        driver.execute_script("window.scrollTo(0, 0);")
+        qobuz_human_delay(1, 1.5)
         
-        songs = []
-        for selector in track_selectors:
-            songs = driver.find_elements(By.CSS_SELECTOR, selector)
-            songs = [s for s in songs if s.is_displayed()]
-            if len(songs) > 2:
-                break
+        # ===== 获取歌曲总数：通过统计可见的"更多"按钮数量 =====
+        # 使用 class 选择器（不依赖语言）
+        all_more_btns = driver.find_elements(By.CSS_SELECTOR, "button.ListItem__actions")
+        all_more_btns = [btn for btn in all_more_btns if btn.is_displayed()]
         
-        total_songs = len(songs)
+        if len(all_more_btns) < 2:
+            # fallback: 尝试其他选择器
+            all_more_btns = driver.find_elements(By.CSS_SELECTOR, "button.icon-more-vertical")
+            all_more_btns = [btn for btn in all_more_btns if btn.is_displayed()]
+        
+        total_songs = len(all_more_btns)
         print(f"  专辑共 {total_songs} 首歌曲")
         
         if total_songs == 0:
             print(f"  ✗ 未找到歌曲")
             return 0
         
-        # 随机选择要添加的歌曲索引
+        # ===== 获取所有可见的行号，确定有效的行号范围 =====
+        track_number_elements = driver.find_elements(By.CSS_SELECTOR, "span.ListItem__number")
+        track_numbers = []
+        for elem in track_number_elements:
+            if elem.is_displayed():
+                try:
+                    num = int(elem.text.strip())
+                    track_numbers.append(num)
+                except:
+                    pass
+        
+        # 确定有效行号：如果行号数量与按钮数量一致，使用行号；否则使用1-based索引
+        if len(track_numbers) == total_songs:
+            valid_track_nums = sorted(track_numbers)
+        else:
+            # 行号不匹配，使用1到total_songs的索引
+            valid_track_nums = list(range(1, total_songs + 1))
+        
+        # 随机选择要添加的歌曲行号（1-based）
         actual_count = min(track_count, total_songs)
         if total_songs <= track_count:
-            selected_indices = list(range(total_songs))
-            random.shuffle(selected_indices)
+            selected_track_nums = valid_track_nums.copy()
+            random.shuffle(selected_track_nums)
         else:
-            selected_indices = random.sample(range(total_songs), actual_count)
+            selected_track_nums = random.sample(valid_track_nums, actual_count)
+        
+        # ===== 按行号从小到大排序处理，避免虚拟滚动导致元素丢失 =====
+        selected_track_nums.sort()
         
         added_count = 0
+        added_tracks = set()  # 记录已添加的行号
         
-        for i, idx in enumerate(selected_indices):
+        for track_num in selected_track_nums:
+            if track_num in added_tracks:
+                continue
+                
             song_added = False
             max_attempts = 2
             
@@ -1518,65 +1631,74 @@ def add_songs_to_qobuz_playlist(driver, playlist_name, track_count):
                     except:
                         pass
                     
-                    # 重新获取歌曲列表
-                    for selector in track_selectors:
-                        songs = driver.find_elements(By.CSS_SELECTOR, selector)
-                        songs = [s for s in songs if s.is_displayed()]
-                        if len(songs) > 2:
-                            break
-                    
-                    if idx >= len(songs):
-                        break
-                    
-                    song = songs[idx]
-                    
-                    # 滚动到歌曲位置
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", song)
-                    qobuz_human_delay(0.8, 1.2)
-                    
-                    # 悬停在歌曲上以显示更多按钮
-                    qobuz_move_to_element(driver, song)
-                    qobuz_human_delay(0.5, 1)
-                    
-                    # 找到更多按钮
+                    # ===== 通过行号查找对应的歌曲行，然后找到其"更多"按钮 =====
                     more_btn = None
-                    more_selectors = [
-                        "button[aria-label='More actions']",
-                        "button.ListItem__actions",
-                        "button.ButtonIconPrimary.icon-more-vertical",
-                        "button[class*='icon-more-vertical']",
-                        "button[class*='ListItem__actions']",
-                    ]
                     
-                    for selector in more_selectors:
+                    # 方法1: 通过行号元素找到对应的更多按钮
+                    try:
+                        # 找到显示指定行号的 span 元素
+                        track_num_xpath = f"//span[contains(@class, 'ListItem__number') and normalize-space(text())='{track_num}']"
+                        track_num_elem = driver.find_element(By.XPATH, track_num_xpath)
+                        
+                        # 滚动到该元素位置
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", track_num_elem)
+                        qobuz_human_delay(0.8, 1.2)
+                        
+                        # 找到同一行的"更多"按钮 - 使用 class 选择器（不依赖语言）
+                        parent_row = track_num_elem.find_element(By.XPATH, "./ancestor::div[contains(@class, 'ListItem')]")
                         try:
-                            more_btn = song.find_element(By.CSS_SELECTOR, selector)
-                            if more_btn.is_displayed():
-                                break
-                            more_btn = None
+                            more_btn = parent_row.find_element(By.CSS_SELECTOR, "button.ListItem__actions")
                         except:
-                            continue
+                            try:
+                                more_btn = parent_row.find_element(By.CSS_SELECTOR, "button.icon-more-vertical")
+                            except:
+                                more_btn = None
+                    except:
+                        pass
                     
+                    # 方法2: 如果方法1失败，通过位置匹配
                     if not more_btn:
                         try:
-                            all_more_btns = driver.find_elements(By.CSS_SELECTOR, "button[aria-label='More actions'], button.ListItem__actions")
-                            for btn in all_more_btns:
-                                if btn.is_displayed():
-                                    more_btn = btn
-                                    break
+                            # 再次滚动到大概位置
+                            scroll_ratio = (track_num - 1) / max(total_songs - 1, 1)
+                            scroll_height = driver.execute_script("return document.body.scrollHeight")
+                            driver.execute_script(f"window.scrollTo(0, {int(scroll_height * scroll_ratio * 0.7)});")
+                            qobuz_human_delay(0.8, 1.2)
+                            
+                            # 获取当前可见的行号元素
+                            track_num_elements = driver.find_elements(By.CSS_SELECTOR, "span.ListItem__number")
+                            for elem in track_num_elements:
+                                if elem.is_displayed():
+                                    try:
+                                        if int(elem.text.strip()) == track_num:
+                                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", elem)
+                                            qobuz_human_delay(0.5, 0.8)
+                                            parent_row = elem.find_element(By.XPATH, "./ancestor::div[contains(@class, 'ListItem')]")
+                                            try:
+                                                more_btn = parent_row.find_element(By.CSS_SELECTOR, "button.ListItem__actions")
+                                            except:
+                                                try:
+                                                    more_btn = parent_row.find_element(By.CSS_SELECTOR, "button.icon-more-vertical")
+                                                except:
+                                                    pass
+                                            if more_btn:
+                                                break
+                                    except:
+                                        continue
                         except:
                             pass
                     
                     if not more_btn:
                         if attempt == max_attempts - 1:
-                            print(f"    ! 歌曲 {idx+1} 未找到更多按钮")
+                            print(f"    ! 第 {track_num} 首未找到更多按钮")
                         qobuz_human_delay(0.5, 1)
                         continue
                     
-                    # 点击更多按钮
+                    # 悬停并点击更多按钮
+                    qobuz_move_to_element(driver, more_btn)
+                    qobuz_human_delay(0.5, 1)
+                    
                     try:
-                        qobuz_move_to_element(driver, more_btn)
-                        qobuz_human_delay(0.3, 0.6)
                         more_btn.click()
                     except:
                         driver.execute_script("arguments[0].click();", more_btn)
@@ -1679,16 +1801,19 @@ def add_songs_to_qobuz_playlist(driver, playlist_name, track_count):
                     except:
                         driver.execute_script("arguments[0].click();", playlist_add_btn)
                     
-                    print(f"    ✓ 已添加第 {idx+1} 首")
+                    print(f"    ✓ 已添加第 {track_num} 首")
                     
                     added_count += 1
                     song_added = True
-                    qobuz_human_delay(2, 4)
+                    added_tracks.add(track_num)  # 记录已添加的行号
+                    
+                    # ===== 等待提示条消失 =====
+                    qobuz_human_delay(3.5, 4.5)
                     
                 except Exception as e:
                     error_msg = str(e)
                     if attempt == max_attempts - 1:
-                        print(f"    ! 歌曲 {idx+1} 添加失败: {error_msg[:80]}")
+                        print(f"    ! 歌曲 {track_num} 添加失败: {error_msg[:80]}")
                     try:
                         ActionChains(driver).send_keys(Keys.ESCAPE).perform()
                     except:
@@ -1993,6 +2118,9 @@ def get_category_history_data(category: str, history: dict):
     return counts, recent_combinations
 
 def main():
+    # ===== 初始化日志 =====
+    log_file = setup_logging()
+    
     base_dir = Path(__file__).parent
     
     parser = argparse.ArgumentParser(description="随机生成播放列表")
@@ -2075,6 +2203,7 @@ def main():
         
         print("="*60)
         print("Qobuz 播放列表自动添加工具")
+        print(f"日志文件: {log_file}")
         print("="*60)
         print()
 
