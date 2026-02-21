@@ -398,9 +398,10 @@ def add_songs_to_playlist(driver, playlist_name, track_count, is_first_album=Fal
                     
                     human_delay(1, 2)
                     
-                    # 点击"加入播放清單"
+                    # 点击"加入播放清單" - 多语言支持
+                    # 繁体中文: 加入播放清單, 简体中文: 添加到播放列表, 英文: Add to Playlist, 德语: Zur Playlist hinzufügen
                     add_to_playlist = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and contains(text(), '加入播放清單')]"))
+                        EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
                     )
                     move_to_element_human(driver, add_to_playlist)
                     human_delay(0.3, 0.6)
@@ -410,9 +411,10 @@ def add_songs_to_playlist(driver, playlist_name, track_count, is_first_album=Fal
                     
                     # 如果是第一张专辑的第一首歌曲，需要创建播放列表
                     if is_first_album and i == 0:
-                        # 点击"新播放清單"
+                        # 点击"新播放清單" - 多语言支持
+                        # 繁体中文: 新播放清單, 简体中文: 新建播放列表, 英文: New Playlist, 德语: Neue Playlist
                         new_playlist = WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and contains(text(), '新播放清單')]"))
+                            EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '新播放清單') or contains(text(), '新建播放列表') or contains(text(), 'New Playlist') or contains(text(), 'Neue Playlist'))]"))
                         )
                         move_to_element_human(driver, new_playlist)
                         human_delay(0.3, 0.6)
@@ -511,10 +513,10 @@ def add_songs_to_playlist(driver, playlist_name, track_count, is_first_album=Fal
                                             
                                             human_delay(1, 2)
                                             
-                                            # 点击"加入播放清單"
+                                            # 点击"加入播放清單" - 多语言支持
                                             try:
                                                 add_to_playlist = WebDriverWait(driver, 5).until(
-                                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and contains(text(), '加入播放清單')]"))
+                                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
                                                 )
                                                 move_to_element_human(driver, add_to_playlist)
                                                 human_delay(0.3, 0.6)
