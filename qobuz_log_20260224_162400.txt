@@ -1,0 +1,665 @@
+16:24:00 - ============================================================
+16:24:00 - Tidal 播放列表自动添加工具
+16:24:00 - ============================================================
+16:24:00 - ✓ 已清除旧的登录凭据
+16:24:00 - 
+需要进行 Tidal OAuth 验证，请在浏览器中完成登录:
+16:24:01 - >>> 链接: link.tidal.com/KPRXG
+16:24:01 - >>> 或访问 link.tidal.com 并输入代码: KPRXG
+16:24:01 - 
+等待登录完成...
+16:26:25 - ✓ Tidal OAuth 验证成功！用户: Selene  Duskharbor 
+16:26:25 - ✓ Tidal 登录凭据已保存
+16:26:25 - 
+16:26:26 - 已生成播放列表：
+16:26:26 - 1. Other (1首): Dan Romer - Maniac
+16:26:26 - 2. T (17首)
+16:26:26 - 3. Other (4首)
+16:26:26 - 总计: 22 首
+16:26:26 - 输出文件：T+20260224162626.txt
+16:26:26 - 
+============================================================
+16:26:26 - 开始添加歌曲到 Tidal 播放列表...
+16:26:26 - ============================================================
+16:26:26 - 
+解析到 22 张专辑待添加
+16:26:26 - 
+将使用播放列表名称: Calm Breeze
+16:26:27 - ✓ 创建播放列表: Calm Breeze
+16:26:27 - 
+[1/22] 搜索: Dan Romer - Maniac
+16:26:28 -   ✓ 找到: Maniac (Music from the Netflix Limited Series) - Dan Romer
+16:26:29 -   专辑共 32 首歌，计划添加 11 首
+16:26:51 -   ✓ 已添加 11 首歌曲
+16:26:52 - 
+[2/22] 搜索: Elsin Farrowell - Cold Sea Holding Our Story
+16:26:53 -   ✓ 找到: Cold Sea Holding Our Story - Elsin Farrowell
+16:26:54 -   专辑共 19 首歌，计划添加 14 首
+16:27:19 -   ✓ 已添加 14 首歌曲
+16:27:20 - 
+[3/22] 搜索: Harlow Keen - Piano Fights for the Blue
+16:27:21 -   ✓ 找到: Piano Fights for the Blue Planet - Harlow Keen
+16:27:22 -   专辑共 16 首歌，计划添加 12 首
+16:27:44 -   ✓ 已添加 12 首歌曲
+16:27:45 - 
+[4/22] 搜索: Roven Li - What the Blade Remembers
+16:27:46 -   ✓ 找到: What the Blade Remembers - Roven Li
+16:27:48 -   专辑共 14 首歌，计划添加 10 首
+16:28:05 -   ✓ 已添加 10 首歌曲
+16:28:06 - 
+[5/22] 搜索: Zane Midtown - The Day Everything Tilted
+16:28:07 -   ✓ 找到: The Day Everything Tilted - Zane Midtown
+16:28:09 -   专辑共 18 首歌，计划添加 13 首
+16:28:31 -   ✓ 已添加 13 首歌曲
+16:28:32 - 
+[6/22] 搜索: Marven Yeo - Reborn Through Bruised Stillness
+16:28:33 -   ✓ 找到: Reborn Through Bruised Stillness - Marven Yeo
+16:28:35 -   专辑共 18 首歌，计划添加 11 首
+16:28:54 -   ✓ 已添加 11 首歌曲
+16:28:55 - 
+[7/22] 搜索: Priam Zeng - Steel Footsteps over Winter Ridge
+16:28:56 -   ✓ 找到: Steel Footsteps over Winter Ridge - Priam Zeng
+16:28:57 -   专辑共 14 首歌，计划添加 14 首
+16:29:22 -   ✓ 已添加 14 首歌曲
+16:29:22 - 
+[8/22] 搜索: Nolan Driftwood - Promises Spoken Under Breath
+16:29:23 -   ✓ 找到: Promises Spoken Under Breath - Nolan Driftwood
+16:29:25 -   专辑共 12 首歌，计划添加 12 首
+16:29:46 -   ✓ 已添加 12 首歌曲
+16:29:47 - 
+[9/22] 搜索: Elowen Strath - Silence Answers the Empty Seat
+16:29:48 -   ✓ 找到: Silence Answers the Empty Seat - Elowen Strath
+16:29:50 -   专辑共 14 首歌，计划添加 10 首
+16:30:07 -   ✓ 已添加 10 首歌曲
+16:30:08 - 
+[10/22] 搜索: Riven Cloudrest - The Palm's Familiar Back
+16:30:09 -   ✓ 找到: The Palm's Familiar Back - Riven Cloudrest
+16:30:11 -   专辑共 17 首歌，计划添加 13 首
+16:30:32 -   ✓ 已添加 13 首歌曲
+16:30:33 - 
+[11/22] 搜索: Kira Kong - Maple Mosaic of Vows
+16:30:33 -   ✓ 找到: Maple Mosaic of Vows - Kira Kong
+16:30:35 -   专辑共 22 首歌，计划添加 11 首
+16:30:52 -   ✓ 已添加 11 首歌曲
+16:30:53 - 
+[12/22] 搜索: Kenara Lith - We Loved Like It Would Last
+16:30:54 -   ✓ 找到: We Loved Like It Would Last - Kenara Lith
+16:30:56 -   专辑共 12 首歌，计划添加 12 首
+16:31:17 -   ✓ 已添加 12 首歌曲
+16:31:18 - 
+[13/22] 搜索: Jorson Wang - Harbor Wind on Old Vinyl
+16:31:19 -   ✓ 找到: Harbor Wind on Old Vinyl - Jorson Wang
+16:31:20 -   专辑共 16 首歌，计划添加 12 首
+16:31:24 - Request resulted in exception 401 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:31:24 -     ⚠ 认证失效，尝试刷新session...
+16:31:25 - ✓ Tidal token 刷新成功
+16:31:26 - ✓ Tidal 登录凭据已保存
+16:31:44 -   ✓ 已添加 12 首歌曲
+16:31:45 - 
+[14/22] 搜索: Solvi Roon - Vows Beneath the Ember Sky
+16:31:46 -   ✓ 找到: Vows Beneath the Ember Sky - Solvi Roon
+16:31:48 -   专辑共 16 首歌，计划添加 10 首
+16:32:05 -   ✓ 已添加 10 首歌曲
+16:32:06 - 
+[15/22] 搜索: Finn Chord - The Stone That Remembers
+16:32:07 -   ✓ 找到: The Stone That Remembers - Finn Chord
+16:32:09 -   专辑共 22 首歌，计划添加 13 首
+16:32:33 -   ✓ 已添加 13 首歌曲
+16:32:33 - 
+[16/22] 搜索: Calix Drun - Settling Earth Cradle
+16:32:35 -   ✓ 找到: Settling Earth Cradle - Calix Drun
+16:32:36 -   专辑共 24 首歌，计划添加 11 首
+16:32:57 -   ✓ 已添加 11 首歌曲
+16:32:57 - 
+[17/22] 搜索: Brindle Kesar - Fireside to Mountain Fire
+16:32:59 -   ✓ 找到: Fireside to Mountain Fire - Brindle Kesar
+16:33:00 -   专辑共 21 首歌，计划添加 14 首
+16:33:26 -   ✓ 已添加 14 首歌曲
+16:33:26 - 
+[18/22] 搜索: Lyrvane Omri - Drowsevale Descentline
+16:33:27 -   ✓ 找到: Drowsevale Descentline - Lyrvane Omri
+16:33:28 -   专辑共 21 首歌，计划添加 12 首
+16:33:49 -   ✓ 已添加 12 首歌曲
+16:33:50 - 
+[19/22] 搜索: George Fenton - My Name Is Joe
+16:33:51 -   ✓ 找到: My Name Is Joe - George Fenton
+16:33:53 -   专辑共 18 首歌，计划添加 10 首
+16:33:57 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:57 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:57 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:57 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:33:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:00 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:00 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:01 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:01 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:02 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:02 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:02 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:02 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:02 -   ✓ 已添加 2 首歌曲
+16:34:03 - 
+[20/22] 搜索: Guillaume Roussel - The Spy
+16:34:04 -   ✓ 找到: The Spy (Original Series Soundtrack) - Guillaume Roussel
+16:34:06 -   专辑共 21 首歌，计划添加 13 首
+16:34:07 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:07 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:07 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:07 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:07 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:07 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:08 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:08 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:09 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:09 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:10 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:10 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:10 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:10 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:11 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:11 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:12 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:12 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:12 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:12 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:13 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:13 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:14 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:14 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:14 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:14 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:14 -   ✓ 已添加 0 首歌曲
+16:34:15 - 
+[21/22] 搜索: Bruno Coulais - Les Choristes: Les 20 ans
+16:34:17 -   ✗ 未找到专辑
+16:34:17 - 
+[22/22] 搜索: Carlos Rafael Rivera - Department Q
+16:34:18 -   ✓ 找到: Department Q (Soundtrack from the Netflix Series) - Carlos Rafael Rivera
+16:34:20 -   专辑共 21 首歌，计划添加 14 首
+16:34:20 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:20 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:21 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:21 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:22 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:22 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:22 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:22 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:23 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:23 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:24 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:24 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:25 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:25 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:25 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:25 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:26 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:26 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:27 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:27 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:27 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:27 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:28 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:28 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:29 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:29 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:29 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:29 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:29 -   ✓ 已添加 0 首歌曲
+16:34:30 - 
+============================================================
+16:34:30 - ⚠ 预期 265 首，实际 217 首，缺少 48 首
+16:34:30 - 正在从 other_artists.json 补充...
+16:34:30 - ============================================================
+16:34:30 - 
+[补充] 搜索: Nicholas Britell - Succession
+16:34:31 -   ✓ 找到: Succession: Season 1 (HBO Original Series Soundtrack) - Nicholas Britell
+16:34:33 -   专辑共 26 首歌，补充 14 首
+16:34:34 - Request resulted in exception 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:34 -     ✗ 添加歌曲失败: 500 Server Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:34 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:34 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:34 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:34 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:35 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:35 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:36 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:36 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:36 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:36 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:37 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:37 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:38 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:38 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:38 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:38 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:39 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:39 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:39 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:39 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:40 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:40 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:40 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:40 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:41 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:41 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:41 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:34:42 - 
+[补充] 搜索: Fredrika Stahl - Sweep Me Away
+16:34:43 -   ✓ 找到: Sweep Me Away - Fredrika Stahl
+16:34:44 -   专辑共 15 首歌，补充 14 首
+16:34:45 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:45 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:46 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:46 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:47 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:47 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:47 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:47 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:50 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:50 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:51 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:51 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:52 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:52 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:52 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:52 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:53 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:53 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:54 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:54 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:54 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:54 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:54 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:34:55 - 
+[补充] 搜索: Mark Mothersbaugh - Thor: Ragnarok
+16:34:56 -   ✓ 找到: Thor: Ragnarok (Original Motion Picture Soundtrack) - Mark Mothersbaugh
+16:34:57 -   专辑共 23 首歌，补充 14 首
+16:34:58 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:58 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:34:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:01 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:01 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:01 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:01 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:02 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:02 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:03 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:03 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:03 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:03 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:04 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:04 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:04 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:04 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:05 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:05 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:06 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:06 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:06 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:35:07 - 
+[补充] 搜索: Dan Levy - Pour la France
+16:35:08 -   ✓ 找到: Pour la France (Bande originale du film) - Dan Levy
+16:35:09 -   专辑共 15 首歌，补充 14 首
+16:35:10 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:10 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:11 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:11 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:11 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:11 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:12 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:12 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:12 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:12 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:13 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:13 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:13 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:13 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:14 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:14 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:15 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:15 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:16 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:16 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:16 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:16 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:18 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:18 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:19 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:19 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:19 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:19 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:19 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:35:20 - 
+[补充] 搜索: Thomas Dybdahl - That Great October Sound
+16:35:21 -   ✓ 找到: ...That Great October Sound - Thomas Dybdahl
+16:35:22 -   专辑共 12 首歌，补充 12 首
+16:35:23 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:23 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:24 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:24 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:25 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:25 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:25 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:25 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:26 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:26 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:27 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:27 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:28 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:28 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:28 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:28 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:29 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:29 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:29 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:29 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:30 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:30 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:30 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:30 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:30 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:35:31 - 
+[补充] 搜索: Pinar Toprak - Captain Marvel
+16:35:32 -   ✓ 找到: Captain Marvel (Original Motion Picture Soundtrack) - Pinar Toprak
+16:35:34 -   专辑共 23 首歌，补充 14 首
+16:35:35 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:35 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:35 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:35 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:36 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:36 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:36 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:36 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:37 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:37 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:38 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:38 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:39 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:39 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:39 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:39 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:40 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:40 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:41 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:41 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:41 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:41 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:41 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:41 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:42 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:42 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:43 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:43 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:43 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:35:43 - 
+[补充] 搜索: Adem Ilhan - Avenue 5
+16:35:44 -   ✓ 找到: Avenue 5 (Original Series Soundtrack) - Adem Ilhan
+16:35:45 -   专辑共 21 首歌，补充 14 首
+16:35:46 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:46 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:47 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:47 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:47 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:47 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:50 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:50 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:51 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:51 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:51 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:51 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:52 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:52 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:53 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:53 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:54 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:54 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:54 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:54 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:54 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:35:55 - 
+[补充] 搜索: Ariel Marx - A Friend of the Family
+16:35:56 -   ✓ 找到: A Friend of the Family (Original Series Soundtrack) - Ariel Marx
+16:35:57 -   专辑共 37 首歌，补充 14 首
+16:35:58 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:58 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:35:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:01 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:01 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:02 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:02 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:03 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:03 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:04 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:04 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:04 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:04 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:05 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:05 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:05 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:05 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:06 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:36:07 - 
+[补充] 搜索: Nathan Barr - True Blood
+16:36:08 -   ✓ 找到: True Blood (Original Score From The HBO Original Series) - Nathan Barr
+16:36:10 -   专辑共 21 首歌，补充 14 首
+16:36:10 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:10 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:11 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:11 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:12 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:12 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:13 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:13 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:13 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:13 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:14 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:14 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:15 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:15 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:15 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:15 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:16 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:16 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:17 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:17 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:17 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:17 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:18 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:18 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:18 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:18 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:19 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:19 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:19 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:36:20 - 
+[补充] 搜索: Philip Sheppard - The Crown
+16:36:22 -   ✗ 未找到专辑
+16:36:22 - 
+[补充] 搜索: Takaki Horigome - Home Ground
+16:36:24 -   ✗ 未找到专辑
+16:36:25 - 
+[补充] 搜索: Giosuè Greco - Welcome to Wrexham
+16:36:26 -   ✓ 找到: Welcome to Wrexham (Official Soundtrack) - Giosuè Greco
+16:36:27 -   专辑共 21 首歌，补充 14 首
+16:36:28 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:28 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:29 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:29 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:29 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:29 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:30 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:30 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:31 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:31 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:32 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:32 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:32 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:32 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:33 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:33 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:34 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:34 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:34 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:34 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:35 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:35 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:36 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:36 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:37 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:37 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:37 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:37 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:37 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:36:38 - 
+[补充] 搜索: Gustavo Santaolalla - The Last of Us: Season 1
+16:36:39 -   ✓ 找到: The Last of Us: Season 1 (Soundtrack from the HBO Original Series) - Gustavo Santaolalla
+16:36:42 -   专辑共 66 首歌，补充 14 首
+16:36:42 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:42 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:43 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:43 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:43 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:43 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:44 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:44 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:45 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:45 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:45 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:45 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:46 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:46 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:46 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:46 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:47 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:47 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:50 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:50 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:50 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:50 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:50 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:36:51 - 
+[补充] 搜索: David Wingo - Take Shelter
+16:36:52 -   ✓ 找到: Take Shelter - David Wingo
+16:36:53 -   专辑共 21 首歌，补充 14 首
+16:36:54 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:54 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:55 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:55 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:56 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:56 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:56 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:56 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:57 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:57 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:57 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:57 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:58 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:58 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:36:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:01 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:01 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:01 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:01 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:02 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:02 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:02 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:37:03 - 
+[补充] 搜索: Matt Koskenmaki - The Last of Us Part II
+16:37:04 -   ✗ 未找到专辑
+16:37:05 - 
+[补充] 搜索: Clint Mansell - Requiem for a Dream
+16:37:07 -   ✓ 找到: Requiem for a Dream / OST - Clint Mansell / Kronos Quartet
+16:37:08 -   专辑共 33 首歌，补充 14 首
+16:37:09 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:09 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:10 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:10 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:11 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:11 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:11 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:11 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:12 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:12 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:13 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:13 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:13 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:13 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:14 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:14 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:14 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:14 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:15 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:15 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:16 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:16 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:16 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:16 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:17 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:17 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:18 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:18 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:18 -   ✓ 已补充 0 首歌曲，还差 48 首
+16:37:19 - 
+[补充] 搜索: Graham Reynolds - Before Midnight
+16:37:20 -   ✓ 找到: Before Midnight - Graham Reynolds
+16:37:21 -   专辑共 13 首歌，补充 13 首
+16:37:22 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:22 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:23 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:23 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:24 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:24 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:24 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:24 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:25 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:25 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:26 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100
+16:37:26 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/30514cc2-ebd9-41eb-9569-c8ef5328738a/items?sessionId=77397f04-f545-4e94-b995-9c8b495527cd&countryCode=IE&limit=100

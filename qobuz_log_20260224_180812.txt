@@ -1,0 +1,152 @@
+18:08:12 - ============================================================
+18:08:12 - Tidal 播放列表自动添加工具
+18:08:12 - ============================================================
+18:08:12 - ✓ 已清除旧的登录凭据
+18:08:12 - 
+需要进行 Tidal OAuth 验证，请在浏览器中完成登录:
+18:08:13 - >>> 链接: link.tidal.com/EDJXW
+18:08:13 - >>> 或访问 link.tidal.com 并输入代码: EDJXW
+18:08:13 - 
+等待登录完成...
+18:08:46 - ✓ Tidal OAuth 验证成功！用户: None None
+18:08:46 - ✓ Tidal 登录凭据已保存
+18:08:46 - 
+18:08:47 - 已生成播放列表：
+18:08:47 - 1. Other (1首): Thomas Dybdahl - That Great October Sound
+18:08:47 - 2. T (17首)
+18:08:47 - 3. Other (4首)
+18:08:47 - 总计: 22 首
+18:08:47 - 输出文件：T+20260224180847.txt
+18:08:47 - 
+============================================================
+18:08:47 - 开始添加歌曲到 Tidal 播放列表...
+18:08:47 - ============================================================
+18:08:47 - 
+解析到 22 张专辑待添加
+18:08:47 - 
+将使用播放列表名称: Light of Peace
+18:08:48 - ✓ 创建播放列表: Light of Peace
+18:08:48 - 
+[1/22] 搜索: Thomas Dybdahl - That Great October Sound
+18:08:49 -   ✓ 找到: ...That Great October Sound - Thomas Dybdahl
+18:08:50 -   专辑共 12 首歌，计划添加 10 首
+18:09:11 -   ✓ 已添加 10 首歌曲
+18:09:11 - 
+[2/22] 搜索: Finn Chord - The Stone That Remembers
+18:09:13 -   ✓ 找到: The Stone That Remembers - Finn Chord
+18:09:14 -   专辑共 22 首歌，计划添加 12 首
+18:09:35 -   ✓ 已添加 12 首歌曲
+18:09:36 - 
+[3/22] 搜索: Elsin Farrowell - Cold Sea Holding Our Story
+18:09:38 -   ✓ 找到: Cold Sea Holding Our Story - Elsin Farrowell
+18:09:39 -   专辑共 19 首歌，计划添加 13 首
+18:10:02 -   ✓ 已添加 13 首歌曲
+18:10:03 - 
+[4/22] 搜索: Brindle Kesar - Fireside to Mountain Fire
+18:10:04 -   ✓ 找到: Fireside to Mountain Fire - Brindle Kesar
+18:10:05 -   专辑共 21 首歌，计划添加 14 首
+18:10:29 -   ✓ 已添加 14 首歌曲
+18:10:30 - 
+[5/22] 搜索: Naiyo Hesk - Lanternborne Ascent
+18:10:31 -   ✓ 找到: Lanternborne Ascent - Naiyo Hesk
+18:10:33 -   专辑共 18 首歌，计划添加 11 首
+18:10:51 -   ✓ 已添加 11 首歌曲
+18:10:51 - 
+[6/22] 搜索: Elowen Strath - Silence Answers the Empty Seat
+18:10:52 -   ✓ 找到: Silence Answers the Empty Seat - Elowen Strath
+18:10:53 -   专辑共 14 首歌，计划添加 10 首
+18:11:11 -   ✓ 已添加 10 首歌曲
+18:11:12 - 
+[7/22] 搜索: Torven Jiko - Markets and Petals
+18:11:13 -   ✓ 找到: Markets and Petals - Torven Jiko
+18:11:14 -   专辑共 22 首歌，计划添加 12 首
+18:11:34 -   ✓ 已添加 12 首歌曲
+18:11:35 - 
+[8/22] 搜索: Harlow Keen - Steps Across the Hidden Field
+18:11:36 -   ✓ 找到: Steps Across the Hidden Field - Harlow Keen
+18:11:37 -   专辑共 16 首歌，计划添加 13 首
+18:11:58 -   ✓ 已添加 13 首歌曲
+18:11:59 - 
+[9/22] 搜索: Corin Ablet - Murmurs of a Tired City
+18:12:00 -   ✓ 找到: Murmurs of a Tired City - Corin Ablet
+18:12:01 -   专辑共 16 首歌，计划添加 14 首
+18:12:24 -   ✓ 已添加 14 首歌曲
+18:12:25 - 
+[10/22] 搜索: Kenara Lith - Light Left on Anyway
+18:12:26 -   ✓ 找到: Light Left on Anyway - Kenara Lith
+18:12:27 -   专辑共 16 首歌，计划添加 11 首
+18:12:47 -   ✓ 已添加 11 首歌曲
+18:12:47 - 
+[11/22] 搜索: Roven Li - What the Blade Remembers
+18:12:49 -   ✓ 找到: What the Blade Remembers - Roven Li
+18:12:50 -   专辑共 14 首歌，计划添加 10 首
+18:13:06 -   ✓ 已添加 10 首歌曲
+18:13:07 - 
+[12/22] 搜索: Nolan Driftwood - Promises Spoken Under Breath
+18:13:08 -   ✓ 找到: Promises Spoken Under Breath - Nolan Driftwood
+18:13:09 -   专辑共 12 首歌，计划添加 12 首
+18:13:28 -   ✓ 已添加 12 首歌曲
+18:13:29 - 
+[13/22] 搜索: Calix Drun - Lanterns Between Constellations
+18:13:30 -   ✓ 找到: Lanterns Between Constellations - Calix Drun
+18:13:31 -   专辑共 14 首歌，计划添加 13 首
+18:13:44 - Request resulted in exception 401 Client Error: Unauthorized for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=1000
+18:13:44 -     ⚠ 认证失效，尝试刷新session...
+18:13:46 - ✓ Tidal token 刷新成功
+18:13:46 - ✓ Tidal 登录凭据已保存
+18:13:46 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:46 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:47 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:47 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:48 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:48 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:49 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:49 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:49 -   ✓ 已添加 7 首歌曲
+18:13:50 - 
+[14/22] 搜索: Hino Resk - Stairwell Promises
+18:13:51 -   ✓ 找到: Stairwell Promises - Hino Resk
+18:13:52 -   专辑共 16 首歌，计划添加 14 首
+18:13:53 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:53 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:53 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:53 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:54 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:54 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:55 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:55 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:56 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:56 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:56 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:56 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:57 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:57 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:57 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:57 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:58 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:58 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:59 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:13:59 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:00 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:00 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:01 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:01 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:01 -   ✓ 已添加 0 首歌曲
+18:14:02 - 
+[15/22] 搜索: Lyrvane Omri - Night Sky Is Confiding Alone
+18:14:03 -   ✓ 找到: Night Sky Is Confiding Alone - Lyrvane Omri
+18:14:04 -   专辑共 14 首歌，计划添加 11 首
+18:14:05 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:05 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:06 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:06 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:07 - Request resulted in exception 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100
+18:14:07 -     ✗ 添加歌曲失败: 412 Client Error:  for url: https://api.tidal.com/v1/playlists/76ff3f37-ac31-4620-a350-a38267965238/items?sessionId=5a005261-5b33-4093-9e26-dc85d68cf8f9&countryCode=US&limit=100

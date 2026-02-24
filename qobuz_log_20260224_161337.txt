@@ -1,0 +1,162 @@
+16:13:37 - ============================================================
+16:13:37 - Tidal 播放列表自动添加工具
+16:13:37 - ============================================================
+16:13:37 - ✓ 已清除旧的登录凭据
+16:13:37 - 
+需要进行 Tidal OAuth 验证，请在浏览器中完成登录:
+16:13:38 - >>> 链接: link.tidal.com/DFCOW
+16:13:38 - >>> 或访问 link.tidal.com 并输入代码: DFCOW
+16:13:38 - 
+等待登录完成...
+16:14:09 - ✓ Tidal OAuth 验证成功！用户: Wrenna  Duskvale
+16:14:09 - ✓ Tidal 登录凭据已保存
+16:14:09 - 
+16:14:10 - 已生成播放列表：
+16:14:10 - 1. Other (1首): Cristobal Tapia de Veer - Utopia 2
+16:14:10 - 2. T (17首)
+16:14:10 - 3. Other (4首)
+16:14:10 - 总计: 22 首
+16:14:10 - 输出文件：T+20260224161410.txt
+16:14:10 - 
+============================================================
+16:14:10 - 开始添加歌曲到 Tidal 播放列表...
+16:14:10 - ============================================================
+16:14:10 - 
+解析到 22 张专辑待添加
+16:14:10 - 
+将使用播放列表名称: Peaceful Skies
+16:14:11 - ✓ 创建播放列表: Peaceful Skies
+16:14:11 - 
+[1/22] 搜索: Cristobal Tapia de Veer - Utopia 2
+16:14:12 -   ✓ 找到: Utopia 2 (Original Television Soundtrack) - Cristobal Tapia de Veer
+16:14:13 -   专辑共 17 首歌，计划添加 14 首
+16:14:38 -   ✓ 已添加 14 首歌曲
+16:14:39 - 
+[2/22] 搜索: Elsin Farrowell - Cold Sea Holding Our Story
+16:14:40 -   ✓ 找到: Cold Sea Holding Our Story - Elsin Farrowell
+16:14:41 -   专辑共 19 首歌，计划添加 10 首
+16:14:59 -   ✓ 已添加 10 首歌曲
+16:15:00 - 
+[3/22] 搜索: Marven Yeo - Reborn Through Bruised Stillness
+16:15:02 -   ✓ 找到: Reborn Through Bruised Stillness - Marven Yeo
+16:15:04 -   专辑共 18 首歌，计划添加 11 首
+16:15:21 -   ✓ 已添加 11 首歌曲
+16:15:22 - 
+[4/22] 搜索: Kenara Lith - Light Left on Anyway
+16:15:23 -   ✓ 找到: Light Left on Anyway - Kenara Lith
+16:15:24 -   专辑共 16 首歌，计划添加 12 首
+16:15:45 -   ✓ 已添加 12 首歌曲
+16:15:46 - 
+[5/22] 搜索: Jorson Wang - A Harbor Learned Our Names
+16:15:47 -   ✓ 找到: A Harbor Learned Our Names - Jorson Wang
+16:15:48 -   专辑共 16 首歌，计划添加 13 首
+16:16:11 -   ✓ 已添加 13 首歌曲
+16:16:11 - 
+[6/22] 搜索: Nolan Driftwood - Promises Spoken Under Breath
+16:16:13 -   ✓ 找到: Promises Spoken Under Breath - Nolan Driftwood
+16:16:14 -   专辑共 12 首歌，计划添加 12 首
+16:16:34 -   ✓ 已添加 12 首歌曲
+16:16:35 - 
+[7/22] 搜索: Hino Resk - Stairwell Promises
+16:16:36 -   ✓ 找到: Stairwell Promises - Hino Resk
+16:16:38 -   专辑共 16 首歌，计划添加 10 首
+16:16:56 -   ✓ 已添加 10 首歌曲
+16:16:57 - 
+[8/22] 搜索: Finn Chord - Blood Blossoms Ascension of Thorns
+16:16:58 -   ✓ 找到: Blood Blossoms Ascension of Thorns - Finn Chord
+16:16:59 -   专辑共 16 首歌，计划添加 11 首
+16:17:19 -   ✓ 已添加 11 首歌曲
+16:17:19 - 
+[9/22] 搜索: Lyrvane Omri - Drowsevale Descentline
+16:17:21 -   ✓ 找到: Drowsevale Descentline - Lyrvane Omri
+16:17:22 -   专辑共 21 首歌，计划添加 12 首
+16:17:43 -   ✓ 已添加 12 首歌曲
+16:17:44 - 
+[10/22] 搜索: Kira Kong - Maple Mosaic of Vows
+16:17:45 -   ✓ 找到: Maple Mosaic of Vows - Kira Kong
+16:17:46 -   专辑共 22 首歌，计划添加 13 首
+16:18:08 -   ✓ 已添加 13 首歌曲
+16:18:09 - 
+[11/22] 搜索: Dahlia Frost - Skyrail Aspirant
+16:18:09 -   ✓ 找到: Skyrail Aspirant - DAHLIA FROST
+16:18:11 -   专辑共 17 首歌，计划添加 14 首
+16:18:35 -   ✓ 已添加 14 首歌曲
+16:18:35 - 
+[12/22] 搜索: Brindle Kesar - Silk of Power
+16:18:36 -   ✓ 找到: Silk of Power - Brindle Kesar
+16:18:38 -   专辑共 19 首歌，计划添加 10 首
+16:18:55 -   ✓ 已添加 10 首歌曲
+16:18:56 - 
+[13/22] 搜索: Etro Mignar - Persistence of One Last Look
+16:18:57 -   ✓ 找到: Persistence of One Last Look - Etro Mignar
+16:18:58 -   专辑共 20 首歌，计划添加 11 首
+16:19:07 - Request resulted in exception 401 Client Error:  for url: https://api.tidal.com/v1/playlists/b70a9443-120f-4792-95ba-0e2b003d8105/items?sessionId=dddceea7-f662-48fa-bce9-3e4021973214&countryCode=NL&limit=100
+16:19:07 -     ⚠ 认证失效，尝试刷新session...
+16:19:10 - ✓ Tidal token 刷新成功
+16:19:10 - ✓ Tidal 登录凭据已保存
+16:19:19 -   ✓ 已添加 11 首歌曲
+16:19:20 - 
+[14/22] 搜索: Solvi Roon - Vows Beneath the Ember Sky
+16:19:21 -   ✓ 找到: Vows Beneath the Ember Sky - Solvi Roon
+16:19:22 -   专辑共 16 首歌，计划添加 12 首
+16:19:44 -   ✓ 已添加 12 首歌曲
+16:19:45 - 
+[15/22] 搜索: Torven Jiko - Markets and Petals
+16:19:46 -   ✓ 找到: Markets and Petals - Torven Jiko
+16:19:47 -   专辑共 22 首歌，计划添加 13 首
+16:20:09 -   ✓ 已添加 13 首歌曲
+16:20:10 - 
+[16/22] 搜索: Zimin Ower - Apricot Street Songs
+16:20:11 -   ✓ 找到: Apricot Street Songs - Zimin Ower
+16:20:12 -   专辑共 17 首歌，计划添加 14 首
+16:20:35 -   ✓ 已添加 14 首歌曲
+16:20:36 - 
+[17/22] 搜索: Sera Alune - Umbrella for Two Then One
+16:20:37 -   ✓ 找到: Umbrella for Two Then One - Sera Alune
+16:20:38 -   专辑共 18 首歌，计划添加 10 首
+16:20:54 -   ✓ 已添加 10 首歌曲
+16:20:55 - 
+[18/22] 搜索: Roven Li - What the Blade Remembers
+16:20:56 -   ✓ 找到: What the Blade Remembers - Roven Li
+16:20:57 -   专辑共 14 首歌，计划添加 11 首
+16:21:14 -   ✓ 已添加 11 首歌曲
+16:21:15 - 
+[19/22] 搜索: Stephen Rennicks - Conversations with Friends
+16:21:16 -   ✓ 找到: Conversations with Friends (Original Score from the Television Series) - Stephen Rennicks
+16:21:17 -   专辑共 31 首歌，计划添加 12 首
+16:21:39 -   ✓ 已添加 12 首歌曲
+16:21:39 - 
+[20/22] 搜索: Danny Elfman - Doctor Strange in the Multiverse of Madness
+16:21:40 -   ✓ 找到: Doctor Strange in the Multiverse of Madness (Original Motion Picture Soundtrack) - Danny Elfman
+16:21:42 -   专辑共 35 首歌，计划添加 13 首
+16:22:04 -   ✓ 已添加 13 首歌曲
+16:22:04 - 
+[21/22] 搜索: Garry Schyman - Torn
+16:22:06 -   ✓ 找到: Torn (Original Game Soundtrack) - Garry Schyman
+16:22:07 -   专辑共 16 首歌，计划添加 14 首
+16:22:34 -   ✓ 已添加 14 首歌曲
+16:22:34 - 
+[22/22] 搜索: Ron Goodwin - Ron Goodwin Conducts Film & TV Themes
+16:22:35 -   ✓ 找到: Ron Goodwin Conducts Film & TV Themes - Ron Goodwin
+16:22:37 -   专辑共 18 首歌，计划添加 10 首
+16:22:55 -   ✓ 已添加 10 首歌曲
+16:22:56 - 
+============================================================
+16:22:56 - ⚠ 预期 264 首，实际 262 首，缺少 2 首
+16:22:56 - 正在从 other_artists.json 补充...
+16:22:56 - ============================================================
+16:22:56 - 
+[补充] 搜索: Fernando Velázquez - Crimson Peak
+16:22:57 -   ✓ 找到: Crimson Peak (Original Motion Picture Soundtrack) - Fernando Velázquez
+16:22:59 -   专辑共 36 首歌，补充 2 首
+16:23:02 -   ✓ 已补充 2 首歌曲，还差 0 首
+16:23:03 - 
+✓ 补充完成！
+16:23:03 - 
+============================================================
+16:23:03 - ✓ Tidal 播放列表添加完成！
+16:23:03 -   播放列表: Peaceful Skies
+16:23:03 -   预期添加: 264 首歌曲
+16:23:03 -   实际添加: 264 首歌曲
+16:23:03 -   状态: 已完成 ✓
+16:23:03 - ============================================================

@@ -1,0 +1,162 @@
+17:44:27 - ============================================================
+17:44:27 - Tidal 播放列表自动添加工具
+17:44:27 - ============================================================
+17:44:27 - ✓ 已清除旧的登录凭据
+17:44:27 - 
+需要进行 Tidal OAuth 验证，请在浏览器中完成登录:
+17:44:28 - >>> 链接: link.tidal.com/CLHJZ
+17:44:28 - >>> 或访问 link.tidal.com 并输入代码: CLHJZ
+17:44:28 - 
+等待登录完成...
+17:45:07 - ✓ Tidal OAuth 验证成功！用户: Edran  Larkmere
+17:45:07 - ✓ Tidal 登录凭据已保存
+17:45:07 - 
+17:45:07 - 已生成播放列表：
+17:45:07 - 1. Other (1首): Wendy Wang - American Born Chinese
+17:45:07 - 2. T (17首)
+17:45:07 - 3. Other (4首)
+17:45:07 - 总计: 22 首
+17:45:07 - 输出文件：T+20260224174507.txt
+17:45:07 - 
+============================================================
+17:45:07 - 开始添加歌曲到 Tidal 播放列表...
+17:45:07 - ============================================================
+17:45:07 - 
+解析到 22 张专辑待添加
+17:45:07 - 
+将使用播放列表名称: Serene Tide
+17:45:09 - ✓ 创建播放列表: Serene Tide
+17:45:09 - 
+[1/22] 搜索: Wendy Wang - American Born Chinese
+17:45:10 -   ✓ 找到: American Born Chinese (Original Soundtrack) - Wendy Wang
+17:45:11 -   专辑共 27 首歌，计划添加 12 首
+17:45:35 -   ✓ 已添加 12 首歌曲
+17:45:36 - 
+[2/22] 搜索: Elsin Farrowell - Cold Sea Holding Our Story
+17:45:37 -   ✓ 找到: Cold Sea Holding Our Story - Elsin Farrowell
+17:45:38 -   专辑共 19 首歌，计划添加 14 首
+17:45:59 -   ✓ 已添加 14 首歌曲
+17:46:00 - 
+[3/22] 搜索: Solvi Roon - Steel in the Sun
+17:46:01 -   ✓ 找到: Steel in the Sun - Solvi Roon
+17:46:02 -   专辑共 16 首歌，计划添加 10 首
+17:46:20 -   ✓ 已添加 10 首歌曲
+17:46:20 - 
+[4/22] 搜索: Harlow Keen - Piano Fights for the Blue
+17:46:21 -   ✓ 找到: Piano Fights for the Blue Planet - Harlow Keen
+17:46:23 -   专辑共 16 首歌，计划添加 13 首
+17:46:44 -   ✓ 已添加 13 首歌曲
+17:46:45 - 
+[5/22] 搜索: Pete Surarow - If We Don't Turn Back
+17:46:46 -   ✓ 找到: If We Don't Turn Back - Pete Surarow
+17:46:47 -   专辑共 14 首歌，计划添加 11 首
+17:47:06 -   ✓ 已添加 11 首歌曲
+17:47:06 - 
+[6/22] 搜索: Zane Midtown - The Day Everything Tilted
+17:47:07 -   ✓ 找到: The Day Everything Tilted - Zane Midtown
+17:47:09 -   专辑共 18 首歌，计划添加 12 首
+17:47:30 -   ✓ 已添加 12 首歌曲
+17:47:31 - 
+[7/22] 搜索: Orin Blackwell - Gaps In Our Music
+17:47:32 -   ✓ 找到: Gaps In Our Music - Orin Blackwell
+17:47:33 -   专辑共 15 首歌，计划添加 14 首
+17:47:56 -   ✓ 已添加 14 首歌曲
+17:47:57 - 
+[8/22] 搜索: Kenara Lith - Light Left on Anyway
+17:47:58 -   ✓ 找到: Light Left on Anyway - Kenara Lith
+17:48:00 -   专辑共 16 首歌，计划添加 10 首
+17:48:18 -   ✓ 已添加 10 首歌曲
+17:48:19 - 
+[9/22] 搜索: Naiyo Hesk - Lanternborne Ascent
+17:48:20 -   ✓ 找到: Lanternborne Ascent - Naiyo Hesk
+17:48:21 -   专辑共 18 首歌，计划添加 13 首
+17:48:43 -   ✓ 已添加 13 首歌曲
+17:48:44 - 
+[10/22] 搜索: Etro Mignar - Persistence of One Last Look
+17:48:45 -   ✓ 找到: Persistence of One Last Look - Etro Mignar
+17:48:47 -   专辑共 20 首歌，计划添加 11 首
+17:49:04 -   ✓ 已添加 11 首歌曲
+17:49:05 - 
+[11/22] 搜索: Corin Ablet - Murmurs of a Tired City
+17:49:06 -   ✓ 找到: Murmurs of a Tired City - Corin Ablet
+17:49:08 -   专辑共 16 首歌，计划添加 12 首
+17:49:29 -   ✓ 已添加 12 首歌曲
+17:49:29 - 
+[12/22] 搜索: Zimin Ower - Apricot Street Songs
+17:49:30 -   ✓ 找到: Apricot Street Songs - Zimin Ower
+17:49:32 -   专辑共 17 首歌，计划添加 14 首
+17:49:56 -   ✓ 已添加 14 首歌曲
+17:49:57 - 
+[13/22] 搜索: Orisonne Solum - Streetlamp After the Last Shift
+17:49:58 -   ✓ 找到: Streetlamp After the Last Shift - Orisonne Solum
+17:50:00 -   专辑共 18 首歌，计划添加 10 首
+17:50:06 - Request resulted in exception 401 Client Error:  for url: https://api.tidal.com/v1/playlists/adb68893-b8b2-41ff-a77a-6531e09a371e/items?sessionId=9a89e4a7-5830-45a6-b9f0-2e92b804c79d&countryCode=NO&limit=100
+17:50:06 -     ⚠ 认证失效，尝试刷新session...
+17:50:08 - ✓ Tidal token 刷新成功
+17:50:08 - ✓ Tidal 登录凭据已保存
+17:50:19 -   ✓ 已添加 10 首歌曲
+17:50:20 - 
+[14/22] 搜索: Yara Windell - Mark City Glow
+17:50:21 -   ✓ 找到: Mark City Glow - Yara Windell
+17:50:22 -   专辑共 18 首歌，计划添加 13 首
+17:50:44 -   ✓ 已添加 13 首歌曲
+17:50:45 - 
+[15/22] 搜索: Lyrvane Omri - Night Sky Is Confiding Alone
+17:50:46 -   ✓ 找到: Night Sky Is Confiding Alone - Lyrvane Omri
+17:50:48 -   专辑共 14 首歌，计划添加 11 首
+17:51:07 -   ✓ 已添加 11 首歌曲
+17:51:08 - 
+[16/22] 搜索: Zephyr Moonridge - Between Meridians
+17:51:09 -   ✓ 找到: Between Meridians - Zephyr Moonridge
+17:51:10 -   专辑共 8 首歌，计划添加 8 首
+17:51:23 -   ✓ 已添加 8 首歌曲
+17:51:24 - 
+[17/22] 搜索: Riven Cloudrest - The Palm's Familiar Back
+17:51:25 -   ✓ 找到: The Palm's Familiar Back - Riven Cloudrest
+17:51:26 -   专辑共 17 首歌，计划添加 14 首
+17:51:50 -   ✓ 已添加 14 首歌曲
+17:51:51 - 
+[18/22] 搜索: Jorson Wang - Harbor Wind on Old Vinyl
+17:51:52 -   ✓ 找到: Harbor Wind on Old Vinyl - Jorson Wang
+17:51:54 -   专辑共 16 首歌，计划添加 10 首
+17:52:10 -   ✓ 已添加 10 首歌曲
+17:52:11 - 
+[19/22] 搜索: Nathan Barr - True Blood
+17:52:12 -   ✓ 找到: True Blood (Original Score From The HBO Original Series) - Nathan Barr
+17:52:13 -   专辑共 21 首歌，计划添加 13 首
+17:52:35 -   ✓ 已添加 13 首歌曲
+17:52:36 - 
+[20/22] 搜索: Thomas Cappeau - J'ai tué mon mari
+17:52:37 -   ✓ 找到: J'ai tué mon mari (Bande originale de la série télévisée) - Thomas Cappeau
+17:52:39 -   专辑共 42 首歌，计划添加 11 首
+17:52:57 -   ✓ 已添加 11 首歌曲
+17:52:58 - 
+[21/22] 搜索: Euphoric Brothers - Garten of Banban 8: Anti Devil
+17:52:59 -   ✓ 找到: Garten of Banban 8: Anti Devil (Original Game Soundtrack) - Euphoric Brothers
+17:53:00 -   专辑共 17 首歌，计划添加 12 首
+17:53:19 -   ✓ 已添加 12 首歌曲
+17:53:20 - 
+[22/22] 搜索: Tyler Bates - The Way
+17:53:21 -   ✓ 找到: The Way (Music from the Motion Picture) - Tyler Bates
+17:53:23 -   专辑共 19 首歌，计划添加 14 首
+17:53:47 -   ✓ 已添加 14 首歌曲
+17:53:48 - 
+============================================================
+17:53:48 - ⚠ 预期 266 首，实际 262 首，缺少 4 首
+17:53:48 - 正在从 other_artists.json 补充...
+17:53:48 - ============================================================
+17:53:48 - 
+[补充] 搜索: Giosuè Greco - Welcome to Wrexham
+17:53:49 -   ✓ 找到: Welcome to Wrexham (Official Soundtrack) - Giosuè Greco
+17:53:50 -   专辑共 21 首歌，补充 4 首
+17:53:56 -   ✓ 已补充 4 首歌曲，还差 0 首
+17:53:57 - 
+✓ 补充完成！
+17:53:57 - 
+============================================================
+17:53:57 - ✓ Tidal 播放列表添加完成！
+17:53:57 -   播放列表: Serene Tide
+17:53:57 -   预期添加: 266 首歌曲
+17:53:57 -   实际添加: 266 首歌曲
+17:53:57 -   状态: 已完成 ✓
+17:53:57 - ============================================================

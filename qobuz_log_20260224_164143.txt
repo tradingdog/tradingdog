@@ -1,0 +1,162 @@
+16:41:43 - ============================================================
+16:41:43 - Tidal 播放列表自动添加工具
+16:41:43 - ============================================================
+16:41:43 - ✓ 已清除旧的登录凭据
+16:41:43 - 
+需要进行 Tidal OAuth 验证，请在浏览器中完成登录:
+16:41:44 - >>> 链接: link.tidal.com/VHKVI
+16:41:44 - >>> 或访问 link.tidal.com 并输入代码: VHKVI
+16:41:44 - 
+等待登录完成...
+16:42:15 - ✓ Tidal OAuth 验证成功！用户: Aeliana  Nightfell
+16:42:15 - ✓ Tidal 登录凭据已保存
+16:42:15 - 
+16:42:16 - 已生成播放列表：
+16:42:16 - 1. Other (1首): Randy Newman - 12 Songs
+16:42:16 - 2. T (17首)
+16:42:16 - 3. Other (4首)
+16:42:16 - 总计: 22 首
+16:42:16 - 输出文件：T+20260224164216.txt
+16:42:16 - 
+============================================================
+16:42:16 - 开始添加歌曲到 Tidal 播放列表...
+16:42:16 - ============================================================
+16:42:16 - 
+解析到 22 张专辑待添加
+16:42:16 - 
+将使用播放列表名称: Gentle Whisper
+16:42:17 - ✓ 创建播放列表: Gentle Whisper
+16:42:17 - 
+[1/22] 搜索: Randy Newman - 12 Songs
+16:42:18 -   ✓ 找到: 12 Songs - Randy Newman
+16:42:19 -   专辑共 12 首歌，计划添加 12 首
+16:42:41 -   ✓ 已添加 12 首歌曲
+16:42:41 - 
+[2/22] 搜索: Solvi Roon - Steel in the Sun
+16:42:43 -   ✓ 找到: Steel in the Sun - Solvi Roon
+16:42:44 -   专辑共 16 首歌，计划添加 11 首
+16:43:04 -   ✓ 已添加 11 首歌曲
+16:43:05 - 
+[3/22] 搜索: Jorson Wang - A Harbor Learned Our Names
+16:43:06 -   ✓ 找到: A Harbor Learned Our Names - Jorson Wang
+16:43:07 -   专辑共 16 首歌，计划添加 10 首
+16:43:24 -   ✓ 已添加 10 首歌曲
+16:43:25 - 
+[4/22] 搜索: Harlow Keen - Steps Across the Hidden Field
+16:43:26 -   ✓ 找到: Steps Across the Hidden Field - Harlow Keen
+16:43:27 -   专辑共 16 首歌，计划添加 13 首
+16:43:48 -   ✓ 已添加 13 首歌曲
+16:43:49 - 
+[5/22] 搜索: Marven Yeo - Reborn Through Bruised Stillness
+16:43:50 -   ✓ 找到: Reborn Through Bruised Stillness - Marven Yeo
+16:43:52 -   专辑共 18 首歌，计划添加 14 首
+16:44:13 -   ✓ 已添加 14 首歌曲
+16:44:14 - 
+[6/22] 搜索: Elsin Farrowell - Rooms That Breathe in Silence
+16:44:15 -   ✓ 找到: Rooms That Breathe in Silence - Elsin Farrowell
+16:44:17 -   专辑共 10 首歌，计划添加 10 首
+16:44:35 -   ✓ 已添加 10 首歌曲
+16:44:35 - 
+[7/22] 搜索: Velune Aster - Names We Never Spoke
+16:44:37 -   ✓ 找到: Names We Never Spoke - Velune Aster
+16:44:38 -   专辑共 18 首歌，计划添加 11 首
+16:44:56 -   ✓ 已添加 11 首歌曲
+16:44:56 - 
+[8/22] 搜索: Elowen Strath - Silence Answers the Empty Seat
+16:44:57 -   ✓ 找到: Silence Answers the Empty Seat - Elowen Strath
+16:44:59 -   专辑共 14 首歌，计划添加 10 首
+16:45:17 -   ✓ 已添加 10 首歌曲
+16:45:17 - 
+[9/22] 搜索: Kira Kong - Maple Mosaic of Vows
+16:45:19 -   ✓ 找到: Maple Mosaic of Vows - Kira Kong
+16:45:20 -   专辑共 22 首歌，计划添加 13 首
+16:45:42 -   ✓ 已添加 13 首歌曲
+16:45:43 - 
+[10/22] 搜索: Calix Drun - Lanterns Between Constellations
+16:45:44 -   ✓ 找到: Lanterns Between Constellations - Calix Drun
+16:45:45 -   专辑共 14 首歌，计划添加 14 首
+16:46:09 -   ✓ 已添加 14 首歌曲
+16:46:10 - 
+[11/22] 搜索: Yara Windell - Mark City Glow
+16:46:11 -   ✓ 找到: Mark City Glow - Yara Windell
+16:46:13 -   专辑共 18 首歌，计划添加 12 首
+16:46:34 -   ✓ 已添加 12 首歌曲
+16:46:35 - 
+[12/22] 搜索: Priam Zeng - Steel Footsteps over Winter Ridge
+16:46:36 -   ✓ 找到: Steel Footsteps over Winter Ridge - Priam Zeng
+16:46:37 -   专辑共 14 首歌，计划添加 11 首
+16:46:54 -   ✓ 已添加 11 首歌曲
+16:46:55 - 
+[13/22] 搜索: Naiyo Hesk - Oaths in Warm Emberlines
+16:46:56 -   ✓ 找到: Oaths in Warm Emberlines - Naiyo Hesk
+16:46:57 -   专辑共 16 首歌，计划添加 10 首
+16:47:13 -   ✓ 已添加 10 首歌曲
+16:47:14 - 
+[14/22] 搜索: Hino Resk - Stairwell Promises
+16:47:15 - Request resulted in exception 401 Client Error: Unauthorized for url: https://api.tidal.com/v1/search?sessionId=b8e22498-c688-49f6-91f8-27ea3889ad18&countryCode=DE&limit=50&query=Hino+Resk+Stairwell+Promises&offset=0&types=albums
+16:47:15 -   ⚠ 认证失效，尝试刷新session...
+16:47:16 - ✓ Tidal token 刷新成功
+16:47:16 - ✓ Tidal 登录凭据已保存
+16:47:17 -   ✓ 找到: Stairwell Promises - Hino Resk
+16:47:19 -   专辑共 16 首歌，计划添加 13 首
+16:47:39 -   ✓ 已添加 13 首歌曲
+16:47:40 - 
+[15/22] 搜索: Kenara Lith - Light Left on Anyway
+16:47:41 -   ✓ 找到: Light Left on Anyway - Kenara Lith
+16:47:42 -   专辑共 16 首歌，计划添加 14 首
+16:48:07 -   ✓ 已添加 14 首歌曲
+16:48:08 - 
+[16/22] 搜索: Dahlia Frost - Skyrail Aspirant
+16:48:09 -   ✓ 找到: Skyrail Aspirant - DAHLIA FROST
+16:48:10 -   专辑共 17 首歌，计划添加 12 首
+16:48:31 -   ✓ 已添加 12 首歌曲
+16:48:32 - 
+[17/22] 搜索: Riven Cloudrest - The Palm's Familiar Back
+16:48:33 -   ✓ 找到: The Palm's Familiar Back - Riven Cloudrest
+16:48:34 -   专辑共 17 首歌，计划添加 11 首
+16:48:53 -   ✓ 已添加 11 首歌曲
+16:48:54 - 
+[18/22] 搜索: Lyrvane Omri - Night Sky Is Confiding Alone
+16:48:55 -   ✓ 找到: Night Sky Is Confiding Alone - Lyrvane Omri
+16:48:56 -   专辑共 14 首歌，计划添加 10 首
+16:49:12 -   ✓ 已添加 10 首歌曲
+16:49:13 - 
+[19/22] 搜索: Nino Rota - The Godfather
+16:49:14 -   ✓ 找到: The Godfather (Music From The Original Motion Picture Soundtrack) - Nino Rota
+16:49:16 -   专辑共 12 首歌，计划添加 12 首
+16:49:35 -   ✓ 已添加 12 首歌曲
+16:49:36 - 
+[20/22] 搜索: Mychael Danna - Life of Pi
+16:49:37 -   ✓ 找到: Life of Pi (Original Motion Picture Soundtrack) - Mychael Danna
+16:49:38 -   专辑共 28 首歌，计划添加 14 首
+16:50:02 -   ✓ 已添加 14 首歌曲
+16:50:03 - 
+[21/22] 搜索: Olivier Deriviere - A Plague Tale: Requiem
+16:50:04 -   ✓ 找到: A Plague Tale: Requiem (Original Soundtrack) - Olivier Deriviere
+16:50:06 -   专辑共 34 首歌，计划添加 12 首
+16:50:25 -   ✓ 已添加 12 首歌曲
+16:50:26 - 
+[22/22] 搜索: Dara Taylor - 37 Words
+16:50:28 -   ✓ 找到: 37 Words - Dara Taylor
+16:50:29 -   专辑共 26 首歌，计划添加 11 首
+16:50:47 -   ✓ 已添加 11 首歌曲
+16:50:48 - 
+============================================================
+16:50:48 - ⚠ 预期 263 首，实际 260 首，缺少 3 首
+16:50:48 - 正在从 other_artists.json 补充...
+16:50:48 - ============================================================
+16:50:48 - 
+[补充] 搜索: VGM Squad - Side Order Squad
+16:50:49 -   ✓ 找到: Side Order Squad - VGM Squad
+16:50:51 -   专辑共 21 首歌，补充 3 首
+16:50:55 -   ✓ 已补充 3 首歌曲，还差 0 首
+16:50:56 - 
+✓ 补充完成！
+16:50:56 - 
+============================================================
+16:50:56 - ✓ Tidal 播放列表添加完成！
+16:50:56 -   播放列表: Gentle Whisper
+16:50:56 -   预期添加: 263 首歌曲
+16:50:56 -   实际添加: 263 首歌曲
+16:50:56 -   状态: 已完成 ✓
+16:50:56 - ============================================================

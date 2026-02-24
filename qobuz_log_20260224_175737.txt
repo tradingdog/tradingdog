@@ -1,0 +1,162 @@
+17:57:37 - ============================================================
+17:57:37 - Tidal 播放列表自动添加工具
+17:57:37 - ============================================================
+17:57:37 - ✓ 已清除旧的登录凭据
+17:57:37 - 
+需要进行 Tidal OAuth 验证，请在浏览器中完成登录:
+17:57:38 - >>> 链接: link.tidal.com/VGBBD
+17:57:38 - >>> 或访问 link.tidal.com 并输入代码: VGBBD
+17:57:38 - 
+等待登录完成...
+17:58:16 - ✓ Tidal OAuth 验证成功！用户: None None
+17:58:16 - ✓ Tidal 登录凭据已保存
+17:58:16 - 
+17:58:17 - 已生成播放列表：
+17:58:17 - 1. Other (1首): Andrew Jimenez - Wind
+17:58:17 - 2. T (17首)
+17:58:17 - 3. Other (4首)
+17:58:17 - 总计: 22 首
+17:58:17 - 输出文件：T+20260224175817.txt
+17:58:17 - 
+============================================================
+17:58:17 - 开始添加歌曲到 Tidal 播放列表...
+17:58:17 - ============================================================
+17:58:17 - 
+解析到 22 张专辑待添加
+17:58:17 - 
+将使用播放列表名称: Still Glow
+17:58:18 - ✓ 创建播放列表: Still Glow
+17:58:18 - 
+[1/22] 搜索: Andrew Jimenez - Wind
+17:58:19 -   ✓ 找到: Wind (Original Score) - Andrew Jimenez
+17:58:20 -   专辑共 13 首歌，计划添加 13 首
+17:58:44 -   ✓ 已添加 13 首歌曲
+17:58:45 - 
+[2/22] 搜索: Roven Li - Vows Etched in Moving Sand
+17:58:47 -   ✓ 找到: Vows Etched in Moving Sand - Roven Li
+17:58:48 -   专辑共 18 首歌，计划添加 11 首
+17:59:07 -   ✓ 已添加 11 首歌曲
+17:59:08 - 
+[3/22] 搜索: Jorson Wang - A Harbor Learned Our Names
+17:59:09 -   ✓ 找到: A Harbor Learned Our Names - Jorson Wang
+17:59:10 -   专辑共 16 首歌，计划添加 10 首
+17:59:28 -   ✓ 已添加 10 首歌曲
+17:59:29 - 
+[4/22] 搜索: Dahlia Frost - Skyrail Aspirant
+17:59:30 -   ✓ 找到: Skyrail Aspirant - DAHLIA FROST
+17:59:31 -   专辑共 17 首歌，计划添加 12 首
+17:59:53 -   ✓ 已添加 12 首歌曲
+17:59:54 - 
+[5/22] 搜索: Marven Yeo - Reborn Through Bruised Stillness
+17:59:55 -   ✓ 找到: Reborn Through Bruised Stillness - Marven Yeo
+17:59:56 -   专辑共 18 首歌，计划添加 13 首
+18:00:20 -   ✓ 已添加 13 首歌曲
+18:00:20 - 
+[6/22] 搜索: Orin Blackwell - Gaps In Our Music
+18:00:21 -   ✓ 找到: Gaps In Our Music - Orin Blackwell
+18:00:22 -   专辑共 15 首歌，计划添加 14 首
+18:00:46 -   ✓ 已添加 14 首歌曲
+18:00:47 - 
+[7/22] 搜索: Solvi Roon - Guarding a Fragile Year
+18:00:48 -   ✓ 找到: Guarding a Fragile Year - Solvi Roon
+18:00:49 -   专辑共 18 首歌，计划添加 11 首
+18:01:08 -   ✓ 已添加 11 首歌曲
+18:01:09 - 
+[8/22] 搜索: Pete Surarow - If We Don't Turn Back
+18:01:10 -   ✓ 找到: If We Don't Turn Back - Pete Surarow
+18:01:12 -   专辑共 14 首歌，计划添加 10 首
+18:01:27 -   ✓ 已添加 10 首歌曲
+18:01:28 - 
+[9/22] 搜索: Finn Chord - Blood Blossoms Ascension of Thorns
+18:01:29 -   ✓ 找到: Blood Blossoms Ascension of Thorns - Finn Chord
+18:01:30 -   专辑共 16 首歌，计划添加 12 首
+18:01:51 -   ✓ 已添加 12 首歌曲
+18:01:52 - 
+[10/22] 搜索: Kenara Lith - We Loved Like It Would Last
+18:01:54 -   ✓ 找到: We Loved Like It Would Last - Kenara Lith
+18:01:55 -   专辑共 12 首歌，计划添加 12 首
+18:02:15 -   ✓ 已添加 12 首歌曲
+18:02:16 - 
+[11/22] 搜索: Etro Mignar - Persistence of One Last Look
+18:02:17 -   ✓ 找到: Persistence of One Last Look - Etro Mignar
+18:02:19 -   专辑共 20 首歌，计划添加 14 首
+18:02:43 -   ✓ 已添加 14 首歌曲
+18:02:44 - 
+[12/22] 搜索: Lyrvane Omri - Night Sky Is Confiding Alone
+18:02:45 -   ✓ 找到: Night Sky Is Confiding Alone - Lyrvane Omri
+18:02:46 -   专辑共 14 首歌，计划添加 11 首
+18:03:04 -   ✓ 已添加 11 首歌曲
+18:03:05 - 
+[13/22] 搜索: Zane Midtown - The Day Everything Tilted
+18:03:06 -   ✓ 找到: The Day Everything Tilted - Zane Midtown
+18:03:07 -   专辑共 18 首歌，计划添加 10 首
+18:03:16 - Request resulted in exception 401 Client Error:  for url: https://api.tidal.com/v1/playlists/df3c75db-5997-4646-b9fc-5fe117ceb43f/items?sessionId=7b18337a-48c2-4df7-804d-08262b83d291&countryCode=CY&limit=100
+18:03:16 -     ⚠ 认证失效，尝试刷新session...
+18:03:18 - ✓ Tidal token 刷新成功
+18:03:18 - ✓ Tidal 登录凭据已保存
+18:03:27 -   ✓ 已添加 10 首歌曲
+18:03:27 - 
+[14/22] 搜索: Brindle Kesar - Silk of Power
+18:03:28 -   ✓ 找到: Silk of Power - Brindle Kesar
+18:03:29 -   专辑共 19 首歌，计划添加 12 首
+18:03:49 -   ✓ 已添加 12 首歌曲
+18:03:50 - 
+[15/22] 搜索: Harlow Keen - Steps Across the Hidden Field
+18:03:51 -   ✓ 找到: Steps Across the Hidden Field - Harlow Keen
+18:03:52 -   专辑共 16 首歌，计划添加 13 首
+18:04:14 -   ✓ 已添加 13 首歌曲
+18:04:15 - 
+[16/22] 搜索: Sera Alune - Umbrella for Two Then One
+18:04:16 -   ✓ 找到: Umbrella for Two Then One - Sera Alune
+18:04:17 -   专辑共 18 首歌，计划添加 14 首
+18:04:40 -   ✓ 已添加 14 首歌曲
+18:04:41 - 
+[17/22] 搜索: Yara Windell - Mark City Glow
+18:04:42 -   ✓ 找到: Mark City Glow - Yara Windell
+18:04:43 -   专辑共 18 首歌，计划添加 11 首
+18:05:02 -   ✓ 已添加 11 首歌曲
+18:05:02 - 
+[18/22] 搜索: Orisonne Solum - Streetlamp After the Last Shift
+18:05:04 -   ✓ 找到: Streetlamp After the Last Shift - Orisonne Solum
+18:05:05 -   专辑共 18 首歌，计划添加 10 首
+18:05:22 -   ✓ 已添加 10 首歌曲
+18:05:23 - 
+[19/22] 搜索: Andrew Wyatt - Barbie
+18:05:24 -   ✓ 找到: Barbie (Score from the Original Motion Picture Soundtrack) - Mark Ronson
+18:05:25 -   专辑共 19 首歌，计划添加 12 首
+18:05:44 -   ✓ 已添加 12 首歌曲
+18:05:45 - 
+[20/22] 搜索: Theodore Shapiro - Marley & Me
+18:05:46 -   ✓ 找到: Me & My Brother - Ying Yang Twins
+18:05:47 -   专辑共 14 首歌，计划添加 13 首
+18:06:09 -   ✓ 已添加 13 首歌曲
+18:06:10 - 
+[21/22] 搜索: Dan Levy - Pour la France
+18:06:11 -   ✓ 找到: Pour la France (Bande originale du film) - Dan Levy
+18:06:12 -   专辑共 15 首歌，计划添加 14 首
+18:06:35 -   ✓ 已添加 14 首歌曲
+18:06:36 - 
+[22/22] 搜索: L.F.A. Studio - Falcon Express
+18:06:37 -   ✓ 找到: Falcon Express (Bande originale du film) - L.F.A. Studio
+18:06:38 -   专辑共 26 首歌，计划添加 11 首
+18:06:57 -   ✓ 已添加 11 首歌曲
+18:06:57 - 
+============================================================
+18:06:57 - ⚠ 预期 265 首，实际 263 首，缺少 2 首
+18:06:57 - 正在从 other_artists.json 补充...
+18:06:57 - ============================================================
+18:06:57 - 
+[补充] 搜索: Thomas Newman - Passengers
+18:06:59 -   ✓ 找到: Passengers (Original Motion Picture Soundtrack) - Thomas Newman
+18:07:00 -   专辑共 26 首歌，补充 2 首
+18:07:03 -   ✓ 已补充 2 首歌曲，还差 0 首
+18:07:04 - 
+✓ 补充完成！
+18:07:04 - 
+============================================================
+18:07:04 - ✓ Tidal 播放列表添加完成！
+18:07:04 -   播放列表: Still Glow
+18:07:04 -   预期添加: 265 首歌曲
+18:07:04 -   实际添加: 265 首歌曲
+18:07:04 -   状态: 已完成 ✓
+18:07:04 - ============================================================
