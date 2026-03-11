@@ -82,40 +82,69 @@
         ]
     },
     {
-        "artist": "Jace Bramble",
+        "artist": "Finn Chord",
         "albums": [
-            "Unbent Blueprint",
-            "Field Directive Sequence"
+            "The Stone That Remembers",
+            "Blood Blossoms Ascension of Thorns"
         ]
     },
     {
-        "artist": "Joren Talmage",
+        "artist": "Solvi Roon",
         "albums": [
-            "Twelve Minds One Truth"
+            "Steel in the Sun",
+            "Vows Beneath the Ember Sky",
+            "Guarding a Fragile Year"
         ]
     },
     {
-        "artist": "Zeya Ryn",
+        "artist": "Marven Yeo",
         "albums": [
-            "Dusted Metal Bloom"
+            "Reborn Through Bruised Stillness"
         ]
     },
     {
-        "artist": "Kynan Rael",
+        "artist": "Harlow Keen",
         "albums": [
-            "Small Fierce Ties"
+            "Steps Across the Hidden Field",
+            "Piano Fights for the Blue"
         ]
     },
     {
-        "artist": "Kyn Veyr",
+        "artist": "Torven Jiko",
         "albums": [
-            "Stitched Accounts"
+            "Markets and Petals"
         ]
     },
     {
-        "artist": "Elwen Thade",
+        "artist": "Priam Zeng",
         "albums": [
-            "Prairie Justice Pages"
+            "The Palace Arithmetic",
+            "Steel Footsteps over Winter Ridge"
+        ]
+    },
+    {
+        "artist": "Zimin Ower",
+        "albums": [
+            "Apricot Street Songs"
+        ]
+    },
+    {
+        "artist": "Sera Alune",
+        "albums": [
+            "Umbrella for Two Then One"
+        ]
+    },
+    {
+        "artist": "Pete Surarow",
+        "albums": [
+            "If We Don't Turn Back"
+        ]
+    },
+    {
+        "artist": "Jorson Wang",
+        "albums": [
+            "Harbor Wind on Old Vinyl",
+            "A Harbor Learned Our Names"
         ]
     }
 ]

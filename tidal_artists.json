@@ -76,57 +76,6 @@
         ]
     },
     {
-        "artist": "Roven Li",
-        "albums": [
-            "What the Blade Remembers",
-            "Vows Etched in Moving Sand"
-        ]
-    },
-    {
-        "artist": "Brindle Kesar",
-        "albums": [
-            "Fireside to Mountain Fire",
-            "Silk of Power"
-        ]
-    },
-    {
-        "artist": "Etro Mignar",
-        "albums": [
-            "Persistence of One Last Look"
-        ]
-    },
-    {
-        "artist": "Hino Resk",
-        "albums": [
-            "Stairwell Promises"
-        ]
-    },
-    {
-        "artist": "Dahlia Frost",
-        "albums": [
-            "Skyrail Aspirant"
-        ]
-    },
-    {
-        "artist": "Lyrvane Omri",
-        "albums": [
-            "Night Sky Is Confiding Alone",
-            "Drowsevale Descentline"
-        ]
-    },
-    {
-        "artist": "Kira Kong",
-        "albums": [
-            "Maple Mosaic of Vows"
-        ]
-    },
-    {
-        "artist": "Riven Cloudrest",
-        "albums": [
-            "The Palm's Familiar Back"
-        ]
-    },
-    {
         "artist": "Zephyr Moonridge",
         "albums": [
             "Between Meridians"
@@ -196,6 +145,43 @@
         "albums": [
             "Harbor Wind on Old Vinyl",
             "A Harbor Learned Our Names"
+        ]
+    },
+    {
+        "artist": "Jace Bramble",
+        "albums": [
+            "Unbent Blueprint",
+            "Field Directive Sequence"
+        ]
+    },
+    {
+        "artist": "Joren Talmage",
+        "albums": [
+            "Twelve Minds One Truth"
+        ]
+    },
+    {
+        "artist": "Zeya Ryn",
+        "albums": [
+            "Dusted Metal Bloom"
+        ]
+    },
+    {
+        "artist": "Kynan Rael",
+        "albums": [
+            "Small Fierce Ties"
+        ]
+    },
+    {
+        "artist": "Kyn Veyr",
+        "albums": [
+            "Stitched Accounts"
+        ]
+    },
+    {
+        "artist": "Elwen Thade",
+        "albums": [
+            "Prairie Justice Pages"
         ]
     }
 ]

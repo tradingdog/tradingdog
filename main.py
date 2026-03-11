@@ -6,8 +6,123 @@ import re
 import random
 import logging
 import sys
+import threading
+import ctypes
 from datetime import datetime
 from pathlib import Path
+
+# Windows API 常量（用于激活窗口）
+SW_RESTORE = 9
+SW_SHOW = 5
+
+# ===== 浏览器窗口保活功能 =====
+class BrowserKeepAlive:
+    """后台线程定期激活浏览器窗口，防止后台休眠"""
+    
+    def __init__(self, driver, interval=30):
+        self.driver = driver
+        self.interval = interval  # 激活间隔（秒）
+        self.running = False
+        self.thread = None
+        self.hwnd = None
+    
+    def _find_chrome_window(self):
+        """查找 Chrome 窗口句柄"""
+        try:
+            user32 = ctypes.windll.user32
+            
+            # 枚举窗口回调函数
+            EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int))
+            
+            chrome_hwnd = None
+            
+            def callback(hwnd, lParam):
+                nonlocal chrome_hwnd
+                length = user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    buff = ctypes.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(hwnd, buff, length + 1)
+                    title = buff.value
+                    # 查找包含 Chrome 或 Apple Music 或 Qobuz 的窗口
+                    if user32.IsWindowVisible(hwnd) and ('Chrome' in title or 'Apple Music' in title or 'Qobuz' in title):
+                        chrome_hwnd = hwnd
+                        return False  # 停止枚举
+                return True
+            
+            user32.EnumWindows(EnumWindowsProc(callback), 0)
+            return chrome_hwnd
+        except:
+            return None
+    
+    def _activate_window(self):
+        """激活浏览器窗口"""
+        try:
+            # 方法1: 通过 Selenium 激活
+            self.driver.execute_script("window.focus();")
+            
+            # 方法2: 通过 Windows API 激活（更可靠）
+            if not self.hwnd:
+                self.hwnd = self._find_chrome_window()
+            
+            if self.hwnd:
+                user32 = ctypes.windll.user32
+                # 如果窗口最小化，先恢复
+                if user32.IsIconic(self.hwnd):
+                    user32.ShowWindow(self.hwnd, SW_RESTORE)
+                else:
+                    user32.ShowWindow(self.hwnd, SW_SHOW)
+                # 将窗口置于前台
+                user32.SetForegroundWindow(self.hwnd)
+                time.sleep(0.1)
+                # 立即失去焦点（让用户可以继续工作）
+                # 模拟 Alt+Tab 或点击其他地方不太好，直接让窗口失去焦点
+        except:
+            pass
+    
+    def _keep_alive_loop(self):
+        """保活循环"""
+        while self.running:
+            try:
+                self._activate_window()
+            except:
+                pass
+            # 等待下一次激活
+            for _ in range(int(self.interval * 10)):
+                if not self.running:
+                    break
+                time.sleep(0.1)
+    
+    def start(self):
+        """启动保活线程"""
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=self._keep_alive_loop, daemon=True)
+            self.thread.start()
+    
+    def stop(self):
+        """停止保活线程"""
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=2)
+
+# 全局保活实例
+_browser_keep_alive = None
+
+def start_browser_keep_alive(driver, interval=30):
+    """启动浏览器保活"""
+    global _browser_keep_alive
+    if _browser_keep_alive:
+        _browser_keep_alive.stop()
+    _browser_keep_alive = BrowserKeepAlive(driver, interval)
+    _browser_keep_alive.start()
+    print(f"  ✓ 已启动浏览器保活（每 {interval} 秒激活一次）")
+
+def stop_browser_keep_alive():
+    """停止浏览器保活"""
+    global _browser_keep_alive
+    if _browser_keep_alive:
+        _browser_keep_alive.stop()
+        _browser_keep_alive = None
 
 # ===== 日志配置 =====
 def setup_logging():
@@ -55,8 +170,8 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "Q"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
+DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+DEFAULT_ALBUM_COUNT = 15         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
 MIN_COMBINATION_DIFF = 0.85      # 最小组合差异度（0-1），低于此值会重新生成
@@ -66,19 +181,22 @@ COOLDOWN_WINDOW = 8              # 冷却期：如果专辑在最近N次中出�
 WEIGHT_DECAY_POWER = 4           # 权重衰减的幂次
 
 # Tidal 集成配置
+TIDAL_MODE = 2                   # Tidal 模式：1=新增播放列表，2=删除指定艺人专辑歌曲
 TIDAL_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
-TIDAL_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
+TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
+TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
+TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
 
 # Apple Music 集成配置
 APPLE_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
 APPLE_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
-APPLE_DELAY_MIN = 1.5            # 操作间隔最小延迟（秒）
-APPLE_DELAY_MAX = 3.5            # 操作间隔最大延迟（秒）
+APPLE_DELAY_MIN = 0.3           # 操作间隔最小延迟（秒）
+APPLE_DELAY_MAX = 0.8            # 操作间隔最大延迟（秒）
 
 # Qobuz 集成配置
 QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
@@ -101,6 +219,227 @@ PLATFORM_FILES = {
 OTHER_ARTISTS_FILE = "other_artists.json"
 
 # ==================== Tidal 集成功能 ====================
+
+def load_tidal_accounts() -> list[dict]:
+    """从 tidal_email.txt 读取账号列表，返回 [{email, password}, ...]"""
+    email_path = Path(TIDAL_EMAIL_FILE)
+    if not email_path.exists():
+        return []
+    
+    accounts = []
+    content = email_path.read_text(encoding="utf-8").strip()
+    if not content:
+        return []
+    
+    # 按空行分割不同账号
+    blocks = content.split("\n\n")
+    for block in blocks:
+        lines = [line.strip() for line in block.strip().split("\n") if line.strip()]
+        if len(lines) >= 2:
+            accounts.append({
+                "email": lines[0],
+                "password": lines[1]
+            })
+    
+    return accounts
+
+
+def load_tidal_delete_list() -> list[dict]:
+    """从 tidal_delete_songs.txt 读取要删除的艺人和专辑列表
+    
+    文件格式：
+    艺人名
+    专辑名
+    （空行分隔不同条目）
+    
+    Returns:
+        [{artist, album}, ...]
+    """
+    delete_path = Path(TIDAL_DELETE_FILE)
+    if not delete_path.exists():
+        return []
+    
+    delete_list = []
+    content = delete_path.read_text(encoding="utf-8").strip()
+    if not content:
+        return []
+    
+    # 按空行分割不同条目
+    blocks = content.split("\n\n")
+    for block in blocks:
+        lines = [line.strip() for line in block.strip().split("\n") if line.strip()]
+        if len(lines) >= 2:
+            delete_list.append({
+                "artist": lines[0],
+                "album": lines[1]
+            })
+    
+    return delete_list
+
+
+def init_tidal_browser():
+    """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（无痕模式）"""
+    if not SELENIUM_AVAILABLE:
+        print("✗ 错误：未安装 selenium，请运行: pip install selenium")
+        return None
+    
+    try:
+        print("  启动 Chrome 浏览器（用于 Tidal 登录）...")
+        options = webdriver.ChromeOptions()
+        options.add_argument("--incognito")
+        
+        # 显式指定 Chrome 可执行文件路径
+        chrome_path = r"C:\Users\Lenovo\AppData\Local\Google\Chrome\Application\chrome.exe"
+        options.binary_location = chrome_path
+        
+        # 反检测设置
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        
+        options.add_argument("--start-maximized")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-notifications")
+        
+        # 禁用后台节流
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-hang-monitor")
+        
+        driver = webdriver.Chrome(options=options)
+        
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                })
+            """
+        })
+        
+        return driver
+        
+    except Exception as e:
+        print(f"✗ 浏览器初始化失败: {e}")
+        return None
+
+
+def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
+    """
+    使用 Selenium 自动完成 Tidal OAuth 登录流程
+    
+    流程：
+    1. 访问 OAuth 链接
+    2. 等待 5 秒
+    3. 输入邮箱，点击 Continue
+    4. 等待 2 秒
+    5. 输入密码，点击 Log In
+    6. 等待 5 秒
+    7. 点击 Continue（Link your device 页面）
+    """
+    try:
+        print(f"  正在自动完成 OAuth 登录: {email}")
+        
+        # 1. 访问 OAuth 链接
+        driver.get(auth_url)
+        time.sleep(5)
+        
+        # 2. 输入邮箱
+        try:
+            email_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "input#email, input[name='email'], input[type='email']"))
+            )
+            email_input.clear()
+            # 模拟人类输入
+            for char in email:
+                email_input.send_keys(char)
+                time.sleep(random.uniform(0.02, 0.08))
+            print(f"    ✓ 已输入邮箱")
+        except Exception as e:
+            print(f"    ✗ 输入邮箱失败: {e}")
+            return False
+        
+        time.sleep(1)
+        
+        # 3. 点击 Continue 按钮（邮箱页面）
+        try:
+            continue_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit'], button[ui-test-id='check-user-continue-button']"))
+            )
+            continue_btn.click()
+            print(f"    ✓ 已点击 Continue")
+        except Exception as e:
+            print(f"    ✗ 点击 Continue 失败: {e}")
+            return False
+        
+        time.sleep(2)
+        
+        # 4. 输入密码
+        try:
+            # 等待密码输入框可交互
+            password_input = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input#password"))
+            )
+            # 先点击输入框确保获得焦点
+            password_input.click()
+            time.sleep(0.5)
+            password_input.clear()
+            time.sleep(0.3)
+            # 模拟人类输入
+            for char in password:
+                password_input.send_keys(char)
+                time.sleep(random.uniform(0.02, 0.08))
+            print(f"    ✓ 已输入密码")
+        except Exception as e:
+            print(f"    ✗ 输入密码失败: {e}")
+            return False
+        
+        time.sleep(2)
+        
+        # 5. 点击 Log In 按钮
+        try:
+            login_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[ui-test-id='login-user-login-button'], button[type='submit']"))
+            )
+            login_btn.click()
+            print(f"    ✓ 已点击 Log In")
+        except Exception as e:
+            print(f"    ✗ 点击 Log In 失败: {e}")
+            return False
+        
+        time.sleep(5)
+        
+        # 6. 点击 Continue（Link your device 页面）
+        try:
+            # 等待页面变化，可能需要点击 "Continue" 来完成设备链接
+            link_continue_btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn-primary, button[type='button']"))
+            )
+            # 确认是 Continue 按钮
+            btn_text = link_continue_btn.text.strip().lower()
+            if "continue" in btn_text or btn_text == "":
+                link_continue_btn.click()
+                print(f"    ✓ 已点击 Continue（完成设备链接）")
+            else:
+                # 尝试其他选择器
+                buttons = driver.find_elements(By.CSS_SELECTOR, "button")
+                for btn in buttons:
+                    if "continue" in btn.text.lower():
+                        btn.click()
+                        print(f"    ✓ 已点击 Continue（完成设备链接）")
+                        break
+        except Exception as e:
+            print(f"    ⚠ 设备链接页面处理: {e}")
+            # 可能已经自动完成，不一定失败
+        
+        time.sleep(3)
+        print(f"  ✓ OAuth 登录流程完成")
+        return True
+        
+    except Exception as e:
+        print(f"  ✗ OAuth 自动登录失败: {e}")
+        return False
+
 
 def load_tidal_credentials() -> dict:
     """加载保存的 Tidal 登录凭据"""
@@ -156,6 +495,83 @@ def login_tidal():
     else:
         print("✗ Tidal 登录失败")
         return None
+
+
+def login_tidal_with_automation(email: str, password: str):
+    """
+    使用自动化浏览器登录 Tidal
+    
+    Args:
+        email: Tidal 账号邮箱
+        password: Tidal 账号密码
+    
+    Returns:
+        (session, driver) 元组，登录成功返回 session 和 driver，失败返回 (None, None)
+    """
+    if not TIDAL_AVAILABLE:
+        print("✗ 错误：未安装 tidalapi，请运行: pip install tidalapi")
+        return None, None
+    
+    if not SELENIUM_AVAILABLE:
+        print("✗ 错误：未安装 selenium，请运行: pip install selenium")
+        return None, None
+    
+    session = tidalapi.Session()
+    driver = None
+    
+    try:
+        # 删除旧的凭据文件（强制重新登录）
+        cred_path = Path(TIDAL_CREDENTIALS_FILE)
+        if cred_path.exists():
+            cred_path.unlink()
+        
+        # 启动 OAuth 流程
+        print(f"\n开始 Tidal OAuth 验证: {email}")
+        login_info, future = session.login_oauth()
+        auth_url = login_info.verification_uri_complete
+        # 确保 URL 有协议前缀
+        if auth_url and not auth_url.startswith("http"):
+            auth_url = "https://" + auth_url
+        print(f"  OAuth 链接: {auth_url}")
+        
+        # 初始化浏览器
+        driver = init_tidal_browser()
+        if not driver:
+            print("✗ 无法启动浏览器")
+            return None, None
+        
+        # 使用浏览器自动完成 OAuth 登录
+        success = auto_complete_tidal_oauth(driver, auth_url, email, password)
+        
+        if not success:
+            print("✗ 自动 OAuth 登录失败")
+            if driver:
+                driver.quit()
+            return None, None
+        
+        # 等待 OAuth 流程完成
+        print("  等待 OAuth 验证完成...")
+        try:
+            future.result(timeout=30)  # 最多等待 30 秒
+        except Exception as e:
+            print(f"  ⚠ OAuth 等待超时: {e}")
+        
+        # 检查登录状态
+        if session.check_login():
+            print(f"✓ Tidal 登录成功！用户: {session.user.first_name} {session.user.last_name}")
+            save_tidal_credentials(session)
+            return session, driver
+        else:
+            print("✗ Tidal 登录验证失败")
+            if driver:
+                driver.quit()
+            return None, None
+            
+    except Exception as e:
+        print(f"✗ Tidal 自动登录过程出错: {e}")
+        if driver:
+            driver.quit()
+        return None, None
 
 
 def refresh_tidal_session(session):
@@ -558,14 +974,306 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
     
     return True
 
+
+def run_tidal_for_single_account(account_info: dict, account_index: int, total_accounts: int, base_dir: Path, args):
+    """
+    为单个 Tidal 账号执行完整的播放列表添加流程
+    
+    Args:
+        account_info: 账号信息 {email, password}
+        account_index: 当前账号索引（从 0 开始）
+        total_accounts: 账号总数
+        base_dir: 基础目录
+        args: 命令行参数
+    
+    Returns:
+        bool: 是否成功
+    """
+    email = account_info["email"]
+    password = account_info["password"]
+    
+    print(f"\n{'='*60}")
+    print(f"处理账号 [{account_index + 1}/{total_accounts}]: {email}")
+    print(f"{'='*60}")
+    
+    # 1. 使用自动化浏览器登录
+    session, driver = login_tidal_with_automation(email, password)
+    
+    if not session:
+        print(f"✗ 账号 {email} 登录失败，跳过")
+        return False
+    
+    try:
+        # 2. 生成播放列表文件
+        # 加载数据
+        platform_file = PLATFORM_FILES.get("T")
+        main_artists_path = base_dir / platform_file
+        other_artists_path = base_dir / OTHER_ARTISTS_FILE
+        
+        main_artists = load_json_data(main_artists_path)
+        other_artists = load_json_data(other_artists_path)
+        
+        history = load_history()
+        rng = secrets.SystemRandom()
+        
+        main_category = f"main_T"
+        other_category = "other"
+        
+        main_history_counts, main_recent_combos = get_category_history_data(main_category, history)
+        other_history_counts, other_recent_combos = get_category_history_data(other_category, history)
+        
+        # 随机抽取专辑
+        other_items = flatten_albums(other_artists)
+        main_items = flatten_albums(main_artists)
+        
+        part1 = weighted_sample(other_items, other_history_counts, 1, rng, other_recent_combos, unique_artist=True)
+        part2 = weighted_sample(main_items, main_history_counts, args.Count, rng, main_recent_combos, unique_artist=True)
+        
+        # part3 排除 part1 中已选的艺人
+        part1_artists = {item.split(" - ", 1)[0] for item in part1}
+        other_items_filtered = [item for item in other_items if item.split(" - ", 1)[0] not in part1_artists]
+        part3 = weighted_sample(other_items_filtered, other_history_counts, 4, rng, other_recent_combos, unique_artist=True)
+        
+        final_list = part1 + part2 + part3
+        
+        # 更新历史记录
+        update_history(part2, main_category, history)
+        update_history(part1 + part3, other_category, history)
+        save_history(history)
+        
+        # 写入输出文件
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        output_filename = f"T+{timestamp}.txt"
+        output_path = base_dir / output_filename
+        
+        output_lines = []
+        for item in final_list:
+            artist, album = split_artist_album(item)
+            output_lines.append(format_output_item(artist, album))
+        
+        output_content = "\n".join(output_lines)
+        output_path.write_text(output_content, encoding="utf-8")
+        
+        print(f"已生成播放列表文件：{output_filename}")
+        print(f"  总计: {len(final_list)} 首")
+        
+        # 3. 添加歌曲到 Tidal 播放列表
+        print(f"\n开始添加歌曲到 Tidal 播放列表...")
+        process_tidal_playlist(
+            session, 
+            output_path, 
+            args.track_min, 
+            args.track_max,
+            base_dir
+        )
+        
+        print(f"\n✓ 账号 {email} 处理完成")
+        return True
+        
+    except Exception as e:
+        print(f"✗ 账号 {email} 处理出错: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+        
+    finally:
+        # 4. 关闭浏览器
+        if driver:
+            print("  关闭浏览器...")
+            try:
+                driver.quit()
+            except:
+                pass
+
+
+# ==================== Tidal 删除歌曲功能 ====================
+
+def delete_tracks_from_tidal_playlists(session, delete_list: list[dict]) -> dict:
+    """
+    从用户的所有播放列表中删除指定艺人专辑的歌曲
+    
+    Args:
+        session: Tidal session
+        delete_list: [{artist, album}, ...] 要删除的艺人专辑列表
+    
+    Returns:
+        统计信息 {total_deleted, playlists_processed, errors}
+    """
+    stats = {
+        "total_deleted": 0,
+        "playlists_processed": 0,
+        "errors": []
+    }
+    
+    if not delete_list:
+        print("✗ 删除列表为空")
+        return stats
+    
+    # 构建要删除的艺人-专辑集合（用于快速匹配）
+    delete_set = set()
+    for item in delete_list:
+        artist = item["artist"].lower().strip()
+        album = item["album"].lower().strip()
+        delete_set.add((artist, album))
+    
+    print(f"\n将从所有播放列表中删除以下专辑的歌曲：")
+    for item in delete_list:
+        print(f"  - {item['artist']} - {item['album']}")
+    
+    # 获取用户的所有播放列表
+    try:
+        user_playlists = session.user.playlists()
+        print(f"\n找到 {len(user_playlists)} 个播放列表")
+    except Exception as e:
+        print(f"✗ 获取播放列表失败: {e}")
+        stats["errors"].append(f"获取播放列表失败: {e}")
+        return stats
+    
+    # 遍历每个播放列表
+    for playlist in user_playlists:
+        playlist_name = playlist.name if playlist.name else "(未命名)"
+        print(f"\n{'='*50}")
+        print(f"处理播放列表: {playlist_name}")
+        print(f"{'='*50}")
+        
+        stats["playlists_processed"] += 1
+        
+        try:
+            # 获取播放列表中的所有歌曲
+            tracks = playlist.tracks()
+            if not tracks:
+                print("  (空播放列表)")
+                continue
+            
+            print(f"  共 {len(tracks)} 首歌曲")
+            
+            # 找出需要删除的歌曲
+            tracks_to_delete = []
+            for track in tracks:
+                try:
+                    # 获取歌曲的艺人和专辑信息
+                    track_artist = ""
+                    track_album = ""
+                    
+                    if hasattr(track, 'artist') and track.artist:
+                        track_artist = track.artist.name.lower() if hasattr(track.artist, 'name') else str(track.artist).lower()
+                    
+                    if hasattr(track, 'album') and track.album:
+                        track_album = track.album.name.lower() if hasattr(track.album, 'name') else str(track.album).lower()
+                    
+                    # 检查是否匹配删除列表
+                    for del_artist, del_album in delete_set:
+                        # 模糊匹配：艺人名包含关系，专辑名包含关系
+                        artist_match = del_artist in track_artist or track_artist in del_artist
+                        album_match = del_album in track_album or track_album in del_album
+                        
+                        if artist_match and album_match:
+                            tracks_to_delete.append(track)
+                            break
+                            
+                except Exception as e:
+                    # 忽略单个歌曲的错误
+                    continue
+            
+            if not tracks_to_delete:
+                print("  未找到需要删除的歌曲")
+                continue
+            
+            print(f"  找到 {len(tracks_to_delete)} 首需要删除的歌曲")
+            
+            # 删除歌曲
+            deleted_count = 0
+            for track in tracks_to_delete:
+                try:
+                    track_name = track.name if hasattr(track, 'name') else str(track)
+                    track_artist_name = track.artist.name if hasattr(track, 'artist') and track.artist else "Unknown"
+                    
+                    # 使用 playlist.remove_by_index 或 playlist.remove 方法
+                    # tidalapi 的 playlist 对象有 remove_by_indices 方法
+                    playlist.remove_by_id(track.id)
+                    deleted_count += 1
+                    print(f"    ✓ 已删除: {track_artist_name} - {track_name}")
+                    random_delay()  # 延迟避免请求过快
+                    
+                except Exception as e:
+                    print(f"    ✗ 删除失败: {e}")
+                    stats["errors"].append(f"删除歌曲失败: {e}")
+            
+            stats["total_deleted"] += deleted_count
+            print(f"  本播放列表删除了 {deleted_count} 首歌曲")
+            
+        except Exception as e:
+            print(f"  ✗ 处理播放列表出错: {e}")
+            stats["errors"].append(f"处理播放列表 {playlist_name} 失败: {e}")
+    
+    return stats
+
+
+def run_tidal_delete_for_single_account(account_info: dict, account_index: int, total_accounts: int, delete_list: list[dict]):
+    """
+    为单个 Tidal 账号执行删除歌曲操作
+    
+    Args:
+        account_info: 账号信息 {email, password}
+        account_index: 当前账号索引（从 0 开始）
+        total_accounts: 账号总数
+        delete_list: 要删除的艺人专辑列表
+    
+    Returns:
+        bool: 是否成功
+    """
+    email = account_info["email"]
+    password = account_info["password"]
+    
+    print(f"\n{'='*60}")
+    print(f"[删除模式] 处理账号 [{account_index + 1}/{total_accounts}]: {email}")
+    print(f"{'='*60}")
+    
+    # 1. 使用自动化浏览器登录
+    session, driver = login_tidal_with_automation(email, password)
+    
+    if not session:
+        print(f"✗ 账号 {email} 登录失败，跳过")
+        return False
+    
+    try:
+        # 2. 执行删除操作
+        stats = delete_tracks_from_tidal_playlists(session, delete_list)
+        
+        print(f"\n{'='*60}")
+        print(f"✓ 账号 {email} 删除完成")
+        print(f"  处理播放列表数: {stats['playlists_processed']}")
+        print(f"  删除歌曲总数: {stats['total_deleted']}")
+        if stats['errors']:
+            print(f"  错误数: {len(stats['errors'])}")
+        print(f"{'='*60}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ 账号 {email} 删除操作出错: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+        
+    finally:
+        # 3. 关闭浏览器
+        if driver:
+            print("  关闭浏览器...")
+            try:
+                driver.quit()
+            except:
+                pass
+
+
 # ==================== Apple Music 集成功能 ====================
 
-def apple_human_delay(min_sec=1.0, max_sec=2.5):
+def apple_human_delay(min_sec=0.3, max_sec=0.8):
     """模拟人类操作的随机延迟"""
     time.sleep(random.uniform(min_sec, max_sec))
 
 
-def apple_human_typing(element, text, min_delay=0.08, max_delay=0.25):
+def apple_human_typing(element, text, min_delay=0.02, max_delay=0.08):
     """模拟人类打字速度"""
     for char in text:
         element.send_keys(char)
@@ -600,6 +1308,12 @@ def init_apple_browser():
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
         
+        # ===== 关键：禁用后台节流，确保窗口在后台时仍能正常渲染和交互 =====
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-hang-monitor")
+        
         print("  启动 Chrome 浏览器...")
         driver = webdriver.Chrome(options=options)
         
@@ -611,6 +1325,9 @@ def init_apple_browser():
                 })
             """
         })
+        
+        # 启动浏览器保活（每30秒激活一次，防止后台休眠）
+        start_browser_keep_alive(driver, interval=30)
         
         print("  ✓ 浏览器初始化成功")
         return driver
@@ -626,7 +1343,7 @@ def login_apple_music(driver):
     """登录 Apple Music - 需要人工确认"""
     print("正在访问 Apple Music...")
     driver.get("https://music.apple.com")
-    apple_human_delay(3, 5)
+    apple_human_delay(1, 2)
     
     print("\n请在浏览器中完成登录，登录成功后输入 y 继续...")
     user_input = input("是否已登录成功？(y/n): ").strip().lower()
@@ -649,17 +1366,17 @@ def search_album_on_apple(driver, artist_name, album_name):
             EC.element_to_be_clickable((By.CSS_SELECTOR, "input.search-input__text-field"))
         )
         apple_move_to_element(driver, search_input)
-        apple_human_delay(0.5, 1)
+        apple_human_delay(0.3, 0.5)
         search_input.click()
-        apple_human_delay(0.5, 1)
+        apple_human_delay(0.3, 0.5)
         
         # 清空并输入专辑名
         search_input.clear()
         apple_human_typing(search_input, album_name)
-        apple_human_delay(0.5, 1)
+        apple_human_delay(0.3, 0.5)
         search_input.send_keys(Keys.RETURN)
         
-        apple_human_delay(5, 7)
+        apple_human_delay(1, 2)
         
         # 等待搜索结果加载
         try:
@@ -668,7 +1385,7 @@ def search_album_on_apple(driver, artist_name, album_name):
             )
         except:
             print("  等待搜索结果加载...")
-            apple_human_delay(3, 5)
+            apple_human_delay(1, 2)
         
         # 查找专辑链接
         album_section_selectors = [
@@ -739,10 +1456,10 @@ def search_album_on_apple(driver, artist_name, album_name):
             print(f"  点击专辑链接: {href}")
             
             apple_move_to_element(driver, album_link)
-            apple_human_delay(0.5, 1)
+            apple_human_delay(0.3, 0.5)
             album_link.click()
             
-            apple_human_delay(8, 12)
+            apple_human_delay(2, 4)
             
             # 确认机制：等待页面完全加载
             max_retries = 5
@@ -758,12 +1475,12 @@ def search_album_on_apple(driver, artist_name, album_name):
                     except:
                         if retry < max_retries - 1:
                             print(f"  等待歌曲列表加载... (重试 {retry+1}/{max_retries})")
-                            apple_human_delay(3, 5)
+                            apple_human_delay(1, 2)
                         continue
                 else:
                     if retry < max_retries - 1:
                         print(f"  页面还在加载，等待中... (重试 {retry+1}/{max_retries})")
-                        apple_human_delay(3, 5)
+                        apple_human_delay(1, 2)
                     else:
                         print(f"  ✗ 进入的不是专辑页面: {current_url}")
                         return None
@@ -785,7 +1502,7 @@ def navigate_to_album_url_apple(driver, album_url):
     
     try:
         driver.get(album_url)
-        apple_human_delay(8, 12)
+        apple_human_delay(2, 4)
         
         max_retries = 5
         for retry in range(max_retries):
@@ -800,12 +1517,12 @@ def navigate_to_album_url_apple(driver, album_url):
                 except:
                     if retry < max_retries - 1:
                         print(f"  等待歌曲列表加载... (重试 {retry+1}/{max_retries})")
-                        apple_human_delay(3, 5)
+                        apple_human_delay(1, 2)
                     continue
             else:
                 if retry < max_retries - 1:
                     print(f"  页面还在加载，等待中... (重试 {retry+1}/{max_retries})")
-                    apple_human_delay(3, 5)
+                    apple_human_delay(1, 2)
                 else:
                     print(f"  ✗ 导航失败: {current_url}")
                     return False
@@ -828,7 +1545,7 @@ def click_apple_home(driver):
         apple_move_to_element(driver, home_btn)
         apple_human_delay(0.3, 0.6)
         home_btn.click()
-        apple_human_delay(3, 5)
+        apple_human_delay(1, 2)
         print("  ✓ 已点击首页")
         return True
     except Exception as e:
@@ -836,7 +1553,7 @@ def click_apple_home(driver):
         # 尝试直接访问首页URL
         try:
             driver.get("https://music.apple.com")
-            apple_human_delay(3, 5)
+            apple_human_delay(1, 2)
             return True
         except:
             return False
@@ -911,21 +1628,32 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                     if not more_btn:
                         if attempt == max_attempts - 1:
                             print(f"    ! 歌曲 {idx+1} 未找到更多按钮")
-                        apple_human_delay(0.5, 1)
+                        apple_human_delay(0.3, 0.5)
                         continue
                     
-                    # 点击更多按钮
+                    # 点击更多按钮（处理后台窗口时元素不可交互的问题）
                     try:
+                        # 强制滚动到按钮位置并确保可见
+                        driver.execute_script("""
+                            arguments[0].scrollIntoView({block: 'center'});
+                            arguments[0].focus();
+                        """, more_btn)
+                        apple_human_delay(0.2, 0.4)
+                        
+                        # 先尝试原生点击
                         apple_move_to_element(driver, more_btn)
                         apple_human_delay(0.3, 0.6)
                         more_btn.click()
                     except Exception as click_err:
-                        if "intercepted" in str(click_err).lower():
+                        error_str = str(click_err).lower()
+                        # 处理元素被遮挡或不可交互的情况
+                        if "intercepted" in error_str or "not interactable" in error_str:
                             try:
                                 ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-                                apple_human_delay(0.5, 1)
+                                apple_human_delay(0.3, 0.5)
                             except:
                                 pass
+                            # 使用 JavaScript 强制点击
                             driver.execute_script("arguments[0].click();", more_btn)
                         else:
                             raise click_err
@@ -984,7 +1712,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                         )
                         name_input.clear()
                         apple_human_typing(name_input, playlist_name)
-                        apple_human_delay(0.5, 1)
+                        apple_human_delay(0.3, 0.5)
                         
                         # 勾选公开checkbox
                         try:
@@ -998,7 +1726,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                         except Exception as e:
                             print(f"    ! 勾选公开选项失败: {e}")
                         
-                        apple_human_delay(0.5, 1)
+                        apple_human_delay(0.3, 0.5)
                         
                         # 点击"建立"按钮
                         create_btn = WebDriverWait(driver, 5).until(
@@ -1048,7 +1776,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                                     # 关闭菜单，等待几秒后重试
                                     try:
                                         ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-                                        apple_human_delay(0.5, 1)
+                                        apple_human_delay(0.3, 0.5)
                                     except:
                                         pass
                                     print(f"    播放列表未找到，等待重试... (尝试 {retry_attempt+1}/{max_retry_attempts})")
@@ -1091,8 +1819,8 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
         return 0
 
 
-def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count_min: int, track_count_max: int):
-    """处理 Apple Music 播放列表添加流程 - 支持播放列表同步失败时自动重建"""
+def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count_min: int, track_count_max: int, base_dir: Path = None):
+    """处理 Apple Music 播放列表添加流程 - 支持失败重试和自动补充"""
     # 解析专辑列表
     albums = parse_album_list_from_txt(txt_path)
     if not albums:
@@ -1112,6 +1840,11 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
     used_playlist_names = [playlist_name]
     current_playlist_name = playlist_name
     
+    # 记录失败的专辑（用于重试）
+    failed_albums = []  # [(artist_name, album_name, track_count), ...]
+    # 记录已处理的专辑（用于补充时排除）
+    processed_albums = set()
+    
     try:
         # 登录
         if not login_apple_music(driver):
@@ -1124,6 +1857,9 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         track_counts = list(range(track_count_min, track_count_max + 1))
         random.shuffle(track_counts)
         
+        # 计算预期添加的总歌曲数
+        expected_total = sum(track_counts[i % len(track_counts)] for i in range(len(albums)))
+        
         # 处理每张专辑
         total_added = 0
         playlist_created = False  # 播放列表是否已创建
@@ -1134,6 +1870,9 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
             artist_name = album_info["artist_name"]
             album_name = album_info["album_name"]
             track_count = track_counts[i % len(track_counts)]
+            
+            # 标记为已处理
+            processed_albums.add(f"{artist_name} - {album_name}".lower())
             
             print(f"\n[{i+1}/{len(albums)}] 处理: {artist_name} - {album_name}")
             
@@ -1184,15 +1923,128 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                 else:
                     if added > 0:
                         playlist_created = True
-                    total_added += added
+                        total_added += added
+                    elif added == 0:
+                        # 记录失败的专辑（用于后续重试）
+                        failed_albums.append((artist_name, album_name, track_count))
+                        print(f"  ! 添加失败，已记录待重试")
+            else:
+                # 未找到专辑，也记录为失败
+                failed_albums.append((artist_name, album_name, track_count))
             
             i += 1  # 移动到下一张专辑
-            apple_human_delay(3, 5)
+            apple_human_delay(1, 2)
+        
+        # ===== 失败专辑重试逻辑（最多1次） =====
+        if failed_albums:
+            print(f"\n{'='*60}")
+            print(f"⚠ 有 {len(failed_albums)} 张专辑添加失败，尝试重试...")
+            print(f"{'='*60}")
+            
+            retry_failed = []
+            for artist_name, album_name, track_count in failed_albums:
+                print(f"\n[重试] {artist_name} - {album_name}")
+                
+                # 点击首页重置状态
+                click_apple_home(driver)
+                apple_human_delay(1, 2)
+                
+                album_url = search_album_on_apple(driver, artist_name, album_name)
+                if album_url:
+                    added = add_songs_to_apple_playlist(driver, current_playlist_name, track_count, is_first_album=False)
+                    if added > 0:
+                        total_added += added
+                        print(f"  ✓ 重试成功，添加了 {added} 首")
+                    else:
+                        retry_failed.append((artist_name, album_name, track_count))
+                        print(f"  ✗ 重试仍然失败")
+                else:
+                    retry_failed.append((artist_name, album_name, track_count))
+                    print(f"  ✗ 重试仍然找不到专辑")
+                
+                apple_human_delay(1, 2)
+            
+            failed_albums = retry_failed
+        
+        # ===== 补充缺失歌曲逻辑 =====
+        missing_count = expected_total - total_added
+        if missing_count > 0 and base_dir:
+            print(f"\n{'='*60}")
+            print(f"⚠ 预期 {expected_total} 首，实际 {total_added} 首，缺少 {missing_count} 首")
+            print(f"正在从 other_artists.json 补充...")
+            print(f"{'='*60}")
+            
+            # 加载 other_artists.json
+            other_path = base_dir / OTHER_ARTISTS_FILE
+            if other_path.exists():
+                try:
+                    other_data = json.loads(other_path.read_text(encoding="utf-8"))
+                    
+                    # 构建可用的补充专辑列表（排除已处理的）
+                    supplement_albums = []
+                    for entry in other_data:
+                        artist = entry.get("artist", "")
+                        for album in entry.get("albums", []):
+                            album_key = f"{artist} - {album}".lower()
+                            if album_key not in processed_albums:
+                                supplement_albums.append({
+                                    "artist_name": artist,
+                                    "album_name": album
+                                })
+                    
+                    # 随机打乱补充列表
+                    random.shuffle(supplement_albums)
+                    
+                    supplement_idx = 0
+                    while missing_count > 0 and supplement_idx < len(supplement_albums):
+                        album_info = supplement_albums[supplement_idx]
+                        artist_name = album_info["artist_name"]
+                        album_name = album_info["album_name"]
+                        supplement_idx += 1
+                        
+                        # 标记为已处理
+                        processed_albums.add(f"{artist_name} - {album_name}".lower())
+                        
+                        print(f"\n[补充] 搜索: {artist_name} - {album_name}")
+                        
+                        # 点击首页重置状态
+                        click_apple_home(driver)
+                        apple_human_delay(1, 2)
+                        
+                        album_url = search_album_on_apple(driver, artist_name, album_name)
+                        
+                        if album_url:
+                            # 补充时，取需要的数量或最大值（取较小值）
+                            supplement_track_count = min(missing_count, track_count_max)
+                            print(f"  ✓ 找到专辑，补充 {supplement_track_count} 首")
+                            
+                            added = add_songs_to_apple_playlist(driver, current_playlist_name, supplement_track_count, is_first_album=False)
+                            if added > 0:
+                                total_added += added
+                                missing_count -= added
+                                print(f"  ✓ 已补充 {added} 首歌曲，还差 {missing_count} 首")
+                        else:
+                            print(f"  ✗ 未找到专辑")
+                        
+                        apple_human_delay(1, 2)
+                    
+                    if missing_count > 0:
+                        print(f"\n⚠ 补充库已用尽，仍缺少 {missing_count} 首歌曲")
+                    else:
+                        print(f"\n✓ 补充完成！")
+                        
+                except Exception as e:
+                    print(f"✗ 加载 other_artists.json 失败: {e}")
+            else:
+                print(f"✗ 找不到补充文件: {other_path}")
         
         print(f"\n{'='*60}")
         print(f"✓ Apple Music 播放列表添加完成！")
         print(f"  最终播放列表: {current_playlist_name}")
-        print(f"  总计添加: {total_added} 首歌曲")
+        print(f"  预期添加: {expected_total} 首")
+        print(f"  实际添加: {total_added} 首")
+        if failed_albums:
+            print(f"  失败专辑: {len(failed_albums)} 张")
         if len(used_playlist_names) > 1:
             print(f"  尝试过的播放列表: {', '.join(used_playlist_names)}")
         print(f"{'='*60}")
@@ -1209,16 +2061,17 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         if driver:
             print("\n浏览器保持打开状态...")
             input("按 Enter 关闭浏览器...")
+            stop_browser_keep_alive()
             driver.quit()
 
 # ==================== Qobuz 集成功能 ====================
 
-def qobuz_human_delay(min_sec=1.0, max_sec=2.5):
+def qobuz_human_delay(min_sec=0.3, max_sec=0.8):
     """模拟人类操作的随机延迟"""
     time.sleep(random.uniform(min_sec, max_sec))
 
 
-def qobuz_human_typing(element, text, min_delay=0.08, max_delay=0.25):
+def qobuz_human_typing(element, text, min_delay=0.02, max_delay=0.08):
     """模拟人类打字速度"""
     for char in text:
         element.send_keys(char)
@@ -1253,6 +2106,12 @@ def init_qobuz_browser():
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
         
+        # ===== 关键：禁用后台节流，确保窗口在后台时仍能正常渲染和交互 =====
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-hang-monitor")
+        
         print("  启动 Chrome 浏览器...")
         driver = webdriver.Chrome(options=options)
         
@@ -1264,6 +2123,9 @@ def init_qobuz_browser():
                 })
             """
         })
+        
+        # 启动浏览器保活（每30秒激活一次，防止后台休眠）
+        start_browser_keep_alive(driver, interval=30)
         
         print("  ✓ 浏览器初始化成功")
         return driver
@@ -1279,7 +2141,7 @@ def login_qobuz(driver):
     """登录 Qobuz - 需要人工确认"""
     print("正在访问 Qobuz 登录页面...")
     driver.get(QOBUZ_LOGIN_URL)
-    qobuz_human_delay(3, 5)
+    qobuz_human_delay(0.5, 1)
     
     print("\n请在浏览器中完成登录，登录成功后输入 y 继续...")
     user_input = input("是否已登录成功？(y/n): ").strip().lower()
@@ -1312,7 +2174,7 @@ def search_album_on_qobuz(driver, artist_name, album_name):
                 print("  检测到模态框，尝试关闭...")
                 # 再按一次 ESC
                 ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-                qobuz_human_delay(1, 1.5)
+                qobuz_human_delay(0.5, 0.8)
                 # 尝试点击关闭按钮
                 close_btns = driver.find_elements(By.CSS_SELECTOR, "button.close, button.btn-close, [aria-label='Close'], .modal-header button")
                 for btn in close_btns:
@@ -1334,7 +2196,7 @@ def search_album_on_qobuz(driver, artist_name, album_name):
             EC.presence_of_element_located((By.CSS_SELECTOR, "input.SearchBar__input"))
         )
         qobuz_move_to_element(driver, search_input)
-        qobuz_human_delay(0.5, 1)
+        qobuz_human_delay(0.3, 0.5)
         
         # 尝试点击，如果被拦截则使用 JS 点击
         try:
@@ -1348,16 +2210,16 @@ def search_album_on_qobuz(driver, artist_name, album_name):
                 driver.execute_script("arguments[0].click();", search_input)
             else:
                 raise click_err
-        qobuz_human_delay(0.5, 1)
+        qobuz_human_delay(0.3, 0.5)
         
         # 清空并输入搜索词
         search_input.clear()
         search_query = f"{artist_name} {album_name}"
         qobuz_human_typing(search_input, search_query)
-        qobuz_human_delay(0.5, 1)
+        qobuz_human_delay(0.3, 0.5)
         search_input.send_keys(Keys.RETURN)
         
-        qobuz_human_delay(5, 7)  # 等待搜索结果加载
+        qobuz_human_delay(0.5, 1)  # 等待搜索结果加载
         
         # 等待搜索结果
         try:
@@ -1366,7 +2228,7 @@ def search_album_on_qobuz(driver, artist_name, album_name):
             )
         except:
             print("  等待搜索结果加载...")
-            qobuz_human_delay(3, 5)
+            qobuz_human_delay(0.5, 1)
         
         # 查找专辑链接
         album_link = None
@@ -1403,10 +2265,10 @@ def search_album_on_qobuz(driver, artist_name, album_name):
             
             # 先滚动到页面中央，避免被底部播放器进度条遮挡
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", album_link)
-            qobuz_human_delay(0.5, 1)
+            qobuz_human_delay(0.3, 0.5)
             
             qobuz_move_to_element(driver, album_link)
-            qobuz_human_delay(0.5, 1)
+            qobuz_human_delay(0.3, 0.5)
             
             # 尝试点击，如果被拦截则使用 JS 点击
             try:
@@ -1430,7 +2292,7 @@ def search_album_on_qobuz(driver, artist_name, album_name):
                     return current_url
                 except:
                     print(f"  等待歌曲列表加载...")
-                    qobuz_human_delay(3, 5)
+                    qobuz_human_delay(0.5, 1)
                     return current_url
             else:
                 print(f"  ✗ 进入的不是专辑页面: {current_url}")
@@ -1453,7 +2315,7 @@ def create_qobuz_playlist(driver, playlist_name):
     try:
         # 直接访问播放列表管理页
         driver.get("https://play.qobuz.com/user/library/playlists")
-        qobuz_human_delay(3, 5)
+        qobuz_human_delay(0.5, 1)
         
         # 点击"Create a playlist"按钮
         create_btn_selectors = [
@@ -1477,9 +2339,9 @@ def create_qobuz_playlist(driver, playlist_name):
             raise Exception("未找到 Create a playlist 按钮")
         
         qobuz_move_to_element(driver, create_btn)
-        qobuz_human_delay(0.5, 1)
+        qobuz_human_delay(0.3, 0.5)
         create_btn.click()
-        qobuz_human_delay(1, 2)
+        qobuz_human_delay(0.5, 1)
         
         # 等待弹窗出现，输入播放列表名称
         name_input_selectors = [
@@ -1506,7 +2368,7 @@ def create_qobuz_playlist(driver, playlist_name):
         
         name_input.clear()
         qobuz_human_typing(name_input, playlist_name)
-        qobuz_human_delay(0.5, 1)
+        qobuz_human_delay(0.3, 0.5)
         
         # 点击Create按钮 - 支持多语言
         create_confirm_btn = None
@@ -1533,7 +2395,7 @@ def create_qobuz_playlist(driver, playlist_name):
             raise Exception("未找到创建确认按钮")
         
         qobuz_move_to_element(driver, create_confirm_btn)
-        qobuz_human_delay(0.5, 1)
+        qobuz_human_delay(0.3, 0.5)
         try:
             create_confirm_btn.click()
         except:
@@ -1559,9 +2421,9 @@ def add_songs_to_qobuz_playlist(driver, playlist_name, track_count):
         
         # ===== 先滚动页面确保所有歌曲加载 =====
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        qobuz_human_delay(1, 1.5)
+        qobuz_human_delay(0.5, 0.8)
         driver.execute_script("window.scrollTo(0, 0);")
-        qobuz_human_delay(1, 1.5)
+        qobuz_human_delay(0.5, 0.8)
         
         # ===== 获取歌曲总数：通过统计可见的"更多"按钮数量 =====
         # 使用 class 选择器（不依赖语言）
@@ -1691,17 +2553,28 @@ def add_songs_to_qobuz_playlist(driver, playlist_name, track_count):
                     if not more_btn:
                         if attempt == max_attempts - 1:
                             print(f"    ! 第 {track_num} 首未找到更多按钮")
-                        qobuz_human_delay(0.5, 1)
+                        qobuz_human_delay(0.3, 0.5)
                         continue
                     
-                    # 悬停并点击更多按钮
-                    qobuz_move_to_element(driver, more_btn)
-                    qobuz_human_delay(0.5, 1)
-                    
+                    # 悬停并点击更多按钮（处理后台窗口时元素不可交互的问题）
                     try:
+                        # 强制滚动到按钮位置并确保可见
+                        driver.execute_script("""
+                            arguments[0].scrollIntoView({block: 'center'});
+                            arguments[0].focus();
+                        """, more_btn)
+                        qobuz_human_delay(0.2, 0.4)
+                        
+                        qobuz_move_to_element(driver, more_btn)
+                        qobuz_human_delay(0.3, 0.5)
                         more_btn.click()
-                    except:
-                        driver.execute_script("arguments[0].click();", more_btn)
+                    except Exception as click_err:
+                        error_str = str(click_err).lower()
+                        if "intercepted" in error_str or "not interactable" in error_str:
+                            # 使用 JavaScript 强制点击
+                            driver.execute_script("arguments[0].click();", more_btn)
+                        else:
+                            raise click_err
                     
                     qobuz_human_delay(1.5, 2.5)
                     
@@ -1818,7 +2691,7 @@ def add_songs_to_qobuz_playlist(driver, playlist_name, track_count):
                         ActionChains(driver).send_keys(Keys.ESCAPE).perform()
                     except:
                         pass
-                    qobuz_human_delay(1, 2)
+                    qobuz_human_delay(0.5, 1)
         
         print(f"  ✓ 已添加 {added_count} 首歌曲")
         return added_count
@@ -1880,7 +2753,7 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
                 added = add_songs_to_qobuz_playlist(driver, playlist_name, track_count)
                 total_added += added
             
-            qobuz_human_delay(3, 5)
+            qobuz_human_delay(0.5, 1)
         
         print(f"\n{'='*60}")
         print(f"✓ Qobuz 播放列表添加完成！")
@@ -1900,6 +2773,7 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
         if driver:
             print("\n浏览器保持打开状态...")
             input("按 Enter 关闭浏览器...")
+            stop_browser_keep_alive()
             driver.quit()
 
 # ==================== 原有功能 ====================
@@ -2118,6 +2992,9 @@ def get_category_history_data(category: str, history: dict):
     return counts, recent_combinations
 
 def main():
+    # ===== 记录程序开始时间 =====
+    start_time = time.time()
+    
     # ===== 初始化日志 =====
     log_file = setup_logging()
     
@@ -2154,11 +3031,20 @@ def main():
         default=TIDAL_TRACK_COUNT_MAX,
         help=f"每张专辑添加的最大歌曲数，默认 {TIDAL_TRACK_COUNT_MAX}"
     )
+    parser.add_argument(
+        "--tidal-delete",
+        action="store_true",
+        help="启用 Tidal 删除模式：从所有播放列表中删除指定专辑的歌曲"
+    )
     args = parser.parse_args()
 
     # 当平台为 Tidal 时，默认启用 Tidal 添加功能
     if args.Platform == "T" and not args.tidal:
         args.tidal = True
+    
+    # 根据配置文件的 TIDAL_MODE 设置删除模式
+    if args.Platform == "T" and TIDAL_MODE == 2:
+        args.tidal_delete = True
     
     # 当平台为 Apple 时，默认启用 Apple Music 添加功能
     apple_enabled = (args.Platform == "A")
@@ -2166,21 +3052,32 @@ def main():
     # 当平台为 Qobuz 时，默认启用 Qobuz 添加功能
     qobuz_enabled = (args.Platform == "Q")
 
-    # ===== Tidal 登录验证（如果启用） =====
+    # ===== Tidal 多账号自动化处理（如果启用） =====
     tidal_session = None
-    if args.tidal:
+    tidal_accounts = []
+    if args.tidal and not args.tidal_delete:
         if args.Platform != "T":
             print("⚠ Tidal 添加功能仅支持 Tidal 平台 (--Platform T)")
             args.Platform = "T"
         
         print("="*60)
-        print("Tidal 播放列表自动添加工具")
+        print("Tidal 播放列表自动添加工具（多账号自动化）")
         print("="*60)
         
-        tidal_session = login_tidal()
-        if not tidal_session:
-            print("✗ Tidal 登录失败，退出程序")
+        # 检查 tidal_email.txt 文件
+        tidal_accounts = load_tidal_accounts()
+        
+        if not tidal_accounts:
+            print(f"\n✗ 未找到 Tidal 账号数据！")
+            print(f"  请在 {TIDAL_EMAIL_FILE} 文件中添加账号信息，格式如下：")
+            print(f"  邮箱")
+            print(f"  密码")
+            print(f"  （空行分隔不同账号）")
             return
+        
+        print(f"\n✓ 找到 {len(tidal_accounts)} 个 Tidal 账号")
+        for i, acc in enumerate(tidal_accounts):
+            print(f"  [{i+1}] {acc['email']}")
         
         print()
     
@@ -2206,6 +3103,114 @@ def main():
         print(f"日志文件: {log_file}")
         print("="*60)
         print()
+
+    # ===== Tidal 删除模式：删除指定专辑的歌曲 =====
+    if args.tidal_delete:
+        print("="*60)
+        print("Tidal 删除模式（多账号自动化）")
+        print("="*60)
+        
+        # 检查账号
+        tidal_accounts = load_tidal_accounts()
+        if not tidal_accounts:
+            print(f"\n✗ 未找到 Tidal 账号数据！")
+            print(f"  请在 {TIDAL_EMAIL_FILE} 文件中添加账号信息")
+            return
+        
+        # 检查删除列表
+        delete_list = load_tidal_delete_list()
+        if not delete_list:
+            print(f"\n✗ 未找到删除列表！")
+            print(f"  请在 {TIDAL_DELETE_FILE} 文件中添加要删除的艺人和专辑，格式如下：")
+            print(f"  艺人名")
+            print(f"  专辑名")
+            print(f"  （空行分隔不同条目）")
+            return
+        
+        print(f"\n✓ 找到 {len(tidal_accounts)} 个 Tidal 账号")
+        print(f"✓ 找到 {len(delete_list)} 条删除记录")
+        
+        print(f"\n{'='*60}")
+        print(f"开始 Tidal 多账号删除处理（共 {len(tidal_accounts)} 个账号）")
+        print(f"{'='*60}")
+        
+        success_count = 0
+        for i, account in enumerate(tidal_accounts):
+            success = run_tidal_delete_for_single_account(
+                account, i, len(tidal_accounts), delete_list
+            )
+            if success:
+                success_count += 1
+            
+            # 账号之间等待一下
+            if i < len(tidal_accounts) - 1:
+                print(f"\n等待 3 秒后处理下一个账号...")
+                time.sleep(3)
+        
+        print(f"\n{'='*60}")
+        print(f"Tidal 多账号删除处理完成！")
+        print(f"  成功: {success_count}/{len(tidal_accounts)} 个账号")
+        print(f"{'='*60}")
+        
+        # ===== 输出程序总耗时 =====
+        elapsed_time = time.time() - start_time
+        hours = int(elapsed_time // 3600)
+        minutes = int((elapsed_time % 3600) // 60)
+        seconds = int(elapsed_time % 60)
+        
+        print(f"\n{'='*60}")
+        print(f"程序运行完成！")
+        if hours > 0:
+            print(f"总耗时: {hours}小时 {minutes}分钟 {seconds}秒")
+        elif minutes > 0:
+            print(f"总耗时: {minutes}分钟 {seconds}秒")
+        else:
+            print(f"总耗时: {seconds}秒")
+        print(f"{'='*60}")
+        
+        return  # 删除模式完成后直接退出
+
+    # ===== Tidal 多账号模式：直接进入多账号处理流程 =====
+    if args.tidal and tidal_accounts:
+        print(f"\n{'='*60}")
+        print(f"开始 Tidal 多账号自动化处理（共 {len(tidal_accounts)} 个账号）")
+        print(f"{'='*60}")
+        
+        success_count = 0
+        for i, account in enumerate(tidal_accounts):
+            success = run_tidal_for_single_account(
+                account, i, len(tidal_accounts), base_dir, args
+            )
+            if success:
+                success_count += 1
+            
+            # 账号之间等待一下
+            if i < len(tidal_accounts) - 1:
+                print(f"\n等待 3 秒后处理下一个账号...")
+                time.sleep(3)
+        
+        print(f"\n{'='*60}")
+        print(f"Tidal 多账号处理完成！")
+        print(f"  成功: {success_count}/{len(tidal_accounts)} 个账号")
+        print(f"{'='*60}")
+        
+        # ===== 输出程序总耗时 =====
+        elapsed_time = time.time() - start_time
+        hours = int(elapsed_time // 3600)
+        minutes = int((elapsed_time % 3600) // 60)
+        seconds = int(elapsed_time % 60)
+        
+        print(f"\n{'='*60}")
+        print(f"程序运行完成！")
+        if hours > 0:
+            print(f"总耗时: {hours}小时 {minutes}分钟 {seconds}秒")
+        elif minutes > 0:
+            print(f"总耗时: {minutes}分钟 {seconds}秒")
+        else:
+            print(f"总耗时: {seconds}秒")
+        print(f"{'='*60}")
+        
+        return  # Tidal 多账号模式完成后直接退出
 
     # ===== 1. 加载数据 =====
     platform_file = PLATFORM_FILES.get(args.Platform)
@@ -2266,19 +3271,6 @@ def main():
     print(f"3. Other (4首)")
     print(f"总计: {len(final_list)} 首")
     print(f"输出文件：{output_path.name}")
-
-    # ===== 8. Tidal 播放列表添加（如果启用） =====
-    if args.tidal and tidal_session:
-        print(f"\n{'='*60}")
-        print("开始添加歌曲到 Tidal 播放列表...")
-        print(f"{'='*60}")
-        process_tidal_playlist(
-            tidal_session, 
-            output_path, 
-            args.track_min, 
-            args.track_max,
-            base_dir
-        )
     
     # ===== 9. Apple Music 播放列表添加（如果启用） =====
     if apple_enabled:
@@ -2296,7 +3288,8 @@ def main():
             output_path,
             playlist_name,
             APPLE_TRACK_COUNT_MIN,
-            APPLE_TRACK_COUNT_MAX
+            APPLE_TRACK_COUNT_MAX,
+            base_dir
         )
         
         # 标记播放列表名称为已使用
@@ -2325,6 +3318,22 @@ def main():
         # 标记播放列表名称为已使用
         if success:
             mark_playlist_name_used(playlist_name)
+    
+    # ===== 输出程序总耗时 =====
+    elapsed_time = time.time() - start_time
+    hours = int(elapsed_time // 3600)
+    minutes = int((elapsed_time % 3600) // 60)
+    seconds = int(elapsed_time % 60)
+    
+    print(f"\n{'='*60}")
+    print(f"程序运行完成！")
+    if hours > 0:
+        print(f"总耗时: {hours}小时 {minutes}分钟 {seconds}秒")
+    elif minutes > 0:
+        print(f"总耗时: {minutes}分钟 {seconds}秒")
+    else:
+        print(f"总耗时: {seconds}秒")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":

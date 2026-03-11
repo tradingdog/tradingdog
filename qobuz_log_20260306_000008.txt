@@ -1,0 +1,416 @@
+00:00:08 - ============================================================
+00:00:08 - Tidal 删除模式（多账号自动化）
+00:00:08 - ============================================================
+00:00:08 - 
+✓ 找到 3 个 Tidal 账号
+00:00:08 - ✓ 找到 11 条删除记录
+00:00:08 - 
+============================================================
+00:00:08 - 开始 Tidal 多账号删除处理（共 3 个账号）
+00:00:08 - ============================================================
+00:00:08 - 
+============================================================
+00:00:08 - [删除模式] 处理账号 [1/3]: wrkjpqpl17971@outlook.com
+00:00:08 - ============================================================
+00:00:08 - 
+开始 Tidal OAuth 验证: wrkjpqpl17971@outlook.com
+00:00:09 -   OAuth 链接: https://link.tidal.com/LELXQ
+00:00:09 -   启动 Chrome 浏览器（用于 Tidal 登录）...
+00:00:14 -   正在自动完成 OAuth 登录: wrkjpqpl17971@outlook.com
+00:00:36 -     ✓ 已输入邮箱
+00:00:38 -     ✓ 已点击 Continue
+00:00:42 -     ✓ 已输入密码
+00:00:45 -     ✓ 已点击 Log In
+00:00:51 -     ✓ 已点击 Continue（完成设备链接）
+00:00:54 -   ✓ OAuth 登录流程完成
+00:00:54 -   等待 OAuth 验证完成...
+00:00:54 - ✓ Tidal 登录成功！用户: Dinah  Kestrelmere
+00:00:54 - ✓ Tidal 登录凭据已保存
+00:00:54 - 
+将从所有播放列表中删除以下专辑的歌曲：
+00:00:54 -   - Roven Li - What the Blade Remembers
+00:00:54 -   - Roven Li - Vows Etched in Moving Sand
+00:00:54 -   - Brindle Kesar - Fireside to Mountain Fire
+00:00:54 -   - Brindle Kesar - Silk of Power
+00:00:54 -   - Etro Mignar - Persistence of One Last Look
+00:00:54 -   - Hino Resk - Stairwell Promises
+00:00:54 -   - Dahlia Frost - Skyrail Aspirant
+00:00:54 -   - Lyrvane Omri - Night Sky Is Confiding Alone
+00:00:54 -   - Lyrvane Omri - Drowsevale Descentline
+00:00:54 -   - Kira Kong - Maple Mosaic of Vows
+00:00:54 -   - Riven Cloudrest - The Palm's Familiar Back
+00:00:56 - 
+找到 2 个播放列表
+00:00:56 - 
+==================================================
+00:00:56 - 处理播放列表: Calm Rhythms
+00:00:56 - ==================================================
+00:00:56 -   共 251 首歌曲
+00:00:56 -   找到 66 首需要删除的歌曲
+00:00:58 -     ✓ 已删除: Kira Kong - Sakura's Shy Encounter
+00:01:00 -     ✓ 已删除: Kira Kong - Kimono Whispers in Spring
+00:01:03 -     ✓ 已删除: Kira Kong - Hanami's Gentle Rain
+00:01:05 -     ✓ 已删除: Kira Kong - Fuji's Dawn Promise
+00:01:08 -     ✓ 已删除: Kira Kong - Maple Leaf Confessions
+00:01:10 -     ✓ 已删除: Kira Kong - Onsen Vows by the Stream
+00:01:13 -     ✓ 已删除: Kira Kong - Tsukimi's Secret Oath
+00:01:16 -     ✓ 已删除: Kira Kong - Willow Tree Serenade
+00:01:18 -     ✓ 已删除: Kira Kong - Obon Moon Embrace
+00:01:20 -     ✓ 已删除: Kira Kong - Typhoon's Jealous Shadow
+00:01:23 -     ✓ 已删除: Kira Kong - Lantern's Dimming Flame
+00:01:25 -     ✓ 已删除: Kira Kong - Shattered Shamisen Strings
+00:01:28 -     ✓ 已删除: Kira Kong - Thunderous Parting Words
+00:01:30 -     ✓ 已删除: Kira Kong - Bare Branches' Hollow Echo
+00:01:33 -     ✓ 已删除: Hino Resk - Shared Paper Cups
+00:01:35 -     ✓ 已删除: Hino Resk - Unsaid Small Smiles
+00:01:38 -     ✓ 已删除: Hino Resk - River Steps After Class
+00:01:40 -     ✓ 已删除: Hino Resk - Library Window Reflections
+00:01:42 -     ✓ 已删除: Hino Resk - First Honest Breath
+00:01:45 -     ✓ 已删除: Hino Resk - Lanterns Beginning to Dim
+00:01:48 -     ✓ 已删除: Hino Resk - White Corridor News
+00:01:50 -     ✓ 已删除: Hino Resk - Stairwell Promise
+00:01:52 -     ✓ 已删除: Hino Resk - Winter Ward Lullaby
+00:01:55 -     ✓ 已删除: Hino Resk - Snow Holding Its Breath
+00:01:57 -     ✓ 已删除: Hino Resk - Room 314 Farewell
+00:02:00 -     ✓ 已删除: Hino Resk - Folded Letters Again
+00:02:03 -     ✓ 已删除: Hino Resk - Years That Would Not Mend
+00:02:06 -     ✓ 已删除: Etro Mignar - Uneasy Chill in the Stairwell
+00:02:08 -     ✓ 已删除: Etro Mignar - Alley Turning Point
+00:02:10 -     ✓ 已删除: Etro Mignar - Breath That Wasn't There
+00:02:13 -     ✓ 已删除: Etro Mignar - Hands Through Air
+00:02:15 -     ✓ 已删除: Etro Mignar - Portraits Left Unanswered
+00:02:18 -     ✓ 已删除: Etro Mignar - Voices Borrowed in a Parlor
+00:02:20 -     ✓ 已删除: Etro Mignar - Ledger Keys Unlocked
+00:02:22 -     ✓ 已删除: Etro Mignar - Betrayal Under Fluorescent Light
+00:02:25 -     ✓ 已删除: Etro Mignar - Lessons in Still Momentum
+00:02:28 -     ✓ 已删除: Etro Mignar - Knock That Doesn't Land
+00:02:30 -     ✓ 已删除: Etro Mignar - Subway Sparks Instruction
+00:02:32 -     ✓ 已删除: Etro Mignar - Learning the Push
+00:02:35 -     ✓ 已删除: Etro Mignar - Coins Across the Wood
+00:02:37 -     ✓ 已删除: Brindle Kesar - Palace Threshold
+00:02:39 -     ✓ 已删除: Brindle Kesar - First Light of Favor
+00:02:41 -     ✓ 已删除: Brindle Kesar - Threads of Intrigue
+00:02:44 -     ✓ 已删除: Brindle Kesar - Bond of Petals
+00:02:47 -     ✓ 已删除: Brindle Kesar - Broken Court
+00:02:49 -     ✓ 已删除: Brindle Kesar - Ashes of Silence
+00:02:51 -     ✓ 已删除: Brindle Kesar - Winter Vein
+00:02:54 -     ✓ 已删除: Brindle Kesar - Hand of Mercy
+00:02:56 -     ✓ 已删除: Brindle Kesar - Phoenix Unveiled
+00:02:58 -     ✓ 已删除: Brindle Kesar - Silk and Steel
+00:03:00 -     ✓ 已删除: Brindle Kesar - Bitter Bloom
+00:03:03 -     ✓ 已删除: Brindle Kesar - Marble Distance
+00:03:05 -     ✓ 已删除: Brindle Kesar - Cradle of Sorrow
+00:03:07 -     ✓ 已删除: Roven Li - Return of the Green Steel
+00:03:09 -     ✓ 已删除: Roven Li - Embers in the Courtyard
+00:03:12 -     ✓ 已删除: Roven Li - Unbound Silk
+00:03:15 -     ✓ 已删除: Roven Li - Footprints on the Tiles
+00:03:18 -     ✓ 已删除: Roven Li - Stillness with a Sword
+00:03:21 -     ✓ 已删除: Roven Li - Sand and Saffron
+00:03:23 -     ✓ 已删除: Roven Li - Edge That Breathes
+00:03:25 -     ✓ 已删除: Roven Li - Porcelain Vow
+00:03:27 -     ✓ 已删除: Roven Li - Across the Cedar Gate
+00:03:30 -     ✓ 已删除: Roven Li - Leaves Walking on Air
+00:03:33 -     ✓ 已删除: Roven Li - Bitter Lotus
+00:03:35 -     ✓ 已删除: Roven Li - Words at the Precipice
+00:03:37 -     ✓ 已删除: Roven Li - Step Beyond the Rail
+00:03:38 -   本播放列表删除了 66 首歌曲
+00:03:38 - 
+==================================================
+00:03:38 - 处理播放列表: Soothing Strings
+00:03:38 - ==================================================
+00:03:39 -   共 241 首歌曲
+00:03:39 -   找到 67 首需要删除的歌曲
+00:03:41 -     ✓ 已删除: Brindle Kesar - First Light of Favor
+00:03:44 -     ✓ 已删除: Brindle Kesar - Threads of Intrigue
+00:03:46 -     ✓ 已删除: Brindle Kesar - Bond of Petals
+00:03:49 -     ✓ 已删除: Brindle Kesar - Broken Court
+00:03:52 -     ✓ 已删除: Brindle Kesar - Ashes of Silence
+00:03:55 -     ✓ 已删除: Brindle Kesar - Winter Vein
+00:03:57 -     ✓ 已删除: Brindle Kesar - Hand of Mercy
+00:04:00 -     ✓ 已删除: Brindle Kesar - Phoenix Unveiled
+00:04:02 -     ✓ 已删除: Brindle Kesar - Silk and Steel
+00:04:04 -     ✓ 已删除: Brindle Kesar - Bitter Bloom
+00:04:06 -     ✓ 已删除: Brindle Kesar - Marble Distance
+00:04:07 -     ✓ 已删除: Brindle Kesar - Cradle of Sorrow
+00:04:09 -     ✓ 已删除: Brindle Kesar - Circles Within Circles
+00:04:12 -     ✓ 已删除: Hino Resk - Platform Seven
+00:04:15 -     ✓ 已删除: Hino Resk - Shared Paper Cups
+00:04:17 -     ✓ 已删除: Hino Resk - Unsaid Small Smiles
+00:04:20 -     ✓ 已删除: Hino Resk - River Steps After Class
+00:04:23 -     ✓ 已删除: Hino Resk - Library Window Reflections
+00:04:25 -     ✓ 已删除: Hino Resk - First Honest Breath
+00:04:27 -     ✓ 已删除: Hino Resk - Lanterns Beginning to Dim
+00:04:30 -     ✓ 已删除: Hino Resk - White Corridor News
+00:04:32 -     ✓ 已删除: Hino Resk - Stairwell Promise
+00:04:35 -     ✓ 已删除: Hino Resk - Winter Ward Lullaby
+00:04:37 -     ✓ 已删除: Hino Resk - Snow Holding Its Breath
+00:04:40 -     ✓ 已删除: Hino Resk - Room 314 Farewell
+00:04:42 -     ✓ 已删除: Hino Resk - Folded Letters Again
+00:04:44 -     ✓ 已删除: DAHLIA FROST - First Sigil Learned
+00:04:46 -     ✓ 已删除: DAHLIA FROST - Rooftop Quiet Resolve
+00:04:49 -     ✓ 已删除: DAHLIA FROST - Training in Hidden Courtyard
+00:04:51 -     ✓ 已删除: DAHLIA FROST - Sparks over Market Canal
+00:04:53 -     ✓ 已删除: DAHLIA FROST - Mentor's Unspoken Test
+00:04:55 -     ✓ 已删除: DAHLIA FROST - Breakthrough at Glass Arcade
+00:04:58 -     ✓ 已删除: DAHLIA FROST - Parade of Turning Gears
+00:05:00 -     ✓ 已删除: DAHLIA FROST - Challenge in the Arena Forge
+00:05:02 -     ✓ 已删除: DAHLIA FROST - Setback Beneath Elevated Lines
+00:05:04 -     ✓ 已删除: DAHLIA FROST - Nightforge Recommitment
+00:05:06 -     ✓ 已删除: DAHLIA FROST - Ascent of the Luminous Spire
+00:05:08 -     ✓ 已删除: DAHLIA FROST - Pact with the City Core
+00:05:11 -     ✓ 已删除: DAHLIA FROST - Triumph Along Skyrails
+00:05:13 -     ✓ 已删除: DAHLIA FROST - Honor Among Guild Elders
+00:05:15 -     ✓ 已删除: Lyrvane Omri - Lanterns Between Constellations
+00:05:17 -     ✓ 已删除: Lyrvane Omri - Quiet Orbits of the Heart
+00:05:19 -     ✓ 已删除: Lyrvane Omri - Skylit Postcards
+00:05:22 -     ✓ 已删除: Lyrvane Omri - Courtyard of Breathing Stones
+00:05:25 -     ✓ 已删除: Lyrvane Omri - Paper Boats Through Quiet Skies
+00:05:27 -     ✓ 已删除: Lyrvane Omri - Windows of Soft Amber
+00:05:30 -     ✓ 已删除: Lyrvane Omri - The Slow Turning of Maps
+00:05:33 -     ✓ 已删除: Lyrvane Omri - Hearthlight Atlas
+00:05:35 -     ✓ 已删除: Lyrvane Omri - Saffron Quietude
+00:05:37 -     ✓ 已删除: Lyrvane Omri - Porcelain Horizons Within
+00:05:39 -     ✓ 已删除: Lyrvane Omri - Keeping the Quiet Stars Company
+00:05:43 -     ✓ 已删除: Lyrvane Omri - Indigo Tea and Soft Footsteps
+00:05:45 -     ✓ 已删除: Lyrvane Omri - Letters Folded into Night Air
+00:05:47 -     ✓ 已删除: Kira Kong - Kimono Whispers in Spring
+00:05:50 -     ✓ 已删除: Kira Kong - Hanami's Gentle Rain
+00:05:53 -     ✓ 已删除: Kira Kong - Fuji's Dawn Promise
+00:05:55 -     ✓ 已删除: Kira Kong - Maple Leaf Confessions
+00:05:57 -     ✓ 已删除: Kira Kong - Onsen Vows by the Stream
+00:06:00 -     ✓ 已删除: Kira Kong - Tsukimi's Secret Oath
+00:06:02 -     ✓ 已删除: Kira Kong - Willow Tree Serenade
+00:06:04 -     ✓ 已删除: Kira Kong - Obon Moon Embrace
+00:06:07 -     ✓ 已删除: Kira Kong - Typhoon's Jealous Shadow
+00:06:09 -     ✓ 已删除: Kira Kong - Lantern's Dimming Flame
+00:06:11 -     ✓ 已删除: Kira Kong - Shattered Shamisen Strings
+00:06:14 -     ✓ 已删除: Kira Kong - Thunderous Parting Words
+00:06:16 -     ✓ 已删除: Kira Kong - Bare Branches' Hollow Echo
+00:06:17 -     ✓ 已删除: Kira Kong - Yukimi's Icy Sorrow
+00:06:18 -   本播放列表删除了 67 首歌曲
+00:06:18 - 
+============================================================
+00:06:18 - ✓ 账号 wrkjpqpl17971@outlook.com 删除完成
+00:06:18 -   处理播放列表数: 2
+00:06:18 -   删除歌曲总数: 133
+00:06:18 - ============================================================
+00:06:18 -   关闭浏览器...
+00:06:21 - 
+等待 3 秒后处理下一个账号...
+00:06:24 - 
+============================================================
+00:06:24 - [删除模式] 处理账号 [2/3]: uwrknecb46979@outlook.com
+00:06:24 - ============================================================
+00:06:24 - 
+开始 Tidal OAuth 验证: uwrknecb46979@outlook.com
+00:06:26 -   OAuth 链接: https://link.tidal.com/CNXTR
+00:06:26 -   启动 Chrome 浏览器（用于 Tidal 登录）...
+00:06:27 -   正在自动完成 OAuth 登录: uwrknecb46979@outlook.com
+00:06:43 -     ✓ 已输入邮箱
+00:06:45 -     ✓ 已点击 Continue
+00:06:49 -     ✓ 已输入密码
+00:06:51 -     ✓ 已点击 Log In
+00:07:00 -     ✓ 已点击 Continue（完成设备链接）
+00:07:03 -   ✓ OAuth 登录流程完成
+00:07:03 -   等待 OAuth 验证完成...
+00:07:04 - ✓ Tidal 登录成功！用户: Galen  Moorwyck
+00:07:04 - ✓ Tidal 登录凭据已保存
+00:07:04 - 
+将从所有播放列表中删除以下专辑的歌曲：
+00:07:04 -   - Roven Li - What the Blade Remembers
+00:07:04 -   - Roven Li - Vows Etched in Moving Sand
+00:07:04 -   - Brindle Kesar - Fireside to Mountain Fire
+00:07:04 -   - Brindle Kesar - Silk of Power
+00:07:04 -   - Etro Mignar - Persistence of One Last Look
+00:07:04 -   - Hino Resk - Stairwell Promises
+00:07:04 -   - Dahlia Frost - Skyrail Aspirant
+00:07:04 -   - Lyrvane Omri - Night Sky Is Confiding Alone
+00:07:04 -   - Lyrvane Omri - Drowsevale Descentline
+00:07:04 -   - Kira Kong - Maple Mosaic of Vows
+00:07:04 -   - Riven Cloudrest - The Palm's Familiar Back
+00:07:06 - 
+找到 2 个播放列表
+00:07:06 - 
+==================================================
+00:07:06 - 处理播放列表: Gentle Breeze
+00:07:06 - ==================================================
+00:07:06 -   共 253 首歌曲
+00:07:06 -   找到 51 首需要删除的歌曲
+00:07:08 -     ✓ 已删除: Brindle Kesar - Palace Threshold
+00:07:10 -     ✓ 已删除: Brindle Kesar - First Light of Favor
+00:07:13 -     ✓ 已删除: Brindle Kesar - Threads of Intrigue
+00:07:15 -     ✓ 已删除: Brindle Kesar - Bond of Petals
+00:07:17 -     ✓ 已删除: Brindle Kesar - Broken Court
+00:07:20 -     ✓ 已删除: Brindle Kesar - Ashes of Silence
+00:07:22 -     ✓ 已删除: Brindle Kesar - Winter Vein
+00:07:24 -     ✓ 已删除: Brindle Kesar - Hand of Mercy
+00:07:27 -     ✓ 已删除: Brindle Kesar - Phoenix Unveiled
+00:07:30 -     ✓ 已删除: Brindle Kesar - Silk and Steel
+00:07:32 -     ✓ 已删除: Brindle Kesar - Bitter Bloom
+00:07:34 -     ✓ 已删除: Brindle Kesar - Marble Distance
+00:07:36 -     ✓ 已删除: Brindle Kesar - Cradle of Sorrow
+00:07:39 -     ✓ 已删除: Hino Resk - Platform Seven
+00:07:41 -     ✓ 已删除: Hino Resk - Shared Paper Cups
+00:07:43 -     ✓ 已删除: Hino Resk - Unsaid Small Smiles
+00:07:46 -     ✓ 已删除: Hino Resk - River Steps After Class
+00:07:48 -     ✓ 已删除: Hino Resk - Library Window Reflections
+00:07:50 -     ✓ 已删除: Hino Resk - First Honest Breath
+00:07:53 -     ✓ 已删除: Hino Resk - Lanterns Beginning to Dim
+00:07:55 -     ✓ 已删除: Hino Resk - White Corridor News
+00:07:59 -     ✓ 已删除: Hino Resk - Stairwell Promise
+00:08:01 -     ✓ 已删除: Hino Resk - Winter Ward Lullaby
+00:08:03 -     ✓ 已删除: Hino Resk - Snow Holding Its Breath
+00:08:05 -     ✓ 已删除: Hino Resk - Room 314 Farewell
+00:08:08 -     ✓ 已删除: Kira Kong - Sakura's Shy Encounter
+00:08:11 -     ✓ 已删除: Kira Kong - Kimono Whispers in Spring
+00:08:13 -     ✓ 已删除: Kira Kong - Hanami's Gentle Rain
+00:08:15 -     ✓ 已删除: Kira Kong - Fuji's Dawn Promise
+00:08:18 -     ✓ 已删除: Kira Kong - Maple Leaf Confessions
+00:08:21 -     ✓ 已删除: Kira Kong - Onsen Vows by the Stream
+00:08:23 -     ✓ 已删除: Kira Kong - Tsukimi's Secret Oath
+00:08:25 -     ✓ 已删除: Kira Kong - Willow Tree Serenade
+00:08:28 -     ✓ 已删除: Kira Kong - Obon Moon Embrace
+00:08:30 -     ✓ 已删除: Kira Kong - Typhoon's Jealous Shadow
+00:08:32 -     ✓ 已删除: Kira Kong - Lantern's Dimming Flame
+00:08:35 -     ✓ 已删除: Kira Kong - Shattered Shamisen Strings
+00:08:37 -     ✓ 已删除: Riven Cloudrest - Throat's Glassy Prickle
+00:08:40 -     ✓ 已删除: Riven Cloudrest - Faraway White Walls
+00:08:42 -     ✓ 已删除: Riven Cloudrest - Heart in the Narrow Hall
+00:08:44 -     ✓ 已删除: Riven Cloudrest - Uncovered Hands, Unspoken
+00:08:47 -     ✓ 已删除: Riven Cloudrest - The Empty Seat by My Side
+00:08:50 -     ✓ 已删除: Riven Cloudrest - Clinging to the Tiny Flame
+00:08:53 -     ✓ 已删除: Riven Cloudrest - Threads Woven in Sleeve
+00:08:55 -     ✓ 已删除: Riven Cloudrest - Chalk Drawn Contours
+00:08:58 -     ✓ 已删除: Riven Cloudrest - The Palm's Familiar Back
+00:09:00 -     ✓ 已删除: Riven Cloudrest - The Note That Shatters Silence
+00:09:03 -     ✓ 已删除: Riven Cloudrest - Within the Quiet Labor
+00:09:05 -     ✓ 已删除: Riven Cloudrest - Doors Swinging Outward
+00:09:08 -     ✓ 已删除: Riven Cloudrest - Names Lingering in Air
+00:09:10 -     ✓ 已删除: Riven Cloudrest - After the Final Word
+00:09:11 -   本播放列表删除了 51 首歌曲
+00:09:11 - 
+==================================================
+00:09:11 - 处理播放列表: Serene Rest
+00:09:11 - ==================================================
+00:09:12 -   共 205 首歌曲
+00:09:12 -   找到 54 首需要删除的歌曲
+00:09:13 -     ✓ 已删除: Roven Li - Return of the Green Steel
+00:09:16 -     ✓ 已删除: Roven Li - Embers in the Courtyard
+00:09:18 -     ✓ 已删除: Roven Li - Unbound Silk
+00:09:21 -     ✓ 已删除: Roven Li - Footprints on the Tiles
+00:09:23 -     ✓ 已删除: Roven Li - Stillness with a Sword
+00:09:26 -     ✓ 已删除: Roven Li - Sand and Saffron
+00:09:28 -     ✓ 已删除: Roven Li - Edge That Breathes
+00:09:30 -     ✓ 已删除: Roven Li - Porcelain Vow
+00:09:33 -     ✓ 已删除: Roven Li - Across the Cedar Gate
+00:09:36 -     ✓ 已删除: Roven Li - Leaves Walking on Air
+00:09:38 -     ✓ 已删除: Etro Mignar - Uneasy Chill in the Stairwell
+00:09:40 -     ✓ 已删除: Etro Mignar - Alley Turning Point
+00:09:42 -     ✓ 已删除: Etro Mignar - Breath That Wasn't There
+00:09:44 -     ✓ 已删除: Etro Mignar - Hands Through Air
+00:09:47 -     ✓ 已删除: Etro Mignar - Portraits Left Unanswered
+00:09:49 -     ✓ 已删除: Etro Mignar - Voices Borrowed in a Parlor
+00:09:52 -     ✓ 已删除: Etro Mignar - Ledger Keys Unlocked
+00:09:53 -     ✓ 已删除: Etro Mignar - Betrayal Under Fluorescent Light
+00:09:56 -     ✓ 已删除: Etro Mignar - Lessons in Still Momentum
+00:10:00 -     ✓ 已删除: Etro Mignar - Knock That Doesn't Land
+00:10:03 -     ✓ 已删除: Etro Mignar - Subway Sparks Instruction
+00:10:05 -     ✓ 已删除: Etro Mignar - Learning the Push
+00:10:08 -     ✓ 已删除: Etro Mignar - Coins Across the Wood
+00:10:11 -     ✓ 已删除: Kira Kong - Kimono Whispers in Spring
+00:10:13 -     ✓ 已删除: Kira Kong - Hanami's Gentle Rain
+00:10:16 -     ✓ 已删除: Kira Kong - Fuji's Dawn Promise
+00:10:18 -     ✓ 已删除: Kira Kong - Maple Leaf Confessions
+00:10:20 -     ✓ 已删除: Kira Kong - Onsen Vows by the Stream
+00:10:22 -     ✓ 已删除: Kira Kong - Tsukimi's Secret Oath
+00:10:24 -     ✓ 已删除: Kira Kong - Willow Tree Serenade
+00:10:26 -     ✓ 已删除: Kira Kong - Obon Moon Embrace
+00:10:28 -     ✓ 已删除: Kira Kong - Typhoon's Jealous Shadow
+00:10:30 -     ✓ 已删除: Kira Kong - Lantern's Dimming Flame
+00:10:32 -     ✓ 已删除: Kira Kong - Shattered Shamisen Strings
+00:10:34 -     ✓ 已删除: Kira Kong - Thunderous Parting Words
+00:10:36 -     ✓ 已删除: Kira Kong - Bare Branches' Hollow Echo
+00:10:39 -     ✓ 已删除: Kira Kong - Yukimi's Icy Sorrow
+00:10:41 -     ✓ 已删除: Kira Kong - Cherry Blossom's Final Breath
+00:10:43 -     ✓ 已删除: Kira Kong - Forgotten Koto Melodies
+00:10:46 -     ✓ 已删除: Riven Cloudrest - Spark Unfolding in Quiet Rooms
+00:10:48 -     ✓ 已删除: Riven Cloudrest - Soft Sun on Desk Corners
+00:10:51 -     ✓ 已删除: Riven Cloudrest - The Frame's Fading Edges
+00:10:53 -     ✓ 已删除: Riven Cloudrest - Throat's Glassy Prickle
+00:10:56 -     ✓ 已删除: Riven Cloudrest - Faraway White Walls
+00:10:58 -     ✓ 已删除: Riven Cloudrest - Heart in the Narrow Hall
+00:11:00 -     ✓ 已删除: Riven Cloudrest - Uncovered Hands, Unspoken
+00:11:02 -     ✓ 已删除: Riven Cloudrest - The Empty Seat by My Side
+00:11:04 -     ✓ 已删除: Riven Cloudrest - Clinging to the Tiny Flame
+00:11:06 -     ✓ 已删除: Riven Cloudrest - Threads Woven in Sleeve
+00:11:08 -     ✓ 已删除: Riven Cloudrest - Chalk Drawn Contours
+00:11:11 -     ✓ 已删除: Riven Cloudrest - The Palm's Familiar Back
+00:11:14 -     ✓ 已删除: Riven Cloudrest - The Note That Shatters Silence
+00:11:15 -     ✓ 已删除: Riven Cloudrest - Within the Quiet Labor
+00:11:18 -     ✓ 已删除: Riven Cloudrest - Doors Swinging Outward
+00:11:18 -   本播放列表删除了 54 首歌曲
+00:11:18 - 
+============================================================
+00:11:18 - ✓ 账号 uwrknecb46979@outlook.com 删除完成
+00:11:18 -   处理播放列表数: 2
+00:11:18 -   删除歌曲总数: 105
+00:11:18 - ============================================================
+00:11:18 -   关闭浏览器...
+00:11:22 - 
+等待 3 秒后处理下一个账号...
+00:11:25 - 
+============================================================
+00:11:25 - [删除模式] 处理账号 [3/3]: gazvjm1645693@outlook.com
+00:11:25 - ============================================================
+00:11:25 - 
+开始 Tidal OAuth 验证: gazvjm1645693@outlook.com
+00:11:27 -   OAuth 链接: https://link.tidal.com/PMGSJ
+00:11:27 -   启动 Chrome 浏览器（用于 Tidal 登录）...
+00:11:28 -   正在自动完成 OAuth 登录: gazvjm1645693@outlook.com
+00:11:45 -     ✓ 已输入邮箱
+00:11:46 -     ✓ 已点击 Continue
+00:11:51 -     ✓ 已输入密码
+00:11:53 -     ✓ 已点击 Log In
+00:12:00 -     ✓ 已点击 Continue（完成设备链接）
+00:12:03 -   ✓ OAuth 登录流程完成
+00:12:03 -   等待 OAuth 验证完成...
+00:12:03 - ✓ Tidal 登录成功！用户: None None
+00:12:03 - ✓ Tidal 登录凭据已保存
+00:12:03 - 
+将从所有播放列表中删除以下专辑的歌曲：
+00:12:03 -   - Roven Li - What the Blade Remembers
+00:12:03 -   - Roven Li - Vows Etched in Moving Sand
+00:12:03 -   - Brindle Kesar - Fireside to Mountain Fire
+00:12:03 -   - Brindle Kesar - Silk of Power
+00:12:03 -   - Etro Mignar - Persistence of One Last Look
+00:12:03 -   - Hino Resk - Stairwell Promises
+00:12:03 -   - Dahlia Frost - Skyrail Aspirant
+00:12:03 -   - Lyrvane Omri - Night Sky Is Confiding Alone
+00:12:03 -   - Lyrvane Omri - Drowsevale Descentline
+00:12:03 -   - Kira Kong - Maple Mosaic of Vows
+00:12:03 -   - Riven Cloudrest - The Palm's Familiar Back
+00:12:04 - 
+找到 1 个播放列表
+00:12:04 - 
+==================================================
+00:12:04 - 处理播放列表: Silent Skies
+00:12:04 - ==================================================
+00:12:05 -   共 223 首歌曲
+00:12:05 -   未找到需要删除的歌曲
+00:12:05 - 
+============================================================
+00:12:05 - ✓ 账号 gazvjm1645693@outlook.com 删除完成
+00:12:05 -   处理播放列表数: 1
+00:12:05 -   删除歌曲总数: 0
+00:12:05 - ============================================================
+00:12:05 -   关闭浏览器...
+00:12:07 - 
+============================================================
+00:12:07 - Tidal 多账号删除处理完成！
+00:12:07 -   成功: 3/3 个账号
+00:12:07 - ============================================================
+00:12:07 - 
+============================================================
+00:12:07 - 程序运行完成！
+00:12:07 - 总耗时: 11分钟 58秒
+00:12:07 - ============================================================
