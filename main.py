@@ -55,7 +55,7 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+DEFAULT_PLATFORM = "Q"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -270,8 +270,8 @@ def parse_album_list_from_txt(txt_path: Path) -> list[dict]:
     
     return albums
 
-def search_album_on_tidal(session, artist_name: str, album_name: str, retry_on_auth_error=True):
-    """在 Tidal 上搜索专辑（支持401/412错误自动重试，多种搜索策略）"""
+def search_album_on_tidal(session, artist_name: str, album_name: str, retry_on_401=True):
+    """在 Tidal 上搜索专辑（支持401错误自动重试，多种搜索策略）"""
     
     def do_search(query):
         """ 执行单次搜索"""
@@ -285,9 +285,8 @@ def search_album_on_tidal(session, artist_name: str, album_name: str, retry_on_a
             return albums if albums else []
         except Exception as e:
             error_str = str(e)
-            # 检测认证失效错误（401或412）
-            if ("401" in error_str or "412" in error_str) and retry_on_auth_error:
-                return "AUTH_ERROR"
+            if "401" in error_str and retry_on_401:
+                return "401_ERROR"
             return []
     
     # 策略1: 完整搜索词（艺人名 + 专辑名）
@@ -300,13 +299,13 @@ def search_album_on_tidal(session, artist_name: str, album_name: str, retry_on_a
     for query in search_queries:
         albums = do_search(query)
         
-        # 处理认证失效错误（401或412）
-        if albums == "AUTH_ERROR":
-            print(f"  ⚠ 认证失效，尝试重新验证...")
+        # 处理401错误
+        if albums == "401_ERROR":
+            print(f"  ⚠ 认证失效，尝试刷新session...")
             if refresh_tidal_session(session):
-                return search_album_on_tidal(session, artist_name, album_name, retry_on_auth_error=False)
+                return search_album_on_tidal(session, artist_name, album_name, retry_on_401=False)
             else:
-                print(f"  ✗ 重新验证失败")
+                print(f"  ✗ 刷新session失败")
                 return None
         
         if not albums:
@@ -359,7 +358,7 @@ def random_delay():
     time.sleep(delay)
 
 def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: int):
-    """将歌曲添加到播放列表（带延迟，随机选择歌曲，支持401/412重试）"""
+    """将歌曲添加到播放列表（带延迟，随机选择歌曲，支持401重试）"""
     if not tracks:
         return 0
     
@@ -373,10 +372,10 @@ def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: in
         tracks_to_add = random.sample(list(tracks), track_count)
     
     added_count = 0
-    auth_retry_done = False  # 标记是否已经尝试过刷新session
+    retry_401_done = False  # 标记是否已经尝试过刷新session
     
     for track in tracks_to_add:
-        max_attempts = 3  # 增加重试次数，以支持重新OAuth验证
+        max_attempts = 2
         for attempt in range(max_attempts):
             try:
                 playlist.add([track.id])
@@ -385,19 +384,18 @@ def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: in
                 break  # 添加成功，跳出重试循环
             except Exception as e:
                 error_str = str(e)
-                # 检测认证失效错误（401: Unauthorized, 412: Precondition Failed - 通常是session失效）
-                if ("401" in error_str or "412" in error_str) and not auth_retry_done:
-                    print(f"    ⚠ 认证失效(检测到{'401' if '401' in error_str else '412'}错误)，尝试重新验证...")
+                if "401" in error_str and not retry_401_done:
+                    print(f"    ⚠ 认证失效，尝试刷新session...")
                     if refresh_tidal_session(session):
-                        auth_retry_done = True
+                        retry_401_done = True
                         # 刷新成功，重试添加
                         continue
                     else:
-                        print(f"    ✗ 重新验证失败，跳过剩余歌曲")
+                        print(f"    ✗ 刷新session失败，跳过剩余歌曲")
                         return added_count
                 else:
                     print(f"    ✗ 添加歌曲失败: {e}")
-                    break  # 非认证错误，不重试
+                    break  # 非401错误，不重试
     
     return added_count
 
