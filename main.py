@@ -170,7 +170,8 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.5"
 DEFAULT_ALBUM_COUNT = 15         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2994,6 +2995,7 @@ def get_category_history_data(category: str, history: dict):
 def main():
     # ===== 记录程序开始时间 =====
     start_time = time.time()
+    print(f"Playlist 自动化工具 v{APP_VERSION}")
     
     # ===== 初始化日志 =====
     log_file = setup_logging()

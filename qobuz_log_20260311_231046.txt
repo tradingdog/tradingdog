@@ -1,0 +1,581 @@
+23:10:46 - ============================================================
+23:10:46 - Apple Music 播放列表自动添加工具
+23:10:46 - ============================================================
+23:10:46 - 
+23:10:46 - 已生成播放列表：
+23:10:46 - 1. Other (1首): Drum & Lace - Red, White & Royal Blue
+23:10:46 - 2. A (15首)
+23:10:46 - 3. Other (4首)
+23:10:46 - 总计: 20 首
+23:10:46 - 输出文件：A+20260311231046.txt
+23:10:46 - 
+============================================================
+23:10:46 - 开始添加歌曲到 Apple Music 播放列表...
+23:10:46 - ============================================================
+23:10:46 - 
+解析到 20 张专辑待添加
+23:10:46 - 将使用播放列表名称: Gentle Peace
+23:10:46 - 
+初始化浏览器...
+23:10:46 -   配置 Chrome 选项...
+23:10:46 -   启动 Chrome 浏览器...
+23:10:47 -   设置反检测属性...
+23:10:47 -   ✓ 已启动浏览器保活（每 30 秒激活一次）
+23:10:47 -   ✓ 浏览器初始化成功
+23:10:47 - 正在访问 Apple Music...
+23:10:50 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:10:51 - 
+请在浏览器中完成登录，登录成功后输入 y 继续...
+23:11:45 - ✓ 登录成功
+23:11:47 - 
+[1/20] 处理: Drum & Lace - Red, White & Royal Blue
+23:11:47 - 搜索专辑: Red, White & Royal Blue (艺人: Drum & Lace)
+23:11:48 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:12:09 -   等待搜索结果加载...
+23:12:10 -   ✗ 未找到专辑链接
+23:12:12 - 
+[2/20] 处理: Jace Bramble - Field Directive Sequence
+23:12:12 - 搜索专辑: Field Directive Sequence (艺人: Jace Bramble)
+23:12:33 -   等待搜索结果加载...
+23:12:35 -   ✗ 未找到专辑链接
+23:12:36 - 
+[3/20] 处理: Zeya Ryn - Dusted Metal Bloom
+23:12:36 - 搜索专辑: Dusted Metal Bloom (艺人: Zeya Ryn)
+23:12:42 -   使用第一个专辑链接: https://music.apple.com/us/album/seeded/252487142?i=252487383
+23:12:42 -   点击专辑链接: https://music.apple.com/us/album/seeded/252487142?i=252487383
+23:12:46 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/seeded/252487142?i=252487383
+23:12:46 -   第一张专辑，创建播放列表并添加 11 首歌曲...
+23:12:46 -   专辑共 10 首歌曲
+23:12:49 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:12:59 -     通过 Add to Playlist 点击 New Playlist
+23:13:02 -     ✓ 已勾选公开选项
+23:13:04 -     ✓ 已点击建立按钮
+23:13:04 -     ✓ 播放列表创建成功，已添加第 6 首
+23:13:04 -     等待15秒让页面跳转完成...
+23:13:19 -   通过搜索重新访问专辑（避免播放列表消失）...
+23:13:19 - 搜索专辑: Dusted Metal Bloom (艺人: Zeya Ryn)
+23:13:20 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:13:25 -   使用第一个专辑链接: https://music.apple.com/us/album/seeded/252487142?i=252487383
+23:13:25 -   点击专辑链接: https://music.apple.com/us/album/seeded/252487142?i=252487383
+23:13:28 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/seeded/252487142?i=252487383
+23:13:28 -   添加 10 首歌曲到播放列表 'Gentle Peace'...
+23:13:28 -   专辑共 10 首歌曲
+23:13:37 -     ✓ 已添加第 9 首
+23:13:48 -     ✓ 已添加第 3 首
+23:14:00 -     ✓ 已添加第 5 首
+23:14:12 -     ✓ 已添加第 2 首
+23:14:20 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:14:24 -     ✓ 已添加第 7 首
+23:14:34 -     ✓ 已添加第 1 首
+23:14:45 -     ✓ 已添加第 6 首
+23:14:50 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:14:57 -     ✓ 已添加第 4 首
+23:15:08 -     ✓ 已添加第 10 首
+23:15:20 -     ✓ 已添加第 8 首
+23:15:23 -   ✓ 已添加 10 首歌曲
+23:15:24 - 
+[4/20] 处理: Joren Talmage - Twelve Minds One Truth
+23:15:24 - 搜索专辑: Twelve Minds One Truth (艺人: Joren Talmage)
+23:15:31 -   找到匹配专辑和艺人的链接
+23:15:31 -   点击专辑链接: https://music.apple.com/us/album/twelve-minds-one-truth/1883722082
+23:15:34 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/twelve-minds-one-truth/1883722082
+23:15:34 -   添加 13 首歌曲到播放列表 'Gentle Peace'...
+23:15:34 -   专辑共 14 首歌曲
+23:15:44 -     ✓ 已添加第 6 首
+23:15:58 -     ✓ 已添加第 14 首
+23:16:11 -     ✓ 已添加第 10 首
+23:16:23 -     ✓ 已添加第 11 首
+23:16:36 -     ✓ 已添加第 5 首
+23:16:48 -     ✓ 已添加第 7 首
+23:16:52 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:16:59 -     ✓ 已添加第 13 首
+23:17:10 -     ✓ 已添加第 12 首
+23:17:22 -     ✓ 已添加第 3 首
+23:17:33 -     ✓ 已添加第 2 首
+23:17:45 -     ✓ 已添加第 9 首
+23:17:56 -     ✓ 已添加第 8 首
+23:18:08 -     ✓ 已添加第 4 首
+23:18:10 -   ✓ 已添加 13 首歌曲
+23:18:11 - 
+[5/20] 处理: Kynan Rael - Small Fierce Ties
+23:18:11 - 搜索专辑: Small Fierce Ties (艺人: Kynan Rael)
+23:18:32 -   等待搜索结果加载...
+23:18:34 -   ✗ 未找到专辑链接
+23:18:35 - 
+[6/20] 处理: Kyn Veyr - Stitched Accounts
+23:18:35 - 搜索专辑: Stitched Accounts (艺人: Kyn Veyr)
+23:18:42 -   使用第一个专辑链接: https://music.apple.com/us/album/get-rich-to-this-feat-big-boi-backbone/304749186?i=304749205
+23:18:42 -   点击专辑链接: https://music.apple.com/us/album/get-rich-to-this-feat-big-boi-backbone/304749186?i=304749205
+23:18:47 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/get-rich-to-this-feat-big-boi-backbone/304749186?i=304749205
+23:18:47 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+23:18:47 -   专辑共 15 首歌曲
+23:18:56 -     ✓ 已添加第 4 首
+23:19:09 -     ✓ 已添加第 9 首
+23:19:21 -     ✓ 已添加第 12 首
+23:19:34 -     ✓ 已添加第 11 首
+23:19:46 -     ✓ 已添加第 8 首
+23:19:59 -     ✓ 已添加第 6 首
+23:20:10 -     ✓ 已添加第 1 首
+23:20:22 -     ✓ 已添加第 13 首
+23:20:24 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:20:31 -     ✓ 已添加第 15 首
+23:20:43 -     ✓ 已添加第 5 首
+23:20:54 -     ✓ 已添加第 7 首
+23:21:05 -     ✓ 已添加第 14 首
+23:21:16 -     ✓ 已添加第 3 首
+23:21:25 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:21:28 -     ✓ 已添加第 2 首
+23:21:31 -   ✓ 已添加 14 首歌曲
+23:21:32 - 
+[7/20] 处理: Elwen Thade - Prairie Justice Pages
+23:21:32 - 搜索专辑: Prairie Justice Pages (艺人: Elwen Thade)
+23:21:53 -   等待搜索结果加载...
+23:21:55 -   ✗ 未找到专辑链接
+23:21:56 - 
+[8/20] 处理: Orisonne Solum - Streetlamp After the Last Shift
+23:21:56 - 搜索专辑: Streetlamp After the Last Shift (艺人: Orisonne Solum)
+23:22:04 -   找到匹配专辑和艺人的链接
+23:22:04 -   点击专辑链接: https://music.apple.com/us/album/streetlamp-after-the-last-shift/1834401471
+23:22:08 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/streetlamp-after-the-last-shift/1834401471
+23:22:08 -   添加 11 首歌曲到播放列表 'Gentle Peace'...
+23:22:08 -   专辑共 18 首歌曲
+23:22:17 -     ✓ 已添加第 3 首
+23:22:25 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:22:29 -     ✓ 已添加第 7 首
+23:22:42 -     ✓ 已添加第 14 首
+23:22:53 -     ✓ 已添加第 18 首
+23:23:04 -     ✓ 已添加第 4 首
+23:23:15 -     ✓ 已添加第 5 首
+23:23:26 -     ✓ 已添加第 16 首
+23:23:38 -     ✓ 已添加第 17 首
+23:23:50 -     ✓ 已添加第 8 首
+23:23:56 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:24:02 -     ✓ 已添加第 15 首
+23:24:13 -     ✓ 已添加第 2 首
+23:24:15 -   ✓ 已添加 11 首歌曲
+23:24:17 - 
+[9/20] 处理: Kenara Lith - Light Left on Anyway
+23:24:17 - 搜索专辑: Light Left on Anyway (艺人: Kenara Lith)
+23:24:23 -   找到匹配专辑和艺人的链接
+23:24:23 -   点击专辑链接: https://music.apple.com/us/album/light-left-on-anyway/1841517853
+23:24:26 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/light-left-on-anyway/1841517853
+23:24:26 -   添加 13 首歌曲到播放列表 'Gentle Peace'...
+23:24:26 -   专辑共 16 首歌曲
+23:24:35 -     ✓ 已添加第 11 首
+23:24:47 -     ✓ 已添加第 8 首
+23:24:59 -     ✓ 已添加第 10 首
+23:25:10 -     ✓ 已添加第 4 首
+23:25:23 -     ✓ 已添加第 15 首
+23:25:34 -     ✓ 已添加第 6 首
+23:25:45 -     ✓ 已添加第 5 首
+23:25:56 -     ✓ 已添加第 2 首
+23:26:09 -     ✓ 已添加第 1 首
+23:26:21 -     ✓ 已添加第 13 首
+23:26:27 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:26:33 -     ✓ 已添加第 7 首
+23:26:44 -     ✓ 已添加第 3 首
+23:26:55 -     ✓ 已添加第 16 首
+23:26:59 -   ✓ 已添加 13 首歌曲
+23:27:01 - 
+[10/20] 处理: Velune Aster - Names We Never Spoke
+23:27:01 - 搜索专辑: Names We Never Spoke (艺人: Velune Aster)
+23:27:07 -   找到匹配专辑和艺人的链接
+23:27:07 -   点击专辑链接: https://music.apple.com/us/album/names-we-never-spoke/1841694161
+23:27:12 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/names-we-never-spoke/1841694161
+23:27:12 -   添加 12 首歌曲到播放列表 'Gentle Peace'...
+23:27:12 -   专辑共 18 首歌曲
+23:27:20 -     ✓ 已添加第 14 首
+23:27:31 -     ✓ 已添加第 12 首
+23:27:43 -     ✓ 已添加第 9 首
+23:27:56 -     ✓ 已添加第 8 首
+23:28:09 -     ✓ 已添加第 6 首
+23:28:20 -     ✓ 已添加第 3 首
+23:28:32 -     ✓ 已添加第 7 首
+23:28:44 -     ✓ 已添加第 16 首
+23:28:56 -     ✓ 已添加第 17 首
+23:29:08 -     ✓ 已添加第 2 首
+23:29:21 -     ✓ 已添加第 13 首
+23:29:29 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:29:33 -     ✓ 已添加第 10 首
+23:29:36 -   ✓ 已添加 12 首歌曲
+23:29:38 - 
+[11/20] 处理: Zephyr Moonridge - Between Meridians
+23:29:38 - 搜索专辑: Between Meridians (艺人: Zephyr Moonridge)
+23:29:44 -   找到匹配专辑和艺人的链接
+23:29:44 -   点击专辑链接: https://music.apple.com/us/album/between-meridians/1832012223
+23:29:48 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/between-meridians/1832012223
+23:29:48 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+23:29:48 -   专辑共 8 首歌曲
+23:29:57 -     ✓ 已添加第 2 首
+23:30:09 -     ✓ 已添加第 3 首
+23:30:22 -     ✓ 已添加第 6 首
+23:30:32 -     ✓ 已添加第 7 首
+23:30:44 -     ✓ 已添加第 8 首
+23:30:56 -     ✓ 已添加第 1 首
+23:31:09 -     ✓ 已添加第 4 首
+23:31:21 -     ✓ 已添加第 5 首
+23:31:25 -   ✓ 已添加 8 首歌曲
+23:31:27 - 
+[12/20] 处理: Yara Windell - Mark City Glow
+23:31:27 - 搜索专辑: Mark City Glow (艺人: Yara Windell)
+23:31:33 -   找到匹配专辑和艺人的链接
+23:31:33 -   点击专辑链接: https://music.apple.com/us/album/mark-city-glow/1855449614?i=1855449899
+23:31:36 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/mark-city-glow/1855449614?i=1855449899
+23:31:36 -   添加 10 首歌曲到播放列表 'Gentle Peace'...
+23:31:36 -   专辑共 18 首歌曲
+23:31:45 -     ✓ 已添加第 4 首
+23:31:58 -     ✓ 已添加第 10 首
+23:32:10 -     ✓ 已添加第 2 首
+23:32:22 -     ✓ 已添加第 3 首
+23:32:33 -     ✓ 已添加第 13 首
+23:32:44 -     ✓ 已添加第 14 首
+23:32:56 -     ✓ 已添加第 18 首
+23:33:01 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:33:07 -     ✓ 已添加第 17 首
+23:33:19 -     ✓ 已添加第 8 首
+23:33:31 -     ✓ 已添加第 6 首
+23:33:33 -   ✓ 已添加 10 首歌曲
+23:33:35 - 
+[13/20] 处理: Elsin Farrowell - Cold Sea Holding Our Story
+23:33:35 - 搜索专辑: Cold Sea Holding Our Story (艺人: Elsin Farrowell)
+23:33:43 -   找到匹配专辑和艺人的链接
+23:33:43 -   点击专辑链接: https://music.apple.com/us/album/cold-sea-holding-our-story/1842097290
+23:33:46 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/cold-sea-holding-our-story/1842097290
+23:33:46 -   添加 11 首歌曲到播放列表 'Gentle Peace'...
+23:33:47 -   专辑共 19 首歌曲
+23:33:56 -     ✓ 已添加第 15 首
+23:34:03 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:34:09 -     ✓ 已添加第 14 首
+23:34:21 -     ✓ 已添加第 8 首
+23:34:33 -     ✓ 已添加第 11 首
+23:34:44 -     ✓ 已添加第 16 首
+23:34:56 -     ✓ 已添加第 13 首
+23:35:08 -     ✓ 已添加第 4 首
+23:35:21 -     ✓ 已添加第 2 首
+23:35:33 -     ✓ 已添加第 3 首
+23:35:44 -     ✓ 已添加第 10 首
+23:35:56 -     ✓ 已添加第 7 首
+23:35:59 -   ✓ 已添加 11 首歌曲
+23:36:01 - 
+[14/20] 处理: Orin Blackwell - Gaps In Our Music
+23:36:01 - 搜索专辑: Gaps In Our Music (艺人: Orin Blackwell)
+23:36:04 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:36:07 -   找到匹配专辑和艺人的链接
+23:36:07 -   点击专辑链接: https://music.apple.com/us/album/gaps-in-our-music/1855029384?i=1855029396
+23:36:10 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/gaps-in-our-music/1855029384?i=1855029396
+23:36:10 -   添加 13 首歌曲到播放列表 'Gentle Peace'...
+23:36:10 -   专辑共 15 首歌曲
+23:36:19 -     ✓ 已添加第 4 首
+23:36:30 -     ✓ 已添加第 8 首
+23:36:42 -     ✓ 已添加第 9 首
+23:36:53 -     ✓ 已添加第 15 首
+23:37:03 -     ✓ 已添加第 10 首
+23:37:15 -     ✓ 已添加第 12 首
+23:37:27 -     ✓ 已添加第 14 首
+23:37:39 -     ✓ 已添加第 5 首
+23:37:49 -     ✓ 已添加第 2 首
+23:38:00 -     ✓ 已添加第 7 首
+23:38:11 -     ✓ 已添加第 13 首
+23:38:22 -     ✓ 已添加第 1 首
+23:38:33 -     ✓ 已添加第 3 首
+23:38:36 -   ✓ 已添加 13 首歌曲
+23:38:38 - 
+[15/20] 处理: Zane Midtown - The Day Everything Tilted
+23:38:38 - 搜索专辑: The Day Everything Tilted (艺人: Zane Midtown)
+23:38:46 -   找到匹配专辑和艺人的链接
+23:38:46 -   点击专辑链接: https://music.apple.com/us/album/the-day-everything-tilted/1859815940?i=1859816611
+23:38:51 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/the-day-everything-tilted/1859815940?i=1859816611
+23:38:51 -   添加 12 首歌曲到播放列表 'Gentle Peace'...
+23:38:51 -   专辑共 18 首歌曲
+23:39:01 -     ✓ 已添加第 11 首
+23:39:12 -     ✓ 已添加第 7 首
+23:39:23 -     ✓ 已添加第 8 首
+23:39:34 -     ✓ 已添加第 17 首
+23:39:47 -     ✓ 已添加第 14 首
+23:39:58 -     ✓ 已添加第 10 首
+23:40:10 -     ✓ 已添加第 13 首
+23:40:21 -     ✓ 已添加第 9 首
+23:40:32 -     ✓ 已添加第 16 首
+23:40:45 -     ✓ 已添加第 1 首
+23:40:57 -     ✓ 已添加第 4 首
+23:41:07 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:41:10 -     ✓ 已添加第 18 首
+23:41:12 -   ✓ 已添加 12 首歌曲
+23:41:14 - 
+[16/20] 处理: Calix Drun - Lanterns Between Constellations
+23:41:14 - 搜索专辑: Lanterns Between Constellations (艺人: Calix Drun)
+23:41:22 -   找到匹配专辑和艺人的链接
+23:41:22 -   点击专辑链接: https://music.apple.com/us/album/lanterns-between-constellations/1843300263?i=1843300267
+23:41:27 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/lanterns-between-constellations/1843300263?i=1843300267
+23:41:27 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+23:41:27 -   专辑共 14 首歌曲
+23:41:36 -     ✓ 已添加第 11 首
+23:41:47 -     ✓ 已添加第 6 首
+23:41:58 -     ✓ 已添加第 2 首
+23:42:09 -     ✓ 已添加第 7 首
+23:42:21 -     ✓ 已添加第 14 首
+23:42:32 -     ✓ 已添加第 13 首
+23:42:43 -     ✓ 已添加第 5 首
+23:42:55 -     ✓ 已添加第 4 首
+23:43:06 -     ✓ 已添加第 8 首
+23:43:18 -     ✓ 已添加第 1 首
+23:43:29 -     ✓ 已添加第 3 首
+23:43:39 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:43:39 -     ✓ 已添加第 9 首
+23:43:51 -     ✓ 已添加第 12 首
+23:44:03 -     ✓ 已添加第 10 首
+23:44:06 -   ✓ 已添加 14 首歌曲
+23:44:08 - 
+[17/20] 处理: Zachary Dawes - The Big Door Prize: Season 1
+23:44:08 - 搜索专辑: The Big Door Prize: Season 1 (艺人: Zachary Dawes)
+23:44:19 -   使用第一个专辑链接: https://music.apple.com/us/album/the-big-door-prize-season-2-apple-tv-original-series/1740986709
+23:44:19 -   点击专辑链接: https://music.apple.com/us/album/the-big-door-prize-season-2-apple-tv-original-series/1740986709
+23:44:23 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/the-big-door-prize-season-2-apple-tv-original-series/1740986709
+23:44:23 -   添加 10 首歌曲到播放列表 'Gentle Peace'...
+23:44:23 -   专辑共 16 首歌曲
+23:44:31 -     ✓ 已添加第 6 首
+23:44:40 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:44:43 -     ✓ 已添加第 13 首
+23:44:54 -     ✓ 已添加第 7 首
+23:45:06 -     ✓ 已添加第 3 首
+23:45:10 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:45:19 -     ✓ 已添加第 14 首
+23:45:30 -     ✓ 已添加第 5 首
+23:45:41 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:45:42 -     ✓ 已添加第 1 首
+23:45:53 -     ✓ 已添加第 2 首
+23:46:05 -     ✓ 已添加第 8 首
+23:46:12 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:46:16 -     ✓ 已添加第 11 首
+23:46:18 -   ✓ 已添加 10 首歌曲
+23:46:20 - 
+[18/20] 处理: Guillaume Roussel - The Spy
+23:46:20 - 搜索专辑: The Spy (艺人: Guillaume Roussel)
+23:46:25 -   找到匹配艺人的专辑链接
+23:46:25 -   点击专辑链接: https://music.apple.com/us/album/the-spy-original-series-soundtrack/1488542051
+23:46:30 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/the-spy-original-series-soundtrack/1488542051
+23:46:30 -   添加 11 首歌曲到播放列表 'Gentle Peace'...
+23:46:30 -   专辑共 21 首歌曲
+23:46:39 -     ✓ 已添加第 17 首
+23:46:50 -     ✓ 已添加第 4 首
+23:47:02 -     ✓ 已添加第 6 首
+23:47:15 -     ✓ 已添加第 1 首
+23:47:27 -     ✓ 已添加第 10 首
+23:47:38 -     ✓ 已添加第 15 首
+23:47:43 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:47:50 -     ✓ 已添加第 8 首
+23:48:01 -     ✓ 已添加第 19 首
+23:48:13 -     ✓ 已添加第 11 首
+23:48:25 -     ✓ 已添加第 3 首
+23:48:37 -     ✓ 已添加第 18 首
+23:48:39 -   ✓ 已添加 11 首歌曲
+23:48:41 - 
+[19/20] 处理: Gustavo Santaolalla - The Last of Us: Season 1
+23:48:41 - 搜索专辑: The Last of Us: Season 1 (艺人: Gustavo Santaolalla)
+23:48:44 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:48:49 -   找到匹配专辑和艺人的链接
+23:48:49 -   点击专辑链接: https://music.apple.com/us/album/the-last-of-us-season-1-soundtrack-from-the/1673140222
+23:48:53 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/the-last-of-us-season-1-soundtrack-from-the/1673140222
+23:48:53 -   添加 13 首歌曲到播放列表 'Gentle Peace'...
+23:48:53 -   专辑共 66 首歌曲
+23:49:02 -     ✓ 已添加第 43 首
+23:49:14 -     ✓ 已添加第 42 首
+23:49:26 -     ✓ 已添加第 11 首
+23:49:38 -     ✓ 已添加第 64 首
+23:49:49 -     ✓ 已添加第 49 首
+23:50:00 -     ✓ 已添加第 28 首
+23:50:13 -     ✓ 已添加第 60 首
+23:50:24 -     ✓ 已添加第 26 首
+23:50:37 -     ✓ 已添加第 13 首
+23:50:48 -     ✓ 已添加第 56 首
+23:51:00 -     ✓ 已添加第 36 首
+23:51:12 -     ✓ 已添加第 12 首
+23:51:25 -     ✓ 已添加第 45 首
+23:51:28 -   ✓ 已添加 13 首歌曲
+23:51:30 - 
+[20/20] 处理: Andrew Jimenez - Wind
+23:51:30 - 搜索专辑: Wind (艺人: Andrew Jimenez)
+23:51:40 -   使用第一个专辑链接: https://music.apple.com/us/album/wind/1536226793?i=1536226794
+23:51:40 -   点击专辑链接: https://music.apple.com/us/album/wind/1536226793?i=1536226794
+23:51:44 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/wind/1536226793?i=1536226794
+23:51:44 -   添加 12 首歌曲到播放列表 'Gentle Peace'...
+23:51:44 -   专辑共 13 首歌曲
+23:51:46 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:51:52 -     ✓ 已添加第 3 首
+23:52:05 -     ✓ 已添加第 9 首
+23:52:17 -     ✓ 已添加第 13 首
+23:52:29 -     ✓ 已添加第 5 首
+23:52:40 -     ✓ 已添加第 12 首
+23:52:52 -     ✓ 已添加第 1 首
+23:53:05 -     ✓ 已添加第 4 首
+23:53:14 -     ✓ 已添加第 8 首
+23:53:25 -     ✓ 已添加第 6 首
+23:53:35 -     ✓ 已添加第 7 首
+23:53:47 -     ✓ 已添加第 2 首
+23:53:59 -     ✓ 已添加第 10 首
+23:54:02 -   ✓ 已添加 12 首歌曲
+23:54:03 - 
+============================================================
+23:54:03 - ⚠ 有 4 张专辑添加失败，尝试重试...
+23:54:03 - ============================================================
+23:54:03 - 
+[重试] Drum & Lace - Red, White & Royal Blue
+23:54:06 -   ✓ 已点击首页
+23:54:07 - 搜索专辑: Red, White & Royal Blue (艺人: Drum & Lace)
+23:54:17 -   找到匹配专辑和艺人的链接
+23:54:17 -   点击专辑链接: https://music.apple.com/us/album/red-white-royal-blue-amazon-original-motion-picture/1699680486
+23:54:22 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/red-white-royal-blue-amazon-original-motion-picture/1699680486
+23:54:22 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+23:54:22 -   专辑共 27 首歌曲
+23:54:31 -     ✓ 已添加第 20 首
+23:54:43 -     ✓ 已添加第 3 首
+23:54:54 -     ✓ 已添加第 24 首
+23:55:06 -     ✓ 已添加第 9 首
+23:55:18 -     ✓ 已添加第 2 首
+23:55:30 -     ✓ 已添加第 27 首
+23:55:41 -     ✓ 已添加第 5 首
+23:55:49 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:55:52 -     ✓ 已添加第 12 首
+23:56:03 -     ✓ 已添加第 11 首
+23:56:13 -     ✓ 已添加第 1 首
+23:56:19 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:56:25 -     ✓ 已添加第 23 首
+23:56:36 -     ✓ 已添加第 22 首
+23:56:49 -     ✓ 已添加第 21 首
+23:57:00 -     ✓ 已添加第 14 首
+23:57:03 -   ✓ 已添加 14 首歌曲
+23:57:03 -   ✓ 重试成功，添加了 14 首
+23:57:04 - 
+[重试] Jace Bramble - Field Directive Sequence
+23:57:07 -   ✓ 已点击首页
+23:57:08 - 搜索专辑: Field Directive Sequence (艺人: Jace Bramble)
+23:57:31 -   等待搜索结果加载...
+23:57:33 -   ✗ 未找到专辑链接
+23:57:33 -   ✗ 重试仍然找不到专辑
+23:57:34 - 
+[重试] Kynan Rael - Small Fierce Ties
+23:57:37 -   ✓ 已点击首页
+23:57:38 - 搜索专辑: Small Fierce Ties (艺人: Kynan Rael)
+23:58:00 -   等待搜索结果加载...
+23:58:01 -   ✗ 未找到专辑链接
+23:58:01 -   ✗ 重试仍然找不到专辑
+23:58:02 - 
+[重试] Elwen Thade - Prairie Justice Pages
+23:58:05 -   ✓ 已点击首页
+23:58:07 - 搜索专辑: Prairie Justice Pages (艺人: Elwen Thade)
+23:58:29 -   等待搜索结果加载...
+23:58:30 -   ✗ 未找到专辑链接
+23:58:30 -   ✗ 重试仍然找不到专辑
+23:58:32 - 
+============================================================
+23:58:32 - ⚠ 预期 240 首，实际 202 首，缺少 38 首
+23:58:32 - 正在从 other_artists.json 补充...
+23:58:32 - ============================================================
+23:58:32 - 
+[补充] 搜索: Graham Reynolds - Before Midnight
+23:58:35 -   ✓ 已点击首页
+23:58:37 - 搜索专辑: Before Midnight (艺人: Graham Reynolds)
+23:58:43 -   找到匹配专辑和艺人的链接
+23:58:43 -   点击专辑链接: https://music.apple.com/us/album/before-midnight/1500811646
+23:58:48 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/before-midnight/1500811646
+23:58:48 -   ✓ 找到专辑，补充 14 首
+23:58:48 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+23:58:48 -   专辑共 13 首歌曲
+23:58:51 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+23:58:57 -     ✓ 已添加第 8 首
+23:59:08 -     ✓ 已添加第 13 首
+23:59:19 -     ✓ 已添加第 5 首
+23:59:31 -     ✓ 已添加第 9 首
+23:59:42 -     ✓ 已添加第 4 首
+23:59:53 -     ✓ 已添加第 1 首
+00:00:05 -     ✓ 已添加第 7 首
+00:00:17 -     ✓ 已添加第 3 首
+00:00:29 -     ✓ 已添加第 11 首
+00:00:41 -     ✓ 已添加第 12 首
+00:00:53 -     ✓ 已添加第 10 首
+00:01:04 -     ✓ 已添加第 2 首
+00:01:17 -     ✓ 已添加第 6 首
+00:01:20 -   ✓ 已添加 13 首歌曲
+00:01:20 -   ✓ 已补充 13 首歌曲，还差 25 首
+00:01:21 - 
+[补充] 搜索: Trevor Kowalski - Piano Themes
+00:01:22 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+00:01:24 -   ✓ 已点击首页
+00:01:25 - 搜索专辑: Piano Themes (艺人: Trevor Kowalski)
+00:01:33 -   使用第一个专辑链接: https://music.apple.com/us/album/closer-feat-halsey/1170699510?i=1170699703
+00:01:33 -   点击专辑链接: https://music.apple.com/us/album/closer-feat-halsey/1170699510?i=1170699703
+00:01:38 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/closer-feat-halsey/1170699510?i=1170699703
+00:01:38 -   ✓ 找到专辑，补充 14 首
+00:01:38 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+00:01:38 -   专辑共 5 首歌曲
+00:01:48 -     ✓ 已添加第 2 首
+00:01:59 -     ✓ 已添加第 5 首
+00:02:10 -     ✓ 已添加第 1 首
+00:02:22 -     ✓ 已添加第 3 首
+00:02:33 -     ✓ 已添加第 4 首
+00:02:36 -   ✓ 已添加 5 首歌曲
+00:02:36 -   ✓ 已补充 5 首歌曲，还差 20 首
+00:02:37 - 
+[补充] 搜索: George Kallis - Marked Men: Rule & Shaw
+00:02:40 -   ✓ 已点击首页
+00:02:41 - 搜索专辑: Marked Men: Rule & Shaw (艺人: George Kallis)
+00:02:49 -   找到匹配专辑和艺人的链接
+00:02:49 -   点击专辑链接: https://music.apple.com/us/album/marked-men-rule-shaw-original-motion-picture-soundtrack/1795908898
+00:02:54 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/marked-men-rule-shaw-original-motion-picture-soundtrack/1795908898
+00:02:54 -   ✓ 找到专辑，补充 14 首
+00:02:54 -   添加 14 首歌曲到播放列表 'Gentle Peace'...
+00:02:54 -   专辑共 17 首歌曲
+00:03:03 -     ✓ 已添加第 5 首
+00:03:15 -     ✓ 已添加第 12 首
+00:03:27 -     ✓ 已添加第 15 首
+00:03:41 -     ✓ 已添加第 16 首
+00:03:51 -     ✓ 已添加第 14 首
+00:04:03 -     ✓ 已添加第 4 首
+00:04:15 -     ✓ 已添加第 8 首
+00:04:26 -     ✓ 已添加第 7 首
+00:04:38 -     ✓ 已添加第 3 首
+00:04:50 -     ✓ 已添加第 9 首
+00:05:02 -     ✓ 已添加第 13 首
+00:05:14 -     ✓ 已添加第 17 首
+00:05:25 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+00:05:25 -     ✓ 已添加第 11 首
+00:05:37 -     ✓ 已添加第 1 首
+00:05:40 -   ✓ 已添加 14 首歌曲
+00:05:40 -   ✓ 已补充 14 首歌曲，还差 6 首
+00:05:41 - 
+[补充] 搜索: Tyler Bates - The Way
+00:05:44 -   ✓ 已点击首页
+00:05:45 - 搜索专辑: The Way (艺人: Tyler Bates)
+00:05:55 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+00:05:56 -   使用第一个专辑链接: https://music.apple.com/us/album/the-way/1440905483?i=1440905488
+00:05:56 -   点击专辑链接: https://music.apple.com/us/album/the-way/1440905483?i=1440905488
+00:06:01 -   ✓ 已成功进入专辑页面: https://music.apple.com/us/album/the-way/1440905483?i=1440905488
+00:06:01 -   ✓ 找到专辑，补充 6 首
+00:06:01 -   添加 6 首歌曲到播放列表 'Gentle Peace'...
+00:06:01 -   专辑共 13 首歌曲
+00:06:10 -     ✓ 已添加第 12 首
+00:06:23 -     ✓ 已添加第 11 首
+00:06:34 -     ✓ 已添加第 2 首
+00:06:45 -     ✓ 已添加第 5 首
+00:06:56 - Connection pool is full, discarding connection: localhost. Connection pool size: 1
+00:06:56 -     ✓ 已添加第 13 首
+00:07:07 -     ✓ 已添加第 1 首
+00:07:11 -   ✓ 已添加 6 首歌曲
+00:07:11 -   ✓ 已补充 6 首歌曲，还差 0 首
+00:07:13 - 
+✓ 补充完成！
+00:07:13 - 
+============================================================
+00:07:13 - ✓ Apple Music 播放列表添加完成！
+00:07:13 -   最终播放列表: Gentle Peace
+00:07:13 -   预期添加: 240 首
+00:07:13 -   实际添加: 240 首
+00:07:13 -   失败专辑: 3 张
+00:07:13 - ============================================================
+00:07:13 - 
+浏览器保持打开状态...
+00:09:36 - 
+============================================================
+00:09:36 - 程序运行完成！
+00:09:36 - 总耗时: 58分钟 50秒
+00:09:36 - ============================================================
