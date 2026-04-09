@@ -176,8 +176,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.17"
-# 更新内容：优化 Apple 手动登录确认逻辑，支持长时间等待与误输入重试
+APP_VERSION = "0.1.18"
+# 更新内容：修复 Apple 手动登录流程，移除过早的自动检测，添加初始等待期确保用户有充足时间手工登录
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -1410,44 +1410,32 @@ def login_apple_music(driver):
     driver.get("https://music.apple.com")
     apple_human_delay(1, 2)
 
-    def detect_logged_in() -> bool:
-        """尽量通过页面特征判断是否已经进入 Apple Music 可操作状态。"""
-        try:
-            current_url = (driver.current_url or "").lower()
-            if "signin" in current_url or "login" in current_url:
-                return False
-
-            selectors = [
-                (By.CSS_SELECTOR, "input.search-input__text-field"),
-                (By.CSS_SELECTOR, "a[href*='/search']"),
-                (By.XPATH, "//span[contains(@class, 'navigation-item__label') and (contains(text(), 'Home') or contains(text(), '首页') or contains(text(), '首頁'))]"),
-            ]
-
-            for by, selector in selectors:
-                elements = driver.find_elements(by, selector)
-                if any(element.is_displayed() for element in elements):
-                    return True
-        except Exception:
+    print("\n请在浏览器中完成登录（手动输入用户名和密码）。")
+    print("完成后在这里直接按回车确认登录成功，也可以输入 y 强制继续，输入 n 取消。")
+    print("(程序会给您充足的时间来手工完成登录)\n")
+    
+    # 初始等待 15 秒，让用户有时间手工登录，不要立即提示
+    initial_wait = 15
+    deadline_input = time.time() + APPLE_LOGIN_CONFIRM_TIMEOUT
+    
+    # 先静默等待
+    for i in range(initial_wait):
+        apple_human_delay(1, 1)  # 等待 1 秒
+        remaining_total = max(0, int(deadline_input - time.time()))
+        if remaining_total <= 0:
+            print("✗ Apple Music 登录等待超时")
             return False
-        return False
-
-    print("\n请在浏览器中完成登录。")
-    print("完成后可直接按回车重新检测，也可以输入 y 强制继续，输入 n 取消。")
-
-    deadline = time.time() + APPLE_LOGIN_CONFIRM_TIMEOUT
+    
+    # 然后开始交互式确认
     while True:
-        if detect_logged_in():
-            print("✓ 已检测到 Apple Music 登录状态")
-            return True
-
-        remaining = max(0, int(deadline - time.time()))
+        remaining = max(0, int(deadline_input - time.time()))
         if remaining <= 0:
             print("✗ Apple Music 登录等待超时")
             return False
 
         minutes, seconds = divmod(remaining, 60)
         user_input = input(
-            f"登录确认 [回车=重新检测 / y=继续 / n=取消，剩余 {minutes:02d}:{seconds:02d}]: "
+            f"[登录确认] 回车=不确定需要继续等待 / y=已登录成功 / n=登录失败，剩余 {minutes:02d}:{seconds:02d}]: "
         ).strip().lower()
 
         if user_input in ('n', 'no', 'q', 'quit', 'exit'):
@@ -1455,11 +1443,18 @@ def login_apple_music(driver):
             return False
 
         if user_input in ('y', 'yes'):
-            print("✓ 登录成功")
+            print("✓ 登录成功，开始处理...")
             return True
 
-        if user_input:
-            print("! 未识别输入，程序将继续等待，不会直接判失败")
+        if user_input == "":
+            # 空输入：稍等几秒再提示
+            print("继续等待中...")
+            apple_human_delay(3, 5)
+            continue
+
+        # 其他输入：忽略并继续
+        print("! 未识别输入，请输入 y(继续)/n(失败) 或直接按回车")
+        continue
 
 
 def search_album_on_apple(driver, artist_name, album_name):
