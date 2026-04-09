@@ -141,6 +141,11 @@ def setup_logging():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.addHandler(file_handler)
+
+    # 第三方库请求异常会重复输出原始HTTP错误，这里做降噪。
+    tidal_request_logger = logging.getLogger("tidalapi.request")
+    tidal_request_logger.setLevel(logging.CRITICAL)
+    tidal_request_logger.propagate = False
     
     return log_filename
 
@@ -171,8 +176,9 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.5"
-DEFAULT_ALBUM_COUNT = 15         # 中间部分从主库抽取的专辑数量
+APP_VERSION = "0.1.17"
+# 更新内容：优化 Apple 手动登录确认逻辑，支持长时间等待与误输入重试
+DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
 MIN_COMBINATION_DIFF = 0.85      # 最小组合差异度（0-1），低于此值会重新生成
@@ -182,7 +188,7 @@ COOLDOWN_WINDOW = 8              # 冷却期：如果专辑在最近N次中出�
 WEIGHT_DECAY_POWER = 4           # 权重衰减的幂次
 
 # Tidal 集成配置
-TIDAL_MODE = 2                   # Tidal 模式：1=新增播放列表，2=删除指定艺人专辑歌曲
+TIDAL_MODE = 1                   # Tidal 模式：1=新增播放列表，2=删除指定艺人专辑歌曲
 TIDAL_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
 TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
@@ -198,6 +204,7 @@ APPLE_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
 APPLE_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
 APPLE_DELAY_MIN = 0.3           # 操作间隔最小延迟（秒）
 APPLE_DELAY_MAX = 0.8            # 操作间隔最大延迟（秒）
+APPLE_LOGIN_CONFIRM_TIMEOUT = 1800  # Apple Music 手动登录确认最长等待时间（秒）
 
 # Qobuz 集成配置
 QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
@@ -775,7 +782,7 @@ def random_delay():
     time.sleep(delay)
 
 def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: int):
-    """将歌曲添加到播放列表（带延迟，随机选择歌曲，支持401重试）"""
+    """将歌曲添加到播放列表（优先批量添加，支持401/412重试与降级）"""
     if not tracks:
         return 0
     
@@ -788,32 +795,89 @@ def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: in
         # 从专辑中随机抽取指定数量的歌曲
         tracks_to_add = random.sample(list(tracks), track_count)
     
+    track_ids = [track.id for track in tracks_to_add]
     added_count = 0
-    retry_401_done = False  # 标记是否已经尝试过刷新session
-    
+    retry_401_done = False
+
+    def _refresh_playlist_ref(cur_playlist):
+        """按 ID 重新获取播放列表实例，避免 session 刷新后继续使用旧对象。"""
+        playlist_id = getattr(cur_playlist, "id", None)
+        if not playlist_id:
+            return cur_playlist
+        try:
+            for item in session.user.playlists():
+                if getattr(item, "id", None) == playlist_id:
+                    return item
+        except Exception:
+            pass
+        return cur_playlist
+
+    # 先尝试批量添加（更稳定，也能显著减少请求次数）
+    try:
+        playlist.add(track_ids)
+        return len(track_ids)
+    except Exception as e:
+        error_str = str(e)
+
+        if "401" in error_str and not retry_401_done:
+            print("    ⚠ 认证状态失效，正在刷新 session 后重试批量添加...")
+            if refresh_tidal_session(session):
+                retry_401_done = True
+                playlist = _refresh_playlist_ref(playlist)
+                try:
+                    playlist.add(track_ids)
+                    return len(track_ids)
+                except Exception as e2:
+                    error_str = str(e2)
+                    print(f"    ⚠ 批量重试仍失败，降级为逐首添加: {e2}")
+            else:
+                print("    ✗ 刷新 session 失败，跳过本专辑")
+                return 0
+
+        elif "412" in error_str:
+            print("    ⚠ 批量添加返回 412，先刷新 session/凭证，再刷新播放列表后重试...")
+            if refresh_tidal_session(session):
+                retry_401_done = True
+                playlist = _refresh_playlist_ref(playlist)
+                try:
+                    playlist.add(track_ids)
+                    return len(track_ids)
+                except Exception as e2:
+                    print(f"    ⚠ 批量重试仍失败，降级为逐首添加: {e2}")
+            else:
+                print(f"    ⚠ session 刷新失败，降级为逐首添加: {e}")
+        else:
+            print(f"    ⚠ 批量添加失败，降级为逐首添加: {e}")
+
+    # 降级方案：逐首添加，尽量保住部分成功率
     for track in tracks_to_add:
         max_attempts = 2
         for attempt in range(max_attempts):
             try:
                 playlist.add([track.id])
                 added_count += 1
-                random_delay()  # 每添加一首歌后延迟
-                break  # 添加成功，跳出重试循环
+                random_delay()
+                break
             except Exception as e:
                 error_str = str(e)
                 if "401" in error_str and not retry_401_done:
-                    print(f"    ⚠ 认证失效，尝试刷新session...")
+                    print("    ⚠ 逐首添加遇到 401，尝试刷新 session...")
                     if refresh_tidal_session(session):
                         retry_401_done = True
-                        # 刷新成功，重试添加
+                        playlist = _refresh_playlist_ref(playlist)
                         continue
                     else:
-                        print(f"    ✗ 刷新session失败，跳过剩余歌曲")
+                        print("    ✗ 刷新 session 失败，停止本专辑添加")
                         return added_count
-                else:
-                    print(f"    ✗ 添加歌曲失败: {e}")
-                    break  # 非401错误，不重试
-    
+                if "412" in error_str and attempt < max_attempts - 1:
+                    if not retry_401_done and refresh_tidal_session(session):
+                        retry_401_done = True
+                    playlist = _refresh_playlist_ref(playlist)
+                    time.sleep(random.uniform(0.8, 1.5))
+                    continue
+                print(f"    ✗ 添加歌曲失败: {e}")
+                break
+
     return added_count
 
 def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_count_max: int, base_dir: Path = None):
@@ -1345,16 +1409,57 @@ def login_apple_music(driver):
     print("正在访问 Apple Music...")
     driver.get("https://music.apple.com")
     apple_human_delay(1, 2)
-    
-    print("\n请在浏览器中完成登录，登录成功后输入 y 继续...")
-    user_input = input("是否已登录成功？(y/n): ").strip().lower()
-    
-    if user_input == 'y':
-        print("✓ 登录成功")
-        return True
-    else:
-        print("✗ 登录失败")
+
+    def detect_logged_in() -> bool:
+        """尽量通过页面特征判断是否已经进入 Apple Music 可操作状态。"""
+        try:
+            current_url = (driver.current_url or "").lower()
+            if "signin" in current_url or "login" in current_url:
+                return False
+
+            selectors = [
+                (By.CSS_SELECTOR, "input.search-input__text-field"),
+                (By.CSS_SELECTOR, "a[href*='/search']"),
+                (By.XPATH, "//span[contains(@class, 'navigation-item__label') and (contains(text(), 'Home') or contains(text(), '首页') or contains(text(), '首頁'))]"),
+            ]
+
+            for by, selector in selectors:
+                elements = driver.find_elements(by, selector)
+                if any(element.is_displayed() for element in elements):
+                    return True
+        except Exception:
+            return False
         return False
+
+    print("\n请在浏览器中完成登录。")
+    print("完成后可直接按回车重新检测，也可以输入 y 强制继续，输入 n 取消。")
+
+    deadline = time.time() + APPLE_LOGIN_CONFIRM_TIMEOUT
+    while True:
+        if detect_logged_in():
+            print("✓ 已检测到 Apple Music 登录状态")
+            return True
+
+        remaining = max(0, int(deadline - time.time()))
+        if remaining <= 0:
+            print("✗ Apple Music 登录等待超时")
+            return False
+
+        minutes, seconds = divmod(remaining, 60)
+        user_input = input(
+            f"登录确认 [回车=重新检测 / y=继续 / n=取消，剩余 {minutes:02d}:{seconds:02d}]: "
+        ).strip().lower()
+
+        if user_input in ('n', 'no', 'q', 'quit', 'exit'):
+            print("✗ 登录失败")
+            return False
+
+        if user_input in ('y', 'yes'):
+            print("✓ 登录成功")
+            return True
+
+        if user_input:
+            print("! 未识别输入，程序将继续等待，不会直接判失败")
 
 
 def search_album_on_apple(driver, artist_name, album_name):
@@ -3137,12 +3242,17 @@ def main():
         print(f"{'='*60}")
         
         success_count = 0
+        success_accounts = []
+        failed_accounts = []
         for i, account in enumerate(tidal_accounts):
             success = run_tidal_delete_for_single_account(
                 account, i, len(tidal_accounts), delete_list
             )
             if success:
                 success_count += 1
+                success_accounts.append(account["email"])
+            else:
+                failed_accounts.append(account["email"])
             
             # 账号之间等待一下
             if i < len(tidal_accounts) - 1:
@@ -3152,6 +3262,8 @@ def main():
         print(f"\n{'='*60}")
         print(f"Tidal 多账号删除处理完成！")
         print(f"  成功: {success_count}/{len(tidal_accounts)} 个账号")
+        print(f"  成功账号: {', '.join(success_accounts) if success_accounts else '无'}")
+        print(f"  失败账号: {', '.join(failed_accounts) if failed_accounts else '无'}")
         print(f"{'='*60}")
         
         # ===== 输出程序总耗时 =====
@@ -3179,12 +3291,17 @@ def main():
         print(f"{'='*60}")
         
         success_count = 0
+        success_accounts = []
+        failed_accounts = []
         for i, account in enumerate(tidal_accounts):
             success = run_tidal_for_single_account(
                 account, i, len(tidal_accounts), base_dir, args
             )
             if success:
                 success_count += 1
+                success_accounts.append(account["email"])
+            else:
+                failed_accounts.append(account["email"])
             
             # 账号之间等待一下
             if i < len(tidal_accounts) - 1:
@@ -3194,6 +3311,8 @@ def main():
         print(f"\n{'='*60}")
         print(f"Tidal 多账号处理完成！")
         print(f"  成功: {success_count}/{len(tidal_accounts)} 个账号")
+        print(f"  成功账号: {', '.join(success_accounts) if success_accounts else '无'}")
+        print(f"  失败账号: {', '.join(failed_accounts) if failed_accounts else '无'}")
         print(f"{'='*60}")
         
         # ===== 输出程序总耗时 =====
