@@ -8,6 +8,10 @@ import logging
 import sys
 import threading
 import ctypes
+import shutil
+import subprocess
+import urllib.request
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -165,6 +169,7 @@ except ImportError:
 # Selenium 导入（Apple Music 需要）
 try:
     from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.support.ui import WebDriverWait
@@ -175,9 +180,9 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.19"
-# 更新内容：简化 Apple 登录逻辑，禁用浏览器保活功能（用户反馈不影响手工登录流程】
+DEFAULT_PLATFORM = "Q"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.25"  # 修复：Qobuz登录改为循环等待，与Apple Music一致，不再因误输入自动判定失败
+# 更新内容：优先复用 Selenium 已缓存驱动，并补充 PowerShell 下载回退，提升 Chrome 启动稳定性
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -198,6 +203,11 @@ TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码�
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
+WEBDRIVER_STARTUP_RETRIES = 4  # 浏览器启动最大重试次数
+WEBDRIVER_STARTUP_RETRY_DELAY = 2.0  # 启动失败后的重试间隔（秒）
+WEBDRIVER_DOWNLOAD_TIMEOUT = 30  # chromedriver 下载与版本查询超时（秒）
+CHROMEDRIVER_PLATFORM = "win64"
+CHROMEDRIVER_CACHE_DIR = ".webdriver_cache"
 
 # Apple Music 集成配置
 APPLE_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
@@ -217,6 +227,12 @@ QOBUZ_LOGIN_URL = "https://play.qobuz.com/login"  # Qobuz 登录页
 QOBUZ_CREATE_BUTTON_TEXTS = ['Create', 'Créer', 'Erstellen', 'Anlegen']
 QOBUZ_ADD_TO_PLAYLIST_TEXTS = ['Add to playlists', 'Ajouter aux playlists', 'Zu Playlists hinzufügen', 'Den Playlists hinzufügen', 'Add to playlist']
 QOBUZ_ADD_BUTTON_TEXTS = ['Add', 'Ajouter', 'Hinzufügen']
+
+CHROME_BINARY_CANDIDATES = [
+    r"C:\Users\Lenovo\AppData\Local\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+]
 
 # 平台与文件映射
 PLATFORM_FILES = {
@@ -285,6 +301,229 @@ def load_tidal_delete_list() -> list[dict]:
     return delete_list
 
 
+def resolve_chrome_binary_path() -> str | None:
+    """在 Windows 常见路径中查找 Chrome 可执行文件。"""
+    for candidate in CHROME_BINARY_CANDIDATES:
+        if Path(candidate).exists():
+            return candidate
+    return None
+
+
+def detect_chrome_version(chrome_binary_path: str) -> str | None:
+    """通过 chrome.exe --version 获取本机 Chrome 版本。"""
+    try:
+        result = subprocess.run(
+            [chrome_binary_path, "--version"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=10,
+            check=False,
+        )
+        version_text = f"{result.stdout} {result.stderr}".strip()
+        match = re.search(r"(\d+\.\d+\.\d+\.\d+)", version_text)
+        if match:
+            return match.group(1)
+    except Exception:
+        pass
+
+    try:
+        ps_command = f"(Get-Item '{chrome_binary_path}').VersionInfo.ProductVersion"
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_command],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=10,
+            check=False,
+        )
+        version_text = f"{result.stdout} {result.stderr}".strip()
+        match = re.search(r"(\d+\.\d+\.\d+\.\d+)", version_text)
+        if match:
+            return match.group(1)
+    except Exception:
+        pass
+
+    return None
+
+
+def resolve_chromedriver_version(chrome_version: str) -> str | None:
+    """根据 Chrome build 解析匹配的 chromedriver 版本。"""
+    build_version = ".".join(chrome_version.split(".")[:3])
+    metadata_url = "https://googlechromelabs.github.io/chrome-for-testing/latest-patch-versions-per-build.json"
+
+    try:
+        with urllib.request.urlopen(metadata_url, timeout=WEBDRIVER_DOWNLOAD_TIMEOUT) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        build_info = data.get("builds", {}).get(build_version)
+        if build_info:
+            return build_info.get("version")
+    except Exception as e:
+        print(f"  ! 查询 chromedriver 版本失败: {e}")
+
+    return chrome_version
+
+
+def find_existing_chromedriver(driver_version: str) -> str | None:
+    """优先复用已存在的 chromedriver，避免重复下载。"""
+    candidates = [
+        Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM / driver_version / "chromedriver.exe",
+        Path(__file__).parent / CHROMEDRIVER_CACHE_DIR / driver_version / f"chromedriver-{CHROMEDRIVER_PLATFORM}" / "chromedriver.exe",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def download_file(url: str, target_path: Path) -> bool:
+    """下载文件，失败时回退到 PowerShell。"""
+    try:
+        with urllib.request.urlopen(url, timeout=WEBDRIVER_DOWNLOAD_TIMEOUT) as response, open(target_path, "wb") as target:
+            shutil.copyfileobj(response, target)
+        if target_path.exists() and target_path.stat().st_size > 0:
+            return True
+    except Exception:
+        pass
+
+    try:
+        ps_command = f"Invoke-WebRequest -UseBasicParsing '{url}' -OutFile '{target_path}'"
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_command],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=WEBDRIVER_DOWNLOAD_TIMEOUT,
+            check=False,
+        )
+        return result.returncode == 0 and target_path.exists() and target_path.stat().st_size > 0
+    except Exception:
+        return False
+
+
+def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
+    """下载并缓存匹配当前 Chrome 的官方 chromedriver。"""
+    chrome_version = detect_chrome_version(chrome_binary_path)
+    if not chrome_version:
+        print("  ! 无法识别 Chrome 版本")
+        return None
+
+    driver_version = resolve_chromedriver_version(chrome_version)
+    if not driver_version:
+        print("  ! 无法解析 chromedriver 版本")
+        return None
+
+    existing_driver = find_existing_chromedriver(driver_version)
+    if existing_driver:
+        print(f"  使用已缓存 chromedriver: {driver_version}")
+        return existing_driver
+
+    cache_root = Path(__file__).parent / CHROMEDRIVER_CACHE_DIR / driver_version
+    driver_dir = cache_root / f"chromedriver-{CHROMEDRIVER_PLATFORM}"
+    driver_path = driver_dir / "chromedriver.exe"
+    if driver_path.exists():
+        return str(driver_path)
+
+    cache_root.mkdir(parents=True, exist_ok=True)
+    zip_path = cache_root / "chromedriver.zip"
+    download_url = (
+        f"https://storage.googleapis.com/chrome-for-testing-public/"
+        f"{driver_version}/{CHROMEDRIVER_PLATFORM}/chromedriver-{CHROMEDRIVER_PLATFORM}.zip"
+    )
+
+    try:
+        print(f"  下载 chromedriver {driver_version} ...")
+        if not download_file(download_url, zip_path):
+            raise RuntimeError("下载结果为空或下载失败")
+
+        with zipfile.ZipFile(zip_path, "r") as zip_file:
+            zip_file.extractall(cache_root)
+    except Exception as e:
+        print(f"  ! 下载 chromedriver 失败: {e}")
+        return None
+    finally:
+        if zip_path.exists():
+            zip_path.unlink(missing_ok=True)
+
+    if driver_path.exists():
+        return str(driver_path)
+
+    print("  ! chromedriver 解压后未找到可执行文件")
+    return None
+
+
+def build_chrome_options():
+    """构建统一的 Chrome 启动参数。"""
+    options = webdriver.ChromeOptions()
+    options.add_argument("--incognito")
+
+    chrome_binary = resolve_chrome_binary_path()
+    if chrome_binary:
+        options.binary_location = chrome_binary
+
+    # 反检测设置
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--disable-notifications")
+
+    # 禁用后台节流
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-hang-monitor")
+
+    return options
+
+
+def init_chrome_driver_with_retry(scene_name: str):
+    """稳定启动 Chrome：本地缓存官方驱动 + 显式 Service + 重试。"""
+    last_error = None
+    chrome_binary = resolve_chrome_binary_path()
+    if not chrome_binary:
+        print(f"✗ {scene_name} 浏览器初始化失败：未找到 Chrome 安装路径")
+        return None
+
+    driver_path = ensure_local_chromedriver(chrome_binary)
+    if not driver_path:
+        print(f"✗ {scene_name} 浏览器初始化失败：无法准备 chromedriver")
+        return None
+
+    for attempt in range(1, WEBDRIVER_STARTUP_RETRIES + 1):
+        try:
+            if attempt > 1:
+                print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
+
+            options = build_chrome_options()
+            service = Service(executable_path=driver_path)
+            driver = webdriver.Chrome(service=service, options=options)
+            driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                "source": """
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    })
+                """
+            })
+            return driver
+        except Exception as e:
+            last_error = e
+            print(f"  ! {scene_name} 浏览器启动失败（第 {attempt} 次）: {e}")
+            if attempt < WEBDRIVER_STARTUP_RETRIES:
+                time.sleep(WEBDRIVER_STARTUP_RETRY_DELAY)
+
+    print(f"✗ {scene_name} 浏览器初始化失败，已重试 {WEBDRIVER_STARTUP_RETRIES} 次")
+    if last_error:
+        print(f"  最终错误: {last_error}")
+    return None
+
+
 def init_tidal_browser():
     """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（无痕模式）"""
     if not SELENIUM_AVAILABLE:
@@ -293,38 +532,7 @@ def init_tidal_browser():
     
     try:
         print("  启动 Chrome 浏览器（用于 Tidal 登录）...")
-        options = webdriver.ChromeOptions()
-        options.add_argument("--incognito")
-        
-        # 显式指定 Chrome 可执行文件路径
-        chrome_path = r"C:\Users\Lenovo\AppData\Local\Google\Chrome\Application\chrome.exe"
-        options.binary_location = chrome_path
-        
-        # 反检测设置
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-        
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-notifications")
-        
-        # 禁用后台节流
-        options.add_argument("--disable-backgrounding-occluded-windows")
-        options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-background-timer-throttling")
-        options.add_argument("--disable-hang-monitor")
-        
-        driver = webdriver.Chrome(options=options)
-        
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            """
-        })
-        
+        driver = init_chrome_driver_with_retry("Tidal")
         return driver
         
     except Exception as e:
@@ -1360,36 +1568,10 @@ def init_apple_browser():
         return None
     
     try:
-        print("  配置 Chrome 选项...")
-        options = webdriver.ChromeOptions()
-        options.add_argument("--incognito")
-        
-        # 反检测设置
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-        
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-notifications")
-        
-        # ===== 关键：禁用后台节流，确保窗口在后台时仍能正常渲染和交互 =====
-        options.add_argument("--disable-backgrounding-occluded-windows")
-        options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-background-timer-throttling")
-        options.add_argument("--disable-hang-monitor")
-        
         print("  启动 Chrome 浏览器...")
-        driver = webdriver.Chrome(options=options)
-        
-        print("  设置反检测属性...")
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            """
-        })
+        driver = init_chrome_driver_with_retry("Apple")
+        if not driver:
+            return None
         
         # 浏览器保活已禁用（用户反馈：妨碍手工登录工作）
         # start_browser_keep_alive(driver, interval=30)  # 已禁用
@@ -2174,36 +2356,10 @@ def init_qobuz_browser():
         return None
     
     try:
-        print("  配置 Chrome 选项...")
-        options = webdriver.ChromeOptions()
-        options.add_argument("--incognito")
-        
-        # 反检测设置
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-        
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-notifications")
-        
-        # ===== 关键：禁用后台节流，确保窗口在后台时仍能正常渲染和交互 =====
-        options.add_argument("--disable-backgrounding-occluded-windows")
-        options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-background-timer-throttling")
-        options.add_argument("--disable-hang-monitor")
-        
         print("  启动 Chrome 浏览器...")
-        driver = webdriver.Chrome(options=options)
-        
-        print("  设置反检测属性...")
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            """
-        })
+        driver = init_chrome_driver_with_retry("Qobuz")
+        if not driver:
+            return None
         
         # 浏览器保活已禁用（用户反馈：妨碍手工登录工作）
         # start_browser_keep_alive(driver, interval=30)  # 已禁用
@@ -2223,16 +2379,32 @@ def login_qobuz(driver):
     print("正在访问 Qobuz 登录页面...")
     driver.get(QOBUZ_LOGIN_URL)
     qobuz_human_delay(0.5, 1)
-    
-    print("\n请在浏览器中完成登录，登录成功后输入 y 继续...")
-    user_input = input("是否已登录成功？(y/n): ").strip().lower()
-    
-    if user_input == 'y':
-        print("✓ 登录成功")
-        return True
-    else:
-        print("✗ 登录失败")
-        return False
+
+    print("\n请在浏览器中完成登录。")
+    print("完成后输入 y 并按回车继续，输入 n 取消。\n")
+
+    deadline = time.time() + APPLE_LOGIN_CONFIRM_TIMEOUT
+
+    while True:
+        remaining = max(0, int(deadline - time.time()))
+        if remaining <= 0:
+            print("✗ Qobuz 登录等待超时")
+            return False
+
+        minutes, seconds = divmod(remaining, 60)
+        user_input = input(
+            f"是否已登录成功？(y/n) [剩余 {minutes:02d}:{seconds:02d}]: "
+        ).strip().lower()
+
+        if user_input == 'y':
+            print("✓ 登录成功")
+            return True
+        elif user_input == 'n':
+            print("✗ 登录失败")
+            return False
+        else:
+            print("请输入 y 或 n")
+            continue
 
 
 def search_album_on_qobuz(driver, artist_name, album_name):
@@ -3075,7 +3247,7 @@ def get_category_history_data(category: str, history: dict):
 def main():
     # ===== 记录程序开始时间 =====
     start_time = time.time()
-    print(f"Playlist 自动化工具 v{APP_VERSION}")
+    print(f"v{APP_VERSION} Playlist 自动化工具")
     
     # ===== 初始化日志 =====
     log_file = setup_logging()
