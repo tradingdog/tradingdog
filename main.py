@@ -180,8 +180,8 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "Q"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.25"  # 修复：Qobuz登录改为循环等待，与Apple Music一致，不再因误输入自动判定失败
+DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.26"  # 修复：chromedriver降级匹配，Chrome小版本升级时复用同build缓存，避免重新下载卡死
 # 更新内容：优先复用 Selenium 已缓存驱动，并补充 PowerShell 下载回退，提升 Chrome 启动稳定性
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -367,7 +367,8 @@ def resolve_chromedriver_version(chrome_version: str) -> str | None:
 
 
 def find_existing_chromedriver(driver_version: str) -> str | None:
-    """优先复用已存在的 chromedriver，避免重复下载。"""
+    """优先复用已存在的 chromedriver，避免重复下载。
+    精确版本不存在时，自动降级使用同一 major.minor.build 下已缓存的最新版本。"""
     candidates = [
         Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM / driver_version / "chromedriver.exe",
         Path(__file__).parent / CHROMEDRIVER_CACHE_DIR / driver_version / f"chromedriver-{CHROMEDRIVER_PLATFORM}" / "chromedriver.exe",
@@ -376,6 +377,37 @@ def find_existing_chromedriver(driver_version: str) -> str | None:
     for candidate in candidates:
         if candidate.exists():
             return str(candidate)
+
+    # 降级匹配：找同一 major.minor.build（前三段）下已缓存的最新版本
+    build_prefix = ".".join(driver_version.split(".")[:3])  # 如 "148.0.7778"
+
+    # 搜索本地缓存目录
+    local_cache = Path(__file__).parent / CHROMEDRIVER_CACHE_DIR
+    best = None
+    if local_cache.exists():
+        for version_dir in local_cache.iterdir():
+            ver = version_dir.name
+            if ver.startswith(build_prefix + "."):
+                exe = version_dir / f"chromedriver-{CHROMEDRIVER_PLATFORM}" / "chromedriver.exe"
+                if exe.exists():
+                    if best is None or ver > best[0]:
+                        best = (ver, str(exe))
+
+    # 搜索 selenium manager 缓存目录
+    selenium_cache = Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM
+    if selenium_cache.exists():
+        for version_dir in selenium_cache.iterdir():
+            ver = version_dir.name
+            if ver.startswith(build_prefix + "."):
+                exe = version_dir / "chromedriver.exe"
+                if exe.exists():
+                    if best is None or ver > best[0]:
+                        best = (ver, str(exe))
+
+    if best:
+        print(f"  ! 未找到 chromedriver {driver_version}，降级使用缓存版本 {best[0]}")
+        return best[1]
+
     return None
 
 
