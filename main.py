@@ -180,9 +180,9 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.26"  # 修复：chromedriver降级匹配，Chrome小版本升级时复用同build缓存，避免重新下载卡死
-# 更新内容：优先复用 Selenium 已缓存驱动，并补充 PowerShell 下载回退，提升 Chrome 启动稳定性
+DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.27"  # 修复：Apple Music 新版网页先点左侧搜索入口，再等待10秒并兼容新版顶部搜索框
+# 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -215,6 +215,7 @@ APPLE_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
 APPLE_DELAY_MIN = 0.3           # 操作间隔最小延迟（秒）
 APPLE_DELAY_MAX = 0.8            # 操作间隔最大延迟（秒）
 APPLE_LOGIN_CONFIRM_TIMEOUT = 1800  # Apple Music 手动登录确认最长等待时间（秒）
+APPLE_SEARCH_PANEL_WAIT_SECONDS = 10  # 点击左侧搜索入口后等待顶部搜索框出现（秒）
 
 # Qobuz 集成配置
 QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
@@ -1656,9 +1657,11 @@ def search_album_on_apple(driver, artist_name, album_name):
     print(f"搜索专辑: {album_name} (艺人: {artist_name})")
     
     try:
-        # 点击搜索框
+        click_apple_search(driver)
+
+        # 兼容新版页面顶部搜索框
         search_input = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "input.search-input__text-field"))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input#search-input__text-field, input.search-input__text-field, input[data-testid='search-input__text-field'], input[type='search'][role='searchbox']"))
         )
         apple_move_to_element(driver, search_input)
         apple_human_delay(0.3, 0.5)
@@ -1852,6 +1855,37 @@ def click_apple_home(driver):
             return True
         except:
             return False
+
+
+def click_apple_search(driver):
+    """点击 Apple Music 左侧搜索入口，并等待新版顶部搜索框出现。"""
+    search_selectors = [
+        (By.XPATH, "//a[contains(@href, '/search') and (@data-testid='search' or .//span[contains(@class, 'navigation-item__label')]) ]"),
+        (By.XPATH, "//span[contains(@class, 'navigation-item__label') and (contains(text(), 'Search') or contains(text(), '搜索') or contains(text(), '搜尋') or contains(text(), 'Suche'))]/ancestor::a[1]"),
+        (By.XPATH, "//span[contains(@class, 'navigation-item__label') and (contains(text(), 'Search') or contains(text(), '搜索') or contains(text(), '搜尋') or contains(text(), 'Suche'))]"),
+    ]
+
+    last_error = None
+    for by, selector in search_selectors:
+        try:
+            search_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((by, selector))
+            )
+            apple_move_to_element(driver, search_btn)
+            apple_human_delay(0.3, 0.6)
+            try:
+                search_btn.click()
+            except Exception:
+                driver.execute_script("arguments[0].click();", search_btn)
+
+            print(f"  ✓ 已点击搜索入口，等待 {APPLE_SEARCH_PANEL_WAIT_SECONDS} 秒加载搜索框")
+            time.sleep(APPLE_SEARCH_PANEL_WAIT_SECONDS)
+            return True
+        except Exception as e:
+            last_error = e
+
+    print(f"  ! 点击搜索入口失败: {last_error}")
+    return False
 
 
 def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_album=False):
