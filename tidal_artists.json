@@ -148,13 +148,6 @@
         ]
     },
     {
-        "artist": "Jace Bramble",
-        "albums": [
-            "Unbent Blueprint",
-            "Field Directive Sequence"
-        ]
-    },
-    {
         "artist": "Joren Talmage",
         "albums": [
             "Twelve Minds One Truth"
@@ -182,6 +175,24 @@
         "artist": "Elwen Thade",
         "albums": [
             "Prairie Justice Pages"
+        ]
+    },
+    {
+        "artist": "Jaxen Thal",
+        "albums": [
+            "Snow Cabin Judgments"
+        ]
+    },
+    {
+        "artist": "Esmund Slora",
+        "albums": [
+            "Woven Across Miles"
+        ]
+    },
+    {
+        "artist": "Rex Veyr",
+        "albums": [
+            "Size Shifter Saga"
         ]
     }
 ]

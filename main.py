@@ -180,9 +180,9 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.27"  # 修复：Apple Music 新版网页先点左侧搜索入口，再等待10秒并兼容新版顶部搜索框
-# 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
+DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.28"  # 修复：Tidal OAuth 先开浏览器再取链接，导航重试与更长密码页等待
+# 更新内容：缓解 Chrome 未打开链接即关闭、Continue 后找不到密码框的间歇性失败
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -201,6 +201,15 @@ TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
+TIDAL_OAUTH_PAGE_LOAD_TIMEOUT = 45                  # OAuth 页面加载/跳转最长等待（秒）
+TIDAL_OAUTH_NAV_RETRIES = 4                         # OAuth 链接打开失败时的重试次数
+TIDAL_OAUTH_PASSWORD_WAIT = 35                      # 点击 Continue 后等待密码框（秒）
+TIDAL_OAUTH_API_RETRIES = 3                         # auth.tidal.com 请求失败重试次数
+TIDAL_PASSWORD_SELECTORS = (
+    "input#password, input[name='password'], input[type='password'], "
+    "input[autocomplete='current-password']"
+)
+TIDAL_EMAIL_SELECTORS = "input#email, input[name='email'], input[type='email']"
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
 WEBDRIVER_STARTUP_RETRIES = 4  # 浏览器启动最大重试次数
@@ -566,11 +575,122 @@ def init_tidal_browser():
     try:
         print("  启动 Chrome 浏览器（用于 Tidal 登录）...")
         driver = init_chrome_driver_with_retry("Tidal")
+        if driver:
+            try:
+                driver.set_page_load_timeout(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
+            except Exception:
+                pass
         return driver
         
     except Exception as e:
         print(f"✗ 浏览器初始化失败: {e}")
         return None
+
+
+def _tidal_oauth_page_debug(driver) -> str:
+    """失败时输出当前页面状态，便于排查。"""
+    try:
+        url = driver.current_url or "(空)"
+        title = driver.title or "(无标题)"
+        body_snippet = ""
+        try:
+            body = driver.find_element(By.TAG_NAME, "body").text.strip()
+            if body:
+                body_snippet = body[:200].replace("\n", " ")
+        except Exception:
+            pass
+        return f"url={url}, title={title}" + (f", page={body_snippet!r}" if body_snippet else "")
+    except Exception as e:
+        return f"无法读取页面状态: {e}"
+
+
+def _wait_for_document_ready(driver, timeout: float) -> bool:
+    try:
+        WebDriverWait(driver, timeout).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _navigate_tidal_oauth_url(driver, auth_url: str) -> bool:
+    """打开 OAuth 短链；网络抖动时重试，并等待重定向到登录页。"""
+    last_error = None
+    for attempt in range(1, TIDAL_OAUTH_NAV_RETRIES + 1):
+        try:
+            if attempt > 1:
+                print(f"    第 {attempt}/{TIDAL_OAUTH_NAV_RETRIES} 次重试打开 OAuth 链接...")
+            driver.get(auth_url)
+            _wait_for_document_ready(driver, TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
+            time.sleep(2)
+            current = (driver.current_url or "").lower()
+            if current and current not in ("about:blank", "chrome://newtab/"):
+                print(f"    ✓ 页面已加载: {driver.current_url}")
+                return True
+            last_error = RuntimeError("页面仍为空白，可能未成功导航")
+        except Exception as e:
+            last_error = e
+            err = str(e)
+            if attempt < TIDAL_OAUTH_NAV_RETRIES and (
+                "ERR_CONNECTION" in err
+                or "net::" in err
+                or "timeout" in err.lower()
+                or "Timed out" in err
+            ):
+                time.sleep(3)
+                continue
+            print(f"    ✗ 打开 OAuth 链接失败: {e}")
+            return False
+    if last_error:
+        print(f"    ✗ 打开 OAuth 链接失败: {last_error}")
+        print(f"    调试: {_tidal_oauth_page_debug(driver)}")
+    return False
+
+
+def _safe_click(driver, element) -> None:
+    try:
+        element.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", element)
+
+
+def _wait_for_tidal_password_field(driver, timeout: float):
+    """Continue 之后等待密码框出现（含慢速跳转与加载遮罩）。"""
+    end = time.time() + timeout
+    last_debug = ""
+    while time.time() < end:
+        for el in driver.find_elements(By.CSS_SELECTOR, TIDAL_PASSWORD_SELECTORS):
+            try:
+                if el.is_displayed() and el.is_enabled():
+                    return el
+            except Exception:
+                continue
+        last_debug = _tidal_oauth_page_debug(driver)
+        time.sleep(0.5)
+    raise TimeoutError(f"等待密码输入框超时（{timeout}s）; {_tidal_oauth_page_debug(driver) or last_debug}")
+
+
+def _start_tidal_oauth_session(session):
+    """调用 device authorization，网络异常时重试。"""
+    last_error = None
+    for attempt in range(1, TIDAL_OAUTH_API_RETRIES + 1):
+        try:
+            return session.login_oauth()
+        except Exception as e:
+            last_error = e
+            err = str(e)
+            retryable = any(
+                token in err
+                for token in ("SSL", "EOF", "Connection", "timeout", "Max retries", "HTTPSConnectionPool")
+            )
+            if retryable and attempt < TIDAL_OAUTH_API_RETRIES:
+                wait_s = 3 * attempt
+                print(f"  ! OAuth API 请求失败，{wait_s}s 后重试 ({attempt}/{TIDAL_OAUTH_API_RETRIES}): {e}")
+                time.sleep(wait_s)
+                continue
+            raise
+    raise last_error
 
 
 def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
@@ -589,14 +709,14 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
     try:
         print(f"  正在自动完成 OAuth 登录: {email}")
         
-        # 1. 访问 OAuth 链接
-        driver.get(auth_url)
-        time.sleep(5)
+        # 1. 访问 OAuth 链接（含重试与就绪等待）
+        if not _navigate_tidal_oauth_url(driver, auth_url):
+            return False
         
         # 2. 输入邮箱
         try:
-            email_input = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "input#email, input[name='email'], input[type='email']"))
+            email_input = WebDriverWait(driver, TIDAL_OAUTH_PAGE_LOAD_TIMEOUT).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, TIDAL_EMAIL_SELECTORS))
             )
             email_input.clear()
             # 模拟人类输入
@@ -606,54 +726,51 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
             print(f"    ✓ 已输入邮箱")
         except Exception as e:
             print(f"    ✗ 输入邮箱失败: {e}")
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
         time.sleep(1)
         
         # 3. 点击 Continue 按钮（邮箱页面）
         try:
-            continue_btn = WebDriverWait(driver, 5).until(
+            continue_btn = WebDriverWait(driver, 15).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit'], button[ui-test-id='check-user-continue-button']"))
             )
-            continue_btn.click()
+            _safe_click(driver, continue_btn)
             print(f"    ✓ 已点击 Continue")
         except Exception as e:
             print(f"    ✗ 点击 Continue 失败: {e}")
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
-        time.sleep(2)
-        
-        # 4. 输入密码
+        # 4. 输入密码（等待跳转/加载完成，避免 10s 过短导致误报）
         try:
-            # 等待密码输入框可交互
-            password_input = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "input#password"))
-            )
-            # 先点击输入框确保获得焦点
-            password_input.click()
+            password_input = _wait_for_tidal_password_field(driver, TIDAL_OAUTH_PASSWORD_WAIT)
+            _safe_click(driver, password_input)
             time.sleep(0.5)
             password_input.clear()
             time.sleep(0.3)
-            # 模拟人类输入
             for char in password:
                 password_input.send_keys(char)
                 time.sleep(random.uniform(0.02, 0.08))
             print(f"    ✓ 已输入密码")
         except Exception as e:
             print(f"    ✗ 输入密码失败: {e}")
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
         time.sleep(2)
         
         # 5. 点击 Log In 按钮
         try:
-            login_btn = WebDriverWait(driver, 5).until(
+            login_btn = WebDriverWait(driver, 15).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button[ui-test-id='login-user-login-button'], button[type='submit']"))
             )
-            login_btn.click()
+            _safe_click(driver, login_btn)
             print(f"    ✓ 已点击 Log In")
         except Exception as e:
             print(f"    ✗ 点击 Log In 失败: {e}")
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
         time.sleep(5)
@@ -774,20 +891,19 @@ def login_tidal_with_automation(email: str, password: str):
         if cred_path.exists():
             cred_path.unlink()
         
-        # 启动 OAuth 流程
         print(f"\n开始 Tidal OAuth 验证: {email}")
-        login_info, future = session.login_oauth()
-        auth_url = login_info.verification_uri_complete
-        # 确保 URL 有协议前缀
-        if auth_url and not auth_url.startswith("http"):
-            auth_url = "https://" + auth_url
-        print(f"  OAuth 链接: {auth_url}")
         
-        # 初始化浏览器
+        # 先启动浏览器，再请求 OAuth，减少「拿到链接后迟迟未打开页面」导致失败
         driver = init_tidal_browser()
         if not driver:
             print("✗ 无法启动浏览器")
             return None, None
+        
+        login_info, future = _start_tidal_oauth_session(session)
+        auth_url = login_info.verification_uri_complete
+        if auth_url and not auth_url.startswith("http"):
+            auth_url = "https://" + auth_url
+        print(f"  OAuth 链接: {auth_url}")
         
         # 使用浏览器自动完成 OAuth 登录
         success = auto_complete_tidal_oauth(driver, auth_url, email, password)
