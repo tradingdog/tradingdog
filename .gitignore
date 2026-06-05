@@ -1,0 +1,14 @@
+# 运行日志（保留 logs 目录结构）
+logs/*
+!logs/.gitkeep
+
+# 本地凭据与浏览器配置
+.tidal_credentials.json
+tidal_email.txt
+ChromeProfile/
+.webdriver_cache/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

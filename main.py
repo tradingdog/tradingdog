@@ -129,29 +129,32 @@ def stop_browser_keep_alive():
         _browser_keep_alive = None
 
 # ===== 日志配置 =====
-def setup_logging():
-    """配置日志，输出到文件"""
-    log_filename = f"qobuz_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    
-    # 创建日志格式
-    log_format = logging.Formatter('%(asctime)s - %(message)s', datefmt='%H:%M:%S')
-    
-    # 创建文件处理器（只输出到文件，不输出到控制台）
-    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+def setup_logging(platform: str = "T") -> str:
+    """配置日志，输出到 logs/ 目录下的平台日志文件。"""
+    base_dir = Path(__file__).parent
+    logs_dir = base_dir / LOGS_DIR
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    platform_key = (platform or "T").upper()
+    platform_name = PLATFORM_LOG_NAMES.get(platform_key, platform_key.lower())
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = logs_dir / f"{platform_name}_{timestamp}.txt"
+
+    log_format = logging.Formatter("%(asctime)s - %(message)s", datefmt="%H:%M:%S")
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
     file_handler.setFormatter(log_format)
     file_handler.setLevel(logging.INFO)
-    
-    # 获取 root logger
+
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(logging.INFO)
     logger.addHandler(file_handler)
 
-    # 第三方库请求异常会重复输出原始HTTP错误，这里做降噪。
     tidal_request_logger = logging.getLogger("tidalapi.request")
     tidal_request_logger.setLevel(logging.CRITICAL)
     tidal_request_logger.propagate = False
-    
-    return log_filename
+
+    return str(log_path)
 
 # 自定义 print 函数，同时输出到控制台和日志文件
 _original_print = print
@@ -181,8 +184,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.30"  # 修复：Tidal 加歌前同步 ETag/曲目数，分批重试缓解 412/500
-# 更新内容：播放列表摘要不带 ETag 导致批量/逐首添加 412，改为加歌前 GET 同步并分块重试
+APP_VERSION = "0.1.31"  # 新增：统一 logs 目录保存各平台运行日志
+# 更新内容：Tidal/Apple/Qobuz 日志写入 logs/{平台}_{时间}.txt，启动时打印路径
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -214,6 +217,8 @@ TIDAL_PASSWORD_SELECTORS = (
 TIDAL_EMAIL_SELECTORS = "input#email, input[name='email'], input[type='email']"
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
+LOGS_DIR = "logs"                                   # 运行日志目录
+PLATFORM_LOG_NAMES = {"T": "tidal", "A": "apple", "Q": "qobuz"}
 WEBDRIVER_STARTUP_RETRIES = 4  # 浏览器启动最大重试次数
 WEBDRIVER_STARTUP_RETRY_DELAY = 2.0  # 启动失败后的重试间隔（秒）
 WEBDRIVER_DOWNLOAD_TIMEOUT = 30  # chromedriver 下载与版本查询超时（秒）
@@ -3568,13 +3573,8 @@ def get_category_history_data(category: str, history: dict):
 def main():
     # ===== 记录程序开始时间 =====
     start_time = time.time()
-    print(f"v{APP_VERSION} Playlist 自动化工具")
-    
-    # ===== 初始化日志 =====
-    log_file = setup_logging()
-    
     base_dir = Path(__file__).parent
-    
+
     parser = argparse.ArgumentParser(description="随机生成播放列表")
     parser.add_argument(
         "--Platform",
@@ -3612,6 +3612,10 @@ def main():
         help="启用 Tidal 删除模式：从所有播放列表中删除指定专辑的歌曲"
     )
     args = parser.parse_args()
+
+    log_file = setup_logging(args.Platform)
+    print(f"v{APP_VERSION} Playlist 自动化工具")
+    print(f"日志文件: {log_file}")
 
     # 当平台为 Tidal 时，默认启用 Tidal 添加功能
     if args.Platform == "T" and not args.tidal:
@@ -3675,7 +3679,6 @@ def main():
         
         print("="*60)
         print("Qobuz 播放列表自动添加工具")
-        print(f"日志文件: {log_file}")
         print("="*60)
         print()
 
@@ -3922,6 +3925,7 @@ def main():
         print(f"总耗时: {minutes}分钟 {seconds}秒")
     else:
         print(f"总耗时: {seconds}秒")
+    print(f"日志已保存: {log_file}")
     print(f"{'='*60}")
 
 
