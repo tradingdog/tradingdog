@@ -181,8 +181,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.28"  # 修复：Tidal OAuth 先开浏览器再取链接，导航重试与更长密码页等待
-# 更新内容：缓解 Chrome 未打开链接即关闭、Continue 后找不到密码框的间歇性失败
+APP_VERSION = "0.1.29"  # 修复：Tidal 列举播放列表绕过损坏项，避免登录后 500 中断
+# 更新内容：OAuth 成功后 API 拉取单个坏列表导致整批失败时，改用列表摘要并跳过异常项
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -1119,17 +1119,95 @@ def search_album_on_tidal(session, artist_name: str, album_name: str, retry_on_4
     
     return None
 
+def _parse_tidal_playlist_list_item(item) -> dict | None:
+    """从 users/{id}/playlists 的单条记录提取 id 与标题。"""
+    if not isinstance(item, dict):
+        return None
+    data = item.get("data", item)
+    if not isinstance(data, dict):
+        return None
+    playlist_id = data.get("uuid")
+    title = data.get("title")
+    if playlist_id and title:
+        return {"id": playlist_id, "title": title, "raw": data}
+    return None
+
+
+def fetch_tidal_user_playlist_summaries(session) -> list[dict]:
+    """
+    只请求播放列表列表接口，不逐个 GET 详情。
+    tidalapi 默认会对每个用户列表再请求 playlists/{id}，账号里有一个坏列表就会整批 500 失败。
+    """
+    user_id = session.user.id
+    endpoint = f"users/{user_id}/playlists"
+    resp = session.request.request("GET", endpoint)
+    resp.raise_for_status()
+    json_obj = resp.json()
+    items = json_obj.get("items", [])
+    summaries = []
+    for item in items:
+        parsed = _parse_tidal_playlist_list_item(item)
+        if parsed:
+            summaries.append(parsed)
+    return summaries
+
+
+def load_tidal_user_playlist(session, playlist_id: str, summary_raw=None, max_retries: int = 3):
+    """加载可 add() 的 UserPlaylist；优先用列表摘要，避免对坏列表重复 GET。"""
+    if TIDAL_AVAILABLE:
+        import tidalapi.playlist as tidal_playlist
+    else:
+        raise RuntimeError("tidalapi 不可用")
+
+    if summary_raw:
+        playlist = tidal_playlist.UserPlaylist(session, None)
+        playlist.parse(summary_raw)
+        return playlist
+
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return tidal_playlist.UserPlaylist(session, playlist_id)
+        except Exception as e:
+            last_error = e
+            err = str(e)
+            if any(code in err for code in ("500", "502", "503", "504")) and attempt < max_retries:
+                wait_s = 2 * attempt
+                print(f"    ! 播放列表详情加载失败，{wait_s}s 后重试 ({attempt}/{max_retries})...")
+                time.sleep(wait_s)
+                continue
+            raise
+    if last_error:
+        raise last_error
+    raise RuntimeError(f"无法加载播放列表: {playlist_id}")
+
+
+def find_tidal_playlist_by_name(session, playlist_name: str):
+    """按名称查找播放列表；单个损坏列表不会拖垮整个流程。"""
+    target = playlist_name.lower()
+    broken_count = 0
+    for summary in fetch_tidal_user_playlist_summaries(session):
+        if summary["title"].lower() != target:
+            continue
+        try:
+            return load_tidal_user_playlist(session, summary["id"], summary_raw=summary["raw"])
+        except Exception as e:
+            broken_count += 1
+            print(f"    ! 播放列表「{summary['title']}」加载失败，跳过: {e}")
+    if broken_count:
+        print(f"    ! 共 {broken_count} 个同名或损坏列表项无法加载")
+    return None
+
+
 def get_or_create_playlist_on_tidal(session, playlist_name: str, description: str = ""):
     """获取或创建 Tidal 播放列表"""
-    # 获取用户的所有播放列表
-    user_playlists = session.user.playlists()
-    
-    # 查找是否已存在
-    for playlist in user_playlists:
-        if playlist.name and playlist.name.lower() == playlist_name.lower():
-            return playlist, False
-    
-    # 创建新播放列表
+    try:
+        existing = find_tidal_playlist_by_name(session, playlist_name)
+        if existing:
+            return existing, False
+    except Exception as e:
+        print(f"  ! 列举播放列表时出错，将直接创建新列表: {e}")
+
     playlist = session.user.create_playlist(playlist_name, description)
     return playlist, True
 
@@ -1162,9 +1240,11 @@ def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: in
         if not playlist_id:
             return cur_playlist
         try:
-            for item in session.user.playlists():
-                if getattr(item, "id", None) == playlist_id:
-                    return item
+            for summary in fetch_tidal_user_playlist_summaries(session):
+                if summary["id"] == playlist_id:
+                    return load_tidal_user_playlist(
+                        session, summary["id"], summary_raw=summary["raw"]
+                    )
         except Exception:
             pass
         return cur_playlist
@@ -1542,15 +1622,24 @@ def delete_tracks_from_tidal_playlists(session, delete_list: list[dict]) -> dict
     for item in delete_list:
         print(f"  - {item['artist']} - {item['album']}")
     
-    # 获取用户的所有播放列表
     try:
-        user_playlists = session.user.playlists()
-        print(f"\n找到 {len(user_playlists)} 个播放列表")
+        summaries = fetch_tidal_user_playlist_summaries(session)
+        print(f"\n找到 {len(summaries)} 个播放列表")
     except Exception as e:
         print(f"✗ 获取播放列表失败: {e}")
         stats["errors"].append(f"获取播放列表失败: {e}")
         return stats
-    
+
+    user_playlists = []
+    for summary in summaries:
+        try:
+            user_playlists.append(
+                load_tidal_user_playlist(session, summary["id"], summary_raw=summary["raw"])
+            )
+        except Exception as e:
+            print(f"  ! 跳过无法加载的播放列表「{summary['title']}」: {e}")
+            stats["errors"].append(f"跳过列表 {summary['title']}: {e}")
+
     # 遍历每个播放列表
     for playlist in user_playlists:
         playlist_name = playlist.name if playlist.name else "(未命名)"
