@@ -181,8 +181,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.29"  # 修复：Tidal 列举播放列表绕过损坏项，避免登录后 500 中断
-# 更新内容：OAuth 成功后 API 拉取单个坏列表导致整批失败时，改用列表摘要并跳过异常项
+APP_VERSION = "0.1.30"  # 修复：Tidal 加歌前同步 ETag/曲目数，分批重试缓解 412/500
+# 更新内容：播放列表摘要不带 ETag 导致批量/逐首添加 412，改为加歌前 GET 同步并分块重试
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -198,6 +198,8 @@ TIDAL_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
 TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
+TIDAL_ADD_CHUNK_SIZE = 5         # 每次批量添加的歌曲数（过大易触发 412/500）
+TIDAL_ADD_MAX_RETRIES = 4        # 单次添加失败的最大重试次数
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
@@ -1204,6 +1206,10 @@ def get_or_create_playlist_on_tidal(session, playlist_name: str, description: st
     try:
         existing = find_tidal_playlist_by_name(session, playlist_name)
         if existing:
+            try:
+                sync_tidal_playlist_state(session, existing)
+            except Exception as e:
+                print(f"  ! 播放列表状态同步失败，继续使用摘要对象: {e}")
             return existing, False
     except Exception as e:
         print(f"  ! 列举播放列表时出错，将直接创建新列表: {e}")
@@ -1211,111 +1217,155 @@ def get_or_create_playlist_on_tidal(session, playlist_name: str, description: st
     playlist = session.user.create_playlist(playlist_name, description)
     return playlist, True
 
+
+def _is_tidal_retryable_error(err: str) -> bool:
+    return any(code in err for code in ("401", "412", "429", "500", "502", "503", "504"))
+
+
+def sync_tidal_playlist_state(session, playlist, max_retries: int = 3):
+    """加歌前同步 ETag 与曲目数，避免 412 precondition failed。"""
+    playlist_id = getattr(playlist, "id", None)
+    if not playlist_id:
+        return playlist
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = session.request.request("GET", f"playlists/{playlist_id}")
+            etag = resp.headers.get("etag")
+            if etag:
+                playlist._etag = etag
+            playlist.parse(resp.json())
+            return playlist
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                time.sleep(2 * attempt)
+                continue
+            raise last_error
+    if last_error:
+        raise last_error
+    return playlist
+
+
+def _tidal_post_add_tracks(session, playlist, track_ids: list, *, use_etag: bool = True) -> int:
+    """POST 添加曲目；返回成功添加的数量。"""
+    ids = [str(tid) for tid in track_ids if tid is not None]
+    if not ids:
+        return 0
+    num_tracks = playlist.num_tracks if getattr(playlist, "num_tracks", -1) >= 0 else 0
+    data = {
+        "onArtifactNotFound": "SKIP",
+        "trackIds": ",".join(ids),
+        "toIndex": num_tracks,
+        "onDupes": "SKIP",
+    }
+    headers = None
+    if use_etag:
+        etag = getattr(playlist, "_etag", None)
+        if etag:
+            headers = {"If-None-Match": etag}
+    resp = session.request.request(
+        "POST",
+        f"playlists/{playlist.id}/items",
+        params={"limit": len(ids)},
+        data=data,
+        headers=headers,
+    )
+    resp.raise_for_status()
+    new_etag = resp.headers.get("etag")
+    if new_etag:
+        playlist._etag = new_etag
+    payload = resp.json()
+    added_items = payload.get("addedItemIds") or []
+    added_count = len(added_items) if added_items else len(ids)
+    playlist.num_tracks = num_tracks + added_count
+    return added_count
+
+
+def _tidal_add_chunk_with_retry(session, playlist, track_ids: list, retry_401_state: dict) -> int:
+    """对单个分块执行添加，含 412/500 重试与逐首降级。"""
+    for attempt in range(1, TIDAL_ADD_MAX_RETRIES + 1):
+        use_etag = attempt < TIDAL_ADD_MAX_RETRIES
+        try:
+            sync_tidal_playlist_state(session, playlist)
+            return _tidal_post_add_tracks(session, playlist, track_ids, use_etag=use_etag)
+        except Exception as e:
+            err = str(e)
+            if "401" in err and not retry_401_state.get("done"):
+                print("    ⚠ 认证失效，刷新 session 后重试...")
+                if refresh_tidal_session(session):
+                    retry_401_state["done"] = True
+                    continue
+                return 0
+            if _is_tidal_retryable_error(err) and attempt < TIDAL_ADD_MAX_RETRIES:
+                if "412" in err:
+                    print(f"    ! 412 状态过期，同步后重试 ({attempt}/{TIDAL_ADD_MAX_RETRIES})...")
+                else:
+                    wait_s = 1.5 * attempt
+                    print(f"    ! 添加失败 {err[:80]}，{wait_s:.1f}s 后重试 ({attempt}/{TIDAL_ADD_MAX_RETRIES})...")
+                    time.sleep(wait_s)
+                continue
+            print(f"    ⚠ 分块添加失败，降级逐首: {e}")
+            break
+
+    added = 0
+    for tid in track_ids:
+        for attempt in range(1, TIDAL_ADD_MAX_RETRIES + 1):
+            use_etag = attempt < TIDAL_ADD_MAX_RETRIES
+            try:
+                sync_tidal_playlist_state(session, playlist)
+                added += _tidal_post_add_tracks(session, playlist, [tid], use_etag=use_etag)
+                random_delay()
+                break
+            except Exception as e:
+                err = str(e)
+                if "401" in err and not retry_401_state.get("done"):
+                    if refresh_tidal_session(session):
+                        retry_401_state["done"] = True
+                        continue
+                    return added
+                if _is_tidal_retryable_error(err) and attempt < TIDAL_ADD_MAX_RETRIES:
+                    time.sleep(1.5 * attempt)
+                    continue
+                print(f"    ✗ 添加歌曲失败: {e}")
+                break
+    return added
+
+
+def tidal_add_tracks_with_retry(session, playlist, track_ids: list) -> int:
+    """分批添加歌曲，每批加歌前同步播放列表状态。"""
+    if not track_ids:
+        return 0
+    retry_401_state = {"done": False}
+    added_total = 0
+    chunks = [
+        track_ids[i:i + TIDAL_ADD_CHUNK_SIZE]
+        for i in range(0, len(track_ids), TIDAL_ADD_CHUNK_SIZE)
+    ]
+    for chunk in chunks:
+        added_total += _tidal_add_chunk_with_retry(session, playlist, chunk, retry_401_state)
+        random_delay()
+    return added_total
+
+
 def random_delay():
     """随机延迟，避免操作过快"""
     delay = random.uniform(TIDAL_DELAY_MIN, TIDAL_DELAY_MAX)
     time.sleep(delay)
 
 def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: int):
-    """将歌曲添加到播放列表（优先批量添加，支持401/412重试与降级）"""
+    """将歌曲添加到播放列表（分批同步 ETag，缓解 412/500）"""
     if not tracks:
         return 0
-    
-    # 随机选择指定数量的歌曲（而不是按顺序取前N首）
+
     if len(tracks) <= track_count:
-        # 歌曲数量不足，全部添加但打乱顺序
         tracks_to_add = list(tracks)
         random.shuffle(tracks_to_add)
     else:
-        # 从专辑中随机抽取指定数量的歌曲
         tracks_to_add = random.sample(list(tracks), track_count)
-    
+
     track_ids = [track.id for track in tracks_to_add]
-    added_count = 0
-    retry_401_done = False
-
-    def _refresh_playlist_ref(cur_playlist):
-        """按 ID 重新获取播放列表实例，避免 session 刷新后继续使用旧对象。"""
-        playlist_id = getattr(cur_playlist, "id", None)
-        if not playlist_id:
-            return cur_playlist
-        try:
-            for summary in fetch_tidal_user_playlist_summaries(session):
-                if summary["id"] == playlist_id:
-                    return load_tidal_user_playlist(
-                        session, summary["id"], summary_raw=summary["raw"]
-                    )
-        except Exception:
-            pass
-        return cur_playlist
-
-    # 先尝试批量添加（更稳定，也能显著减少请求次数）
-    try:
-        playlist.add(track_ids)
-        return len(track_ids)
-    except Exception as e:
-        error_str = str(e)
-
-        if "401" in error_str and not retry_401_done:
-            print("    ⚠ 认证状态失效，正在刷新 session 后重试批量添加...")
-            if refresh_tidal_session(session):
-                retry_401_done = True
-                playlist = _refresh_playlist_ref(playlist)
-                try:
-                    playlist.add(track_ids)
-                    return len(track_ids)
-                except Exception as e2:
-                    error_str = str(e2)
-                    print(f"    ⚠ 批量重试仍失败，降级为逐首添加: {e2}")
-            else:
-                print("    ✗ 刷新 session 失败，跳过本专辑")
-                return 0
-
-        elif "412" in error_str:
-            print("    ⚠ 批量添加返回 412，先刷新 session/凭证，再刷新播放列表后重试...")
-            if refresh_tidal_session(session):
-                retry_401_done = True
-                playlist = _refresh_playlist_ref(playlist)
-                try:
-                    playlist.add(track_ids)
-                    return len(track_ids)
-                except Exception as e2:
-                    print(f"    ⚠ 批量重试仍失败，降级为逐首添加: {e2}")
-            else:
-                print(f"    ⚠ session 刷新失败，降级为逐首添加: {e}")
-        else:
-            print(f"    ⚠ 批量添加失败，降级为逐首添加: {e}")
-
-    # 降级方案：逐首添加，尽量保住部分成功率
-    for track in tracks_to_add:
-        max_attempts = 2
-        for attempt in range(max_attempts):
-            try:
-                playlist.add([track.id])
-                added_count += 1
-                random_delay()
-                break
-            except Exception as e:
-                error_str = str(e)
-                if "401" in error_str and not retry_401_done:
-                    print("    ⚠ 逐首添加遇到 401，尝试刷新 session...")
-                    if refresh_tidal_session(session):
-                        retry_401_done = True
-                        playlist = _refresh_playlist_ref(playlist)
-                        continue
-                    else:
-                        print("    ✗ 刷新 session 失败，停止本专辑添加")
-                        return added_count
-                if "412" in error_str and attempt < max_attempts - 1:
-                    if not retry_401_done and refresh_tidal_session(session):
-                        retry_401_done = True
-                    playlist = _refresh_playlist_ref(playlist)
-                    time.sleep(random.uniform(0.8, 1.5))
-                    continue
-                print(f"    ✗ 添加歌曲失败: {e}")
-                break
-
-    return added_count
+    return tidal_add_tracks_with_retry(session, playlist, track_ids)
 
 def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_count_max: int, base_dir: Path = None):
     """处理 Tidal 播放列表添加流程（支持自动补充缺失歌曲）"""
