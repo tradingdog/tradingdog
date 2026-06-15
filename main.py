@@ -184,9 +184,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.31"  # 新增：统一 logs 目录保存各平台运行日志
-# 更新内容：Tidal/Apple/Qobuz 日志写入 logs/{平台}_{时间}.txt，启动时打印路径
-DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
+APP_VERSION = "0.1.32"  # 修复：Tidal OAuth 先经 tidal.com 预热，规避 login 页访问受限
+DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
 MIN_COMBINATION_DIFF = 0.85      # 最小组合差异度（0-1），低于此值会重新生成
@@ -215,6 +214,18 @@ TIDAL_PASSWORD_SELECTORS = (
     "input[autocomplete='current-password']"
 )
 TIDAL_EMAIL_SELECTORS = "input#email, input[name='email'], input[type='email']"
+TIDAL_WARMUP_URL = "https://tidal.com/"
+TIDAL_CHROME_PROFILE_DIR = Path(__file__).parent / "TidalChromeProfile"
+TIDAL_ACCESS_RESTRICTED_MARKERS = (
+    "访问受限",
+    "访问限制",
+    "access restricted",
+    "access denied",
+    "request blocked",
+    "errors.edgesuite.net",
+    "you don't have permission",
+    "403 forbidden",
+)
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
 LOGS_DIR = "logs"                                   # 运行日志目录
@@ -505,10 +516,14 @@ def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
     return None
 
 
-def build_chrome_options():
+def build_chrome_options(for_tidal: bool = False, user_data_dir: str | None = None):
     """构建统一的 Chrome 启动参数。"""
     options = webdriver.ChromeOptions()
-    options.add_argument("--incognito")
+    # Tidal login 子域对无痕模式风控更严，使用独立临时 Profile 更易通过
+    if for_tidal and user_data_dir:
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+    else:
+        options.add_argument("--incognito")
 
     chrome_binary = resolve_chrome_binary_path()
     if chrome_binary:
@@ -529,10 +544,22 @@ def build_chrome_options():
     options.add_argument("--disable-background-timer-throttling")
     options.add_argument("--disable-hang-monitor")
 
+    if for_tidal:
+        options.add_argument("--lang=zh-CN,en-US,en")
+
     return options
 
 
-def init_chrome_driver_with_retry(scene_name: str):
+def _prepare_tidal_chrome_profile() -> str:
+    """每次登录前清空 Tidal 专用 Chrome 配置，避免账号间串 cookie。"""
+    profile = TIDAL_CHROME_PROFILE_DIR
+    if profile.exists():
+        shutil.rmtree(profile, ignore_errors=True)
+    profile.mkdir(parents=True, exist_ok=True)
+    return str(profile.resolve())
+
+
+def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = None):
     """稳定启动 Chrome：本地缓存官方驱动 + 显式 Service + 重试。"""
     last_error = None
     chrome_binary = resolve_chrome_binary_path()
@@ -550,7 +577,11 @@ def init_chrome_driver_with_retry(scene_name: str):
             if attempt > 1:
                 print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
 
-            options = build_chrome_options()
+            for_tidal = scene_name == "Tidal"
+            options = build_chrome_options(
+                for_tidal=for_tidal,
+                user_data_dir=user_data_dir if for_tidal else None,
+            )
             service = Service(executable_path=driver_path)
             driver = webdriver.Chrome(service=service, options=options)
             driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -560,6 +591,11 @@ def init_chrome_driver_with_retry(scene_name: str):
                     })
                 """
             })
+            if for_tidal:
+                try:
+                    driver.execute_cdp_cmd("Network.enable", {})
+                except Exception:
+                    pass
             return driver
         except Exception as e:
             last_error = e
@@ -581,7 +617,8 @@ def init_tidal_browser():
     
     try:
         print("  启动 Chrome 浏览器（用于 Tidal 登录）...")
-        driver = init_chrome_driver_with_retry("Tidal")
+        profile_dir = _prepare_tidal_chrome_profile()
+        driver = init_chrome_driver_with_retry("Tidal", user_data_dir=profile_dir)
         if driver:
             try:
                 driver.set_page_load_timeout(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
@@ -621,29 +658,137 @@ def _wait_for_document_ready(driver, timeout: float) -> bool:
         return False
 
 
+def _ensure_webdriver_alive(driver) -> bool:
+    try:
+        _ = driver.current_url
+        return True
+    except Exception:
+        return False
+
+
+def _tidal_page_text(driver) -> str:
+    parts = []
+    try:
+        parts.append(driver.title or "")
+    except Exception:
+        pass
+    try:
+        parts.append(driver.find_element(By.TAG_NAME, "body").text or "")
+    except Exception:
+        pass
+    return "\n".join(parts).lower()
+
+
+def _is_tidal_access_restricted(driver) -> bool:
+    try:
+        text = _tidal_page_text(driver)
+        return any(marker.lower() in text for marker in TIDAL_ACCESS_RESTRICTED_MARKERS)
+    except Exception:
+        return False
+
+
+def _set_tidal_navigation_referer(driver) -> None:
+    try:
+        driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
+            "headers": {"Referer": TIDAL_WARMUP_URL}
+        })
+    except Exception:
+        pass
+
+
+def _warm_up_tidal_session(driver) -> None:
+    """先访问 tidal.com 建立正常会话，降低 login.tidal.com 直接跳转被风控拦截的概率。"""
+    print(f"    预热：先访问 {TIDAL_WARMUP_URL}")
+    driver.get(TIDAL_WARMUP_URL)
+    _wait_for_document_ready(driver, min(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT, 30))
+    time.sleep(random.uniform(2.5, 4.5))
+    try:
+        driver.execute_script("window.scrollTo(0, Math.max(document.body.scrollHeight / 4, 200));")
+        time.sleep(random.uniform(0.5, 1.2))
+    except Exception:
+        pass
+    for selector in (
+        "button#onetrust-accept-btn-handler",
+        "button[id*='accept']",
+        "[data-testid='cookie-accept']",
+    ):
+        try:
+            for btn in driver.find_elements(By.CSS_SELECTOR, selector):
+                if btn.is_displayed():
+                    _safe_click(driver, btn)
+                    time.sleep(1)
+                    return
+        except Exception:
+            continue
+
+
+def _tidal_login_form_ready(driver, timeout: float = 15) -> bool:
+    try:
+        WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, TIDAL_EMAIL_SELECTORS))
+        )
+        return not _is_tidal_access_restricted(driver)
+    except Exception:
+        return False
+
+
 def _navigate_tidal_oauth_url(driver, auth_url: str) -> bool:
-    """打开 OAuth 短链；网络抖动时重试，并等待重定向到登录页。"""
+    """经 tidal.com 预热后打开 OAuth 短链；检测访问受限时重试。"""
     last_error = None
     for attempt in range(1, TIDAL_OAUTH_NAV_RETRIES + 1):
         try:
+            if not _ensure_webdriver_alive(driver):
+                print("    ✗ 浏览器会话已断开，无法继续 OAuth")
+                return False
+
             if attempt > 1:
                 print(f"    第 {attempt}/{TIDAL_OAUTH_NAV_RETRIES} 次重试打开 OAuth 链接...")
+
+            _warm_up_tidal_session(driver)
+            _set_tidal_navigation_referer(driver)
             driver.get(auth_url)
             _wait_for_document_ready(driver, TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
-            time.sleep(2)
+            time.sleep(random.uniform(2, 3.5))
+
+            if _is_tidal_access_restricted(driver):
+                last_error = RuntimeError("login.tidal.com 显示访问受限")
+                print("    ⚠ 检测到访问受限（直接打开 login 页被拦截），将经 tidal.com 重试")
+                print(f"    调试: {_tidal_oauth_page_debug(driver)}")
+                if attempt < TIDAL_OAUTH_NAV_RETRIES:
+                    time.sleep(3)
+                    continue
+                return False
+
             current = (driver.current_url or "").lower()
-            if current and current not in ("about:blank", "chrome://newtab/"):
-                print(f"    ✓ 页面已加载: {driver.current_url}")
+            if current in ("about:blank", "chrome://newtab/"):
+                last_error = RuntimeError("页面仍为空白，可能未成功导航")
+                if attempt < TIDAL_OAUTH_NAV_RETRIES:
+                    time.sleep(3)
+                    continue
+                break
+
+            if _tidal_login_form_ready(driver):
+                print(f"    ✓ 登录页已就绪: {driver.current_url}")
                 return True
-            last_error = RuntimeError("页面仍为空白，可能未成功导航")
+
+            last_error = RuntimeError("未找到邮箱登录表单")
+            print("    ⚠ 页面已打开但未出现邮箱输入框")
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
+            if attempt < TIDAL_OAUTH_NAV_RETRIES:
+                time.sleep(3)
+                continue
         except Exception as e:
             last_error = e
+            if not _ensure_webdriver_alive(driver):
+                print(f"    ✗ 浏览器会话已断开: {e}")
+                return False
             err = str(e)
             if attempt < TIDAL_OAUTH_NAV_RETRIES and (
                 "ERR_CONNECTION" in err
                 or "net::" in err
                 or "timeout" in err.lower()
                 or "Timed out" in err
+                or "invalid session id" in err.lower()
             ):
                 time.sleep(3)
                 continue
@@ -716,8 +861,12 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
     try:
         print(f"  正在自动完成 OAuth 登录: {email}")
         
-        # 1. 访问 OAuth 链接（含重试与就绪等待）
+        # 1. 访问 OAuth 链接（含 tidal.com 预热、访问受限检测与重试）
         if not _navigate_tidal_oauth_url(driver, auth_url):
+            return False
+
+        if not _ensure_webdriver_alive(driver):
+            print("    ✗ 浏览器会话已断开，无法输入登录信息")
             return False
         
         # 2. 输入邮箱
