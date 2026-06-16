@@ -184,7 +184,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.33"  # 修复：Tidal OAuth 用 ChromeProfile+tidal.com/login 预热，识别 title=tidal.com 拦截页
+APP_VERSION = "0.1.34"  # 修复：Tidal OAuth 禁用 Chrome 扩展，处理 success 页 ERR_BLOCKED_BY_CLIENT
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -208,6 +208,8 @@ TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表�
 TIDAL_OAUTH_PAGE_LOAD_TIMEOUT = 45                  # OAuth 页面加载/跳转最长等待（秒）
 TIDAL_OAUTH_NAV_RETRIES = 4                         # OAuth 链接打开失败时的重试次数
 TIDAL_OAUTH_PASSWORD_WAIT = 35                      # 点击 Continue 后等待密码框（秒）
+TIDAL_OAUTH_DEVICE_WAIT = 45                        # 登录后等待设备授权/回调跳转（秒）
+TIDAL_OAUTH_FUTURE_WAIT = 60                        # tidalapi future 最长等待（秒）
 TIDAL_OAUTH_API_RETRIES = 3                         # auth.tidal.com 请求失败重试次数
 TIDAL_PASSWORD_SELECTORS = (
     "input#password, input[name='password'], input[type='password'], "
@@ -551,6 +553,9 @@ def build_chrome_options(for_tidal: bool = False, user_data_dir: str | None = No
 
     if for_tidal:
         options.add_argument("--lang=zh-CN,en-US,en")
+        # ChromeProfile 里若有广告拦截扩展，会屏蔽 login.tidal.com/success → ERR_BLOCKED_BY_CLIENT
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-component-extensions-with-background-pages")
 
     return options
 
@@ -852,6 +857,90 @@ def _navigate_tidal_oauth_url(driver, auth_url: str) -> bool:
     return False
 
 
+def _is_chrome_client_blocked(driver) -> bool:
+    """Chrome 扩展/客户端拦截（ERR_BLOCKED_BY_CLIENT，页面显示「已被屏蔽」）。"""
+    try:
+        text = _tidal_page_text(driver)
+        if any(marker in text for marker in ("已被屏蔽", "blocked by client", "err_blocked_by_client")):
+            return True
+        title = (driver.title or "").lower()
+        if "已被屏蔽" in title or title == "login.tidal.com":
+            body = text
+            if "blocked" in body or "屏蔽" in body:
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _complete_tidal_device_authorization(driver, timeout: float = TIDAL_OAUTH_DEVICE_WAIT) -> bool:
+    """登录后等待设备授权 Continue，并等到 offer.tidal.com 回调页（OAuth 完成关键步骤）。"""
+    print("    等待 OAuth 设备授权与回调跳转...")
+    end = time.time() + timeout
+    continue_clicked = False
+    refresh_attempts = 0
+    last_logged_url = ""
+
+    while time.time() < end:
+        if not _ensure_webdriver_alive(driver):
+            print("    ✗ 浏览器会话已断开")
+            return False
+
+        url = driver.current_url or ""
+        if url != last_logged_url:
+            print(f"    → 当前页: {url} | title={driver.title or '(无)'}")
+            last_logged_url = url
+
+        if _is_chrome_client_blocked(driver):
+            refresh_attempts += 1
+            print(
+                f"    ⚠ 页面被 Chrome 客户端拦截（多为广告扩展），重试 ({refresh_attempts}/3)..."
+            )
+            if refresh_attempts <= 3:
+                try:
+                    target = url if url.startswith("http") else "https://login.tidal.com/success"
+                    driver.get(target)
+                except Exception:
+                    try:
+                        driver.refresh()
+                    except Exception:
+                        pass
+                time.sleep(2)
+                continue
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
+            return False
+
+        url_l = url.lower()
+        if "offer.tidal.com" in url_l:
+            print(f"    ✓ OAuth 回调页已打开")
+            return True
+
+        if not continue_clicked:
+            for btn in driver.find_elements(By.CSS_SELECTOR, "button"):
+                try:
+                    if not btn.is_displayed() or not btn.is_enabled():
+                        continue
+                    txt = btn.text.strip().lower()
+                    if "continue" in txt or txt in ("allow", "authorize", "confirm"):
+                        _safe_click(driver, btn)
+                        print(f"    ✓ 已点击「{btn.text.strip() or 'Continue'}」（设备授权）")
+                        continue_clicked = True
+                        time.sleep(2)
+                        break
+                except Exception:
+                    continue
+
+        if "login.tidal.com/success" in url_l and not _is_chrome_client_blocked(driver):
+            # success 页通常会自动跳转到 offer.tidal.com
+            time.sleep(0.8)
+            continue
+
+        time.sleep(0.8)
+
+    print(f"    ✗ OAuth 授权跳转超时; {_tidal_oauth_page_debug(driver)}")
+    return False
+
+
 def _safe_click(driver, element) -> None:
     try:
         element.click()
@@ -981,32 +1070,13 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
             print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
-        time.sleep(5)
-        
-        # 6. 点击 Continue（Link your device 页面）
-        try:
-            # 等待页面变化，可能需要点击 "Continue" 来完成设备链接
-            link_continue_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn-primary, button[type='button']"))
-            )
-            # 确认是 Continue 按钮
-            btn_text = link_continue_btn.text.strip().lower()
-            if "continue" in btn_text or btn_text == "":
-                link_continue_btn.click()
-                print(f"    ✓ 已点击 Continue（完成设备链接）")
-            else:
-                # 尝试其他选择器
-                buttons = driver.find_elements(By.CSS_SELECTOR, "button")
-                for btn in buttons:
-                    if "continue" in btn.text.lower():
-                        btn.click()
-                        print(f"    ✓ 已点击 Continue（完成设备链接）")
-                        break
-        except Exception as e:
-            print(f"    ⚠ 设备链接页面处理: {e}")
-            # 可能已经自动完成，不一定失败
-        
-        time.sleep(3)
+        time.sleep(2)
+
+        if not _complete_tidal_device_authorization(driver):
+            print("    ✗ OAuth 设备授权/回调未完成")
+            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
+            return False
+
         print(f"  ✓ OAuth 登录流程完成")
         return True
         
@@ -1125,9 +1195,12 @@ def login_tidal_with_automation(email: str, password: str):
         # 等待 OAuth 流程完成
         print("  等待 OAuth 验证完成...")
         try:
-            future.result(timeout=30)  # 最多等待 30 秒
+            future.result(timeout=TIDAL_OAUTH_FUTURE_WAIT)
+            print("  ✓ OAuth future 已完成")
         except Exception as e:
-            print(f"  ⚠ OAuth 等待超时: {e}")
+            print(f"  ⚠ OAuth 等待超时 ({TIDAL_OAUTH_FUTURE_WAIT}s): {e}")
+            if driver:
+                print(f"  调试: {_tidal_oauth_page_debug(driver)}")
         
         # 检查登录状态
         if session.check_login():
