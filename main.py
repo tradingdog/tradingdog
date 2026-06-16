@@ -158,7 +158,12 @@ _original_print = print
 def print(*args, **kwargs):
     message = ' '.join(str(arg) for arg in args)
     logging.info(message)  # 写入日志文件
-    _original_print(*args, **kwargs)  # 输出到控制台
+    try:
+        _original_print(*args, **kwargs)  # 输出到控制台
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        safe = message.encode(enc, errors="replace").decode(enc, errors="replace")
+        _original_print(safe, **{k: v for k, v in kwargs.items() if k != "file"})
 
 try:
     import tidalapi
@@ -180,10 +185,10 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.27"  # 修复：Apple Music 新版网页先点左侧搜索入口，再等待10秒并兼容新版顶部搜索框
+DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.28"  # 新增：Tidal 登录改用 MCP 浏览器 handoff（绕开 Selenium 风控），保留 selenium 模式可选
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
-DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
+DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
 MIN_COMBINATION_DIFF = 0.85      # 最小组合差异度（0-1），低于此值会重新生成
@@ -199,6 +204,9 @@ TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
+TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # MCP 浏览器待登录信息（含 OAuth URL）
+TIDAL_LOGIN_MODE = "mcp"         # Tidal 登录方式：mcp=Cursor MCP 浏览器，selenium=Selenium 自动化
+TIDAL_MCP_LOGIN_TIMEOUT = 600    # MCP 浏览器手动/Agent 登录最长等待（秒）
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
@@ -713,6 +721,92 @@ def save_tidal_credentials(session) -> None:
         encoding="utf-8"
     )
     print("✓ Tidal 登录凭据已保存")
+
+def _normalize_tidal_oauth_url(url: str) -> str:
+    if url and not url.startswith("http"):
+        return "https://" + url
+    return url
+
+
+def login_tidal_with_mcp_handoff(email: str, password: str, timeout: int | None = None):
+    """
+    启动 Tidal OAuth，写出待登录信息，阻塞等待 Agent 用 Cursor MCP 浏览器完成登录。
+
+    MCP 操作步骤（Agent 执行，非 Selenium）：
+      1. browser_navigate -> auth_url（或 https://link.tidal.com）
+      2. 填入邮箱 -> Continue
+      3. 填入密码 -> Log In
+      4. Link your device 页 -> Continue
+    """
+    if not TIDAL_AVAILABLE:
+        print("✗ 错误：未安装 tidalapi，请运行: pip install tidalapi")
+        return None
+
+    wait_seconds = timeout or TIDAL_MCP_LOGIN_TIMEOUT
+    session = tidalapi.Session()
+
+    cred_path = Path(TIDAL_CREDENTIALS_FILE)
+    if cred_path.exists():
+        cred_path.unlink()
+
+    print(f"\n开始 Tidal OAuth（MCP 浏览器）: {email}")
+    login_info, future = session.login_oauth()
+    auth_url = _normalize_tidal_oauth_url(login_info.verification_uri_complete)
+
+    pending = {
+        "email": email,
+        "password": password,
+        "auth_url": auth_url,
+        "verification_uri": login_info.verification_uri,
+        "user_code": login_info.user_code,
+        "login_mode": "mcp",
+        "started_at": datetime.now().isoformat(),
+        "mcp_steps": [
+            f"browser_navigate {auth_url}",
+            "browser_fill 邮箱输入框",
+            "browser_click Continue",
+            "browser_fill 密码输入框",
+            "browser_click Log In",
+            "browser_click Continue（设备链接页）",
+        ],
+    }
+    Path(TIDAL_OAUTH_PENDING_FILE).write_text(
+        json.dumps(pending, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    print("=" * 60)
+    print("请在 Cursor MCP 浏览器中完成登录：")
+    print(f"  OAuth URL: {auth_url}")
+    print(f"  账号: {email}")
+    print(f"  待登录信息: {TIDAL_OAUTH_PENDING_FILE}")
+    print(f"  等待 OAuth 完成（最长 {wait_seconds} 秒）...")
+    print("=" * 60)
+
+    try:
+        future.result(timeout=wait_seconds)
+    except Exception as e:
+        print(f"✗ OAuth 等待超时或失败: {e}")
+        return None
+
+    if session.check_login():
+        print(f"✓ Tidal 登录成功！用户: {session.user.first_name} {session.user.last_name}")
+        save_tidal_credentials(session)
+        Path(TIDAL_OAUTH_PENDING_FILE).unlink(missing_ok=True)
+        return session
+
+    print("✗ Tidal 登录验证失败")
+    return None
+
+
+def login_tidal_account(email: str, password: str, login_mode: str | None = None):
+    """按配置选择 MCP 或 Selenium 登录，返回 (session, driver)。"""
+    mode = (login_mode or TIDAL_LOGIN_MODE).lower()
+    if mode == "mcp":
+        session = login_tidal_with_mcp_handoff(email, password)
+        return session, None
+    return login_tidal_with_automation(email, password)
+
 
 def login_tidal():
     """登录 Tidal，返回 session 对象（每次强制重新登录）"""
@@ -1302,8 +1396,10 @@ def run_tidal_for_single_account(account_info: dict, account_index: int, total_a
     print(f"处理账号 [{account_index + 1}/{total_accounts}]: {email}")
     print(f"{'='*60}")
     
-    # 1. 使用自动化浏览器登录
-    session, driver = login_tidal_with_automation(email, password)
+    # 1. 登录（默认 MCP 浏览器，可用 --tidal-login-mode selenium 切回）
+    session, driver = login_tidal_account(
+        email, password, getattr(args, "tidal_login_mode", None)
+    )
     
     if not session:
         print(f"✗ 账号 {email} 登录失败，跳过")
@@ -1515,7 +1611,13 @@ def delete_tracks_from_tidal_playlists(session, delete_list: list[dict]) -> dict
     return stats
 
 
-def run_tidal_delete_for_single_account(account_info: dict, account_index: int, total_accounts: int, delete_list: list[dict]):
+def run_tidal_delete_for_single_account(
+    account_info: dict,
+    account_index: int,
+    total_accounts: int,
+    delete_list: list[dict],
+    login_mode: str | None = None,
+):
     """
     为单个 Tidal 账号执行删除歌曲操作
     
@@ -1535,8 +1637,8 @@ def run_tidal_delete_for_single_account(account_info: dict, account_index: int, 
     print(f"[删除模式] 处理账号 [{account_index + 1}/{total_accounts}]: {email}")
     print(f"{'='*60}")
     
-    # 1. 使用自动化浏览器登录
-    session, driver = login_tidal_with_automation(email, password)
+    # 1. 登录（默认 MCP 浏览器）
+    session, driver = login_tidal_account(email, password, login_mode)
     
     if not session:
         print(f"✗ 账号 {email} 登录失败，跳过")
@@ -3356,6 +3458,12 @@ def main():
         action="store_true",
         help="启用 Tidal 删除模式：从所有播放列表中删除指定专辑的歌曲"
     )
+    parser.add_argument(
+        "--tidal-login-mode",
+        choices=["mcp", "selenium"],
+        default=None,
+        help=f"Tidal 登录方式，默认 {TIDAL_LOGIN_MODE}（mcp=Cursor MCP 浏览器）"
+    )
     args = parser.parse_args()
 
     # 当平台为 Tidal 时，默认启用 Tidal 添加功能
@@ -3459,7 +3567,7 @@ def main():
         failed_accounts = []
         for i, account in enumerate(tidal_accounts):
             success = run_tidal_delete_for_single_account(
-                account, i, len(tidal_accounts), delete_list
+                account, i, len(tidal_accounts), delete_list, args.tidal_login_mode
             )
             if success:
                 success_count += 1
