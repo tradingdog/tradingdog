@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.34"  # 修复：OAuth 浏览器已成功时延长等待并重试 check_login，避免 SSL 抖动误判失败
+APP_VERSION = "0.1.35"  # 修复：Tidal OAuth 登录完成后立即关闭 Chrome，避免多账号闲置占内存
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -571,6 +571,21 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
     if last_error:
         print(f"  最终错误: {last_error}")
     return None
+
+
+def _quit_chrome_driver(driver, label: str = "") -> None:
+    """关闭 Selenium Chrome 实例，释放内存。"""
+    if driver is None:
+        return
+    suffix = f" ({label})" if label else ""
+    try:
+        print(f"  关闭 Chrome{suffix}...")
+        driver.quit()
+    except Exception:
+        try:
+            driver.close()
+        except Exception:
+            pass
 
 
 def init_tidal_browser(*, incognito: bool = False):
@@ -1182,53 +1197,49 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
     
     session = tidalapi.Session()
     driver = None
-    
+    logged_in = False
+
     try:
         # 删除旧的凭据文件（强制重新登录）
         cred_path = Path(TIDAL_CREDENTIALS_FILE)
         if cred_path.exists():
             cred_path.unlink()
-        
+
         # 启动 OAuth 流程
         print(f"\n开始 Tidal OAuth 验证: {email}")
         login_info, future = session.login_oauth()
         auth_url = login_info.verification_uri_complete
-        # 确保 URL 有协议前缀
         if auth_url and not auth_url.startswith("http"):
             auth_url = "https://" + auth_url
         print(f"  OAuth 链接: {auth_url}")
-        
-        # 初始化浏览器
+
         driver = init_tidal_browser(incognito=incognito)
         if not driver:
             print("✗ 无法启动浏览器")
             return None, None
-        
-        # 使用浏览器自动完成 OAuth 登录
+
         success = auto_complete_tidal_oauth(driver, auth_url, email, password)
-        
         if not success:
             print("✗ 自动 OAuth 登录失败")
-            if driver:
-                driver.quit()
             return None, None
-        
-        # 等待 OAuth 流程完成（延长等待 + 重试，避免网络抖动误判）
+
         if not _wait_tidal_oauth_session_ready(session, future, driver):
             print("✗ Tidal 登录验证失败")
-            if driver:
-                driver.quit()
             return None, None
 
         print(f"✓ Tidal 登录成功！用户: {session.user.first_name} {session.user.last_name}")
         save_tidal_credentials(session)
-        return session, driver
-            
+        logged_in = True
+        return session, None
+
     except Exception as e:
         print(f"✗ Tidal 自动登录过程出错: {e}")
-        if driver:
-            driver.quit()
         return None, None
+
+    finally:
+        _quit_chrome_driver(driver, "Tidal OAuth")
+        if logged_in:
+            print("  OAuth 浏览器已关闭，后续使用 API 操作")
 
 
 def refresh_tidal_session(session):
@@ -1793,13 +1804,7 @@ def run_tidal_for_single_account(account_info: dict, account_index: int, total_a
         return False
         
     finally:
-        # 4. 关闭浏览器
-        if driver:
-            print("  关闭浏览器...")
-            try:
-                driver.quit()
-            except:
-                pass
+        _quit_chrome_driver(driver, "Tidal OAuth")
 
 
 # ==================== Tidal 删除歌曲功能 ====================
@@ -1979,13 +1984,7 @@ def run_tidal_delete_for_single_account(
         return False
         
     finally:
-        # 3. 关闭浏览器
-        if driver:
-            print("  关闭浏览器...")
-            try:
-                driver.quit()
-            except:
-                pass
+        _quit_chrome_driver(driver, "Tidal OAuth")
 
 
 # ==================== Apple Music 集成功能 ====================
