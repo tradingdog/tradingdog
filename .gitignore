@@ -6,7 +6,6 @@ logs/*
 .tidal_credentials.json
 tidal_email.txt
 ChromeProfile/
-TidalChromeProfile/
 .webdriver_cache/
 
 # Python
