@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.33"  # 优化：邮箱 Continue 后识别验证码页，点击 Log in with password 再输密码
+APP_VERSION = "0.1.34"  # 修复：OAuth 浏览器已成功时延长等待并重试 check_login，避免 SSL 抖动误判失败
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -213,6 +213,8 @@ TIDAL_LOGIN_WITH_PASSWORD_MATCH_THRESHOLD = 0.9   # 验证码页图像识别阈�
 TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # mcp 模式待办（仅 Agent handoff 用）
 TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, selenium=无痕, mcp=仅写待办等 Agent
 TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
+TIDAL_OAUTH_WAIT_TIMEOUT = 120    # 浏览器 OAuth 完成后等待 tidalapi 就绪（秒）
+TIDAL_OAUTH_CHECK_INTERVAL = 3.0  # check_login 轮询间隔（秒）
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
@@ -993,6 +995,60 @@ def _normalize_tidal_oauth_url(url: str) -> str:
     return url
 
 
+def _tidal_browser_oauth_linked(driver) -> bool:
+    """浏览器是否已显示设备链接成功页。"""
+    try:
+        text = driver.find_element(By.TAG_NAME, "body").text.lower()
+        markers = (
+            "successfully linked",
+            "device was successfully linked",
+            "you can now enjoy",
+        )
+        return any(m in text for m in markers)
+    except Exception:
+        return False
+
+
+def _wait_tidal_oauth_session_ready(session, future, driver) -> bool:
+    """
+    浏览器 OAuth 流程结束后，等待 tidalapi session 就绪。
+    容忍 api.tidal.com 短暂 SSL/网络抖动，避免浏览器已成功却误判失败。
+    """
+    timeout = TIDAL_OAUTH_WAIT_TIMEOUT
+    deadline = time.time() + timeout
+    future_settled = False
+    browser_ok_logged = False
+
+    print(f"  等待 OAuth 验证完成（最长 {timeout} 秒，含重试）...")
+
+    while time.time() < deadline:
+        if not future_settled:
+            if future.done():
+                future_settled = True
+                try:
+                    future.result(timeout=0)
+                except Exception as e:
+                    print(f"  ⚠ OAuth future 异常（将继续重试 check_login）: {e}")
+
+        if driver and _tidal_browser_oauth_linked(driver):
+            if not browser_ok_logged:
+                print("    ✓ 浏览器已显示设备链接成功")
+                browser_ok_logged = True
+
+        try:
+            if session.check_login():
+                return True
+        except Exception as e:
+            print(f"  ⚠ check_login 重试: {e}")
+
+        time.sleep(TIDAL_OAUTH_CHECK_INTERVAL)
+
+    try:
+        return session.check_login()
+    except Exception:
+        return False
+
+
 def login_tidal_with_mcp_handoff(email: str, password: str, timeout: int | None = None):
     """
     启动 Tidal OAuth，写出待登录信息，阻塞等待 Agent 用 Cursor MCP 浏览器完成登录。
@@ -1157,23 +1213,16 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
                 driver.quit()
             return None, None
         
-        # 等待 OAuth 流程完成
-        print("  等待 OAuth 验证完成...")
-        try:
-            future.result(timeout=30)  # 最多等待 30 秒
-        except Exception as e:
-            print(f"  ⚠ OAuth 等待超时: {e}")
-        
-        # 检查登录状态
-        if session.check_login():
-            print(f"✓ Tidal 登录成功！用户: {session.user.first_name} {session.user.last_name}")
-            save_tidal_credentials(session)
-            return session, driver
-        else:
+        # 等待 OAuth 流程完成（延长等待 + 重试，避免网络抖动误判）
+        if not _wait_tidal_oauth_session_ready(session, future, driver):
             print("✗ Tidal 登录验证失败")
             if driver:
                 driver.quit()
             return None, None
+
+        print(f"✓ Tidal 登录成功！用户: {session.user.first_name} {session.user.last_name}")
+        save_tidal_credentials(session)
+        return session, driver
             
     except Exception as e:
         print(f"✗ Tidal 自动登录过程出错: {e}")
