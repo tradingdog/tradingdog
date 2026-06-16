@@ -1,0 +1,5 @@
+opencv-python>=4.13.0
+tidalapi
+selenium
+pyautogui
+pillow
