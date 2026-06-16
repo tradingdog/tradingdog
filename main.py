@@ -184,7 +184,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.32"  # 修复：Tidal OAuth 用 ChromeProfile+tidal.com/login 预热打开授权页
+APP_VERSION = "0.1.33"  # 修复：Tidal Chrome 启动失败时清理残留进程，避免无限新开窗口
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -216,7 +216,8 @@ TIDAL_PASSWORD_SELECTORS = (
 TIDAL_EMAIL_SELECTORS = "input#email, input[name='email'], input[type='email']"
 TIDAL_WARMUP_URL = "https://tidal.com/"
 TIDAL_LOGIN_WARMUP_URL = "https://tidal.com/login"
-TIDAL_CHROME_PROFILE_DIR = Path(__file__).parent / "ChromeProfile"
+TIDAL_CHROME_PROFILE_DIR = Path(__file__).parent / "TidalChromeProfile"
+TIDAL_BROWSER_STARTUP_BLOCKED = False  # 浏览器无法启动时为 True，多账号流程应中止
 TIDAL_ACCESS_RESTRICTED_MARKERS = (
     "访问受限",
     "访问限制",
@@ -526,6 +527,9 @@ def build_chrome_options(for_tidal: bool = False, user_data_dir: str | None = No
     options = webdriver.ChromeOptions()
     if for_tidal and user_data_dir:
         options.add_argument(f"--user-data-dir={user_data_dir}")
+        options.add_argument("--profile-directory=Default")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
     else:
         options.add_argument("--incognito")
 
@@ -555,10 +559,62 @@ def build_chrome_options(for_tidal: bool = False, user_data_dir: str | None = No
 
 
 def _get_tidal_chrome_profile_dir() -> str:
-    """Tidal 复用 ChromeProfile（有浏览痕迹），比无痕模式更易通过 login 风控。"""
+    """Tidal 专用 Profile，与日常 ChromeProfile 隔离，避免 Profile 被占用。"""
     profile = TIDAL_CHROME_PROFILE_DIR
     profile.mkdir(parents=True, exist_ok=True)
     return str(profile.resolve())
+
+
+def _release_tidal_chrome_profile_lock(profile_dir: Path) -> None:
+    """删除 Chrome Profile 锁文件，便于上次异常退出后重新启动。"""
+    for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+        lock = profile_dir / name
+        try:
+            if lock.exists() or lock.is_symlink():
+                lock.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def _cleanup_tidal_chrome_orphans(profile_dir: str) -> None:
+    """关闭占用 Tidal Profile 的残留 Chrome/chromedriver，防止重试时越开越多窗口。"""
+    profile_path = Path(profile_dir).resolve()
+    profile_name = profile_path.name
+    _release_tidal_chrome_profile_lock(profile_path)
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "chromedriver.exe"],
+            capture_output=True,
+            timeout=15,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except Exception:
+        pass
+    try:
+        ps_cmd = (
+            f"Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+            f"Where-Object {{ $_.CommandLine -like '*{profile_name}*' }} | "
+            f"ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
+        )
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True,
+            timeout=20,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except Exception as e:
+        print(f"  ! 清理残留 Chrome 进程时出错: {e}")
+    time.sleep(1)
+
+
+def _is_chrome_startup_error(exc: Exception) -> bool:
+    err = str(exc).lower()
+    return (
+        "session not created" in err
+        or "chrome instance exited" in err
+        or "user data directory is already in use" in err
+        or "devtoolsactiveport" in err
+    )
 
 
 def _clear_tidal_session_cookies(driver) -> None:
@@ -589,11 +645,18 @@ def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = N
         return None
 
     for attempt in range(1, WEBDRIVER_STARTUP_RETRIES + 1):
+        service = None
+        for_tidal = scene_name == "Tidal"
         try:
             if attempt > 1:
                 print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
 
-            for_tidal = scene_name == "Tidal"
+            if for_tidal and user_data_dir and attempt == 1:
+                _cleanup_tidal_chrome_orphans(user_data_dir)
+            elif for_tidal and user_data_dir and attempt > 1:
+                print("  清理残留 Chrome 进程后重试...")
+                _cleanup_tidal_chrome_orphans(user_data_dir)
+
             options = build_chrome_options(
                 for_tidal=for_tidal,
                 user_data_dir=user_data_dir if for_tidal else None,
@@ -615,6 +678,13 @@ def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = N
             return driver
         except Exception as e:
             last_error = e
+            if service:
+                try:
+                    service.stop()
+                except Exception:
+                    pass
+            if for_tidal and user_data_dir and _is_chrome_startup_error(e):
+                _cleanup_tidal_chrome_orphans(user_data_dir)
             print(f"  ! {scene_name} 浏览器启动失败（第 {attempt} 次）: {e}")
             if attempt < WEBDRIVER_STARTUP_RETRIES:
                 time.sleep(WEBDRIVER_STARTUP_RETRY_DELAY)
@@ -626,9 +696,11 @@ def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = N
 
 
 def init_tidal_browser():
-    """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（ChromeProfile）"""
+    """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（TidalChromeProfile）"""
+    global TIDAL_BROWSER_STARTUP_BLOCKED
     if not SELENIUM_AVAILABLE:
         print("✗ 错误：未安装 selenium，请运行: pip install selenium")
+        TIDAL_BROWSER_STARTUP_BLOCKED = True
         return None
     
     try:
@@ -641,11 +713,27 @@ def init_tidal_browser():
                 driver.set_page_load_timeout(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
             except Exception:
                 pass
-        return driver
+            return driver
+        TIDAL_BROWSER_STARTUP_BLOCKED = True
+        print("  提示：请先手动关闭所有残留的 Tidal Chrome 窗口后重试")
+        return None
         
     except Exception as e:
+        TIDAL_BROWSER_STARTUP_BLOCKED = True
         print(f"✗ 浏览器初始化失败: {e}")
         return None
+
+
+def _reset_tidal_browser_startup_state() -> None:
+    global TIDAL_BROWSER_STARTUP_BLOCKED
+    TIDAL_BROWSER_STARTUP_BLOCKED = False
+
+
+def _tidal_browser_startup_aborted_message() -> str:
+    return (
+        "\n✗ 浏览器无法启动，已停止后续账号。"
+        "请先关闭任务栏中所有残留的 Chrome 窗口，再重新运行程序。"
+    )
 
 
 def _tidal_oauth_page_debug(driver) -> str:
@@ -3912,6 +4000,7 @@ def main():
         print(f"开始 Tidal 多账号删除处理（共 {len(tidal_accounts)} 个账号）")
         print(f"{'='*60}")
         
+        _reset_tidal_browser_startup_state()
         success_count = 0
         success_accounts = []
         failed_accounts = []
@@ -3924,6 +4013,12 @@ def main():
                 success_accounts.append(account["email"])
             else:
                 failed_accounts.append(account["email"])
+            
+            if TIDAL_BROWSER_STARTUP_BLOCKED:
+                print(_tidal_browser_startup_aborted_message())
+                for remaining in tidal_accounts[i + 1:]:
+                    failed_accounts.append(remaining["email"])
+                break
             
             # 账号之间等待一下
             if i < len(tidal_accounts) - 1:
@@ -3961,6 +4056,7 @@ def main():
         print(f"开始 Tidal 多账号自动化处理（共 {len(tidal_accounts)} 个账号）")
         print(f"{'='*60}")
         
+        _reset_tidal_browser_startup_state()
         success_count = 0
         success_accounts = []
         failed_accounts = []
@@ -3973,6 +4069,12 @@ def main():
                 success_accounts.append(account["email"])
             else:
                 failed_accounts.append(account["email"])
+            
+            if TIDAL_BROWSER_STARTUP_BLOCKED:
+                print(_tidal_browser_startup_aborted_message())
+                for remaining in tidal_accounts[i + 1:]:
+                    failed_accounts.append(remaining["email"])
+                break
             
             # 账号之间等待一下
             if i < len(tidal_accounts) - 1:
