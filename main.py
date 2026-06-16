@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.32"  # 修复：登录历史页多尺度图像匹配 + 等待切换账号按钮后再识别点击
+APP_VERSION = "0.1.33"  # 优化：邮箱 Continue 后识别验证码页，点击 Log in with password 再输密码
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -208,6 +208,8 @@ TIDAL_CHROME_PROFILE_DIR = "TidalChromeProfile"     # Tidal 专用 Chrome 配置
 TIDAL_SWITCH_ACCOUNT_TEMPLATE = "tidal_assets/switch_account_label.png"  # 「No, switch account」截图模板
 TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD = 0.9          # 登录历史页图像识别阈值
 TIDAL_SWITCH_ACCOUNT_MATCH_SCALES = (0.65, 0.75, 0.85, 0.95, 1.0, 1.1, 1.2, 1.35, 1.5)
+TIDAL_LOGIN_WITH_PASSWORD_TEMPLATE = "tidal_assets/login_with_password_label.png"  # 「Log in with password」模板
+TIDAL_LOGIN_WITH_PASSWORD_MATCH_THRESHOLD = 0.9   # 验证码页图像识别阈值
 TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # mcp 模式待办（仅 Agent handoff 用）
 TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, selenium=无痕, mcp=仅写待办等 Agent
 TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
@@ -726,6 +728,95 @@ def _tidal_dismiss_login_history_if_present(driver) -> bool:
         return False
 
 
+def _tidal_has_password_input(driver) -> bool:
+    try:
+        for el in driver.find_elements(
+            By.CSS_SELECTOR, "input#password, input[type='password']"
+        ):
+            if el.is_displayed():
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _tidal_find_login_with_password_button(driver):
+    for btn in driver.find_elements(
+        By.CSS_SELECTOR, "button.login-with-password, button.plain-button.login-with-password"
+    ):
+        try:
+            if btn.is_displayed() and "password" in (btn.text or "").lower():
+                return btn
+        except Exception:
+            continue
+    try:
+        return driver.find_element(
+            By.XPATH,
+            "//button[contains(@class,'login-with-password')]",
+        )
+    except Exception:
+        return None
+
+
+def _tidal_try_switch_to_password_login(driver) -> bool:
+    """
+    邮箱 Continue 后若进入「Check your email」验证码页：
+    用图3模板匹配（阈值 0.9），成功则点击「Log in with password」再输密码。
+    """
+    base = Path(__file__).parent
+    template = base / TIDAL_LOGIN_WITH_PASSWORD_TEMPLATE
+    if not template.exists():
+        return False
+
+    try:
+        WebDriverWait(driver, 10).until(
+            lambda d: _tidal_find_login_with_password_button(d) is not None
+            or _tidal_has_password_input(d)
+        )
+    except Exception:
+        pass
+
+    if _tidal_has_password_input(driver):
+        print("    · 已在密码输入页")
+        return False
+
+    pwd_link = _tidal_find_login_with_password_button(driver)
+    if not pwd_link:
+        print("    · 无验证码页 / Log in with password 入口")
+        return False
+
+    time.sleep(0.6)
+    png = driver.get_screenshot_as_png()
+    center, score, scale = _tidal_match_template_in_png(
+        png,
+        template,
+        TIDAL_LOGIN_WITH_PASSWORD_MATCH_THRESHOLD,
+    )
+    if center is None:
+        print(
+            f"    · 图像未达 {TIDAL_LOGIN_WITH_PASSWORD_MATCH_THRESHOLD} "
+            f"(best={score:.2f}, scale={scale})，按原流程继续"
+        )
+        return False
+
+    print(
+        f"    ✓ 检测到验证码页 (match={score:.2f}, scale={scale})，"
+        f"点击 Log in with password"
+    )
+    try:
+        pwd_link = _tidal_find_login_with_password_button(driver) or pwd_link
+        pwd_link.click()
+        time.sleep(1.5)
+        WebDriverWait(driver, 12).until(
+            lambda d: _tidal_has_password_input(d)
+        )
+        print("    ✓ 已进入密码输入页")
+        return True
+    except Exception as e:
+        print(f"    ⚠ 点击 Log in with password 后未出现密码框: {e}")
+        return False
+
+
 def _tidal_page_blocked(driver) -> bool:
     try:
         text = driver.find_element(By.TAG_NAME, "body").text
@@ -822,6 +913,8 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
         if _tidal_page_blocked(driver):
             print("    ✗ 密码页前被风控拦截")
             return False
+
+        _tidal_try_switch_to_password_login(driver)
 
         # 密码
         password_input = WebDriverWait(driver, 20).until(
