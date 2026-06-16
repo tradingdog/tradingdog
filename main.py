@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.28"  # 新增：Tidal 登录改用 MCP 浏览器 handoff（绕开 Selenium 风控），保留 selenium 模式可选
+APP_VERSION = "0.1.29"  # 修复：Tidal 登录改回 Python 全自动浏览器（持久化配置目录，非 handoff 等待）
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -204,9 +204,10 @@ TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
-TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # MCP 浏览器待登录信息（含 OAuth URL）
-TIDAL_LOGIN_MODE = "mcp"         # Tidal 登录方式：mcp=Cursor MCP 浏览器，selenium=Selenium 自动化
-TIDAL_MCP_LOGIN_TIMEOUT = 600    # MCP 浏览器手动/Agent 登录最长等待（秒）
+TIDAL_CHROME_PROFILE_DIR = "TidalChromeProfile"     # Tidal 专用 Chrome 配置（非无痕，绕风控）
+TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # mcp 模式待办（仅 Agent handoff 用）
+TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, selenium=无痕, mcp=仅写待办等 Agent
+TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
@@ -497,34 +498,34 @@ def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
     return None
 
 
-def build_chrome_options():
-    """构建统一的 Chrome 启动参数。"""
+def build_chrome_options(*, incognito: bool = True, profile_dir: Path | None = None):
+    """构建 Chrome 启动参数。Tidal 登录用 profile_dir（非无痕）。"""
     options = webdriver.ChromeOptions()
-    options.add_argument("--incognito")
+    if incognito:
+        options.add_argument("--incognito")
+    if profile_dir is not None:
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        options.add_argument(f"--user-data-dir={profile_dir.resolve()}")
+        options.add_argument("--profile-directory=Default")
 
     chrome_binary = resolve_chrome_binary_path()
     if chrome_binary:
         options.binary_location = chrome_binary
 
-    # 反检测设置
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
-
     options.add_argument("--start-maximized")
     options.add_argument("--disable-infobars")
     options.add_argument("--disable-notifications")
-
-    # 禁用后台节流
     options.add_argument("--disable-backgrounding-occluded-windows")
     options.add_argument("--disable-renderer-backgrounding")
     options.add_argument("--disable-background-timer-throttling")
     options.add_argument("--disable-hang-monitor")
-
     return options
 
 
-def init_chrome_driver_with_retry(scene_name: str):
+def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, profile_dir: Path | None = None):
     """稳定启动 Chrome：本地缓存官方驱动 + 显式 Service + 重试。"""
     last_error = None
     chrome_binary = resolve_chrome_binary_path()
@@ -542,7 +543,7 @@ def init_chrome_driver_with_retry(scene_name: str):
             if attempt > 1:
                 print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
 
-            options = build_chrome_options()
+            options = build_chrome_options(incognito=incognito, profile_dir=profile_dir)
             service = Service(executable_path=driver_path)
             driver = webdriver.Chrome(service=service, options=options)
             driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -565,136 +566,162 @@ def init_chrome_driver_with_retry(scene_name: str):
     return None
 
 
-def init_tidal_browser():
-    """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（无痕模式）"""
+def init_tidal_browser(*, incognito: bool = False):
+    """初始化 Tidal OAuth 浏览器。默认持久化配置；selenium 模式用无痕。"""
     if not SELENIUM_AVAILABLE:
         print("✗ 错误：未安装 selenium，请运行: pip install selenium")
         return None
-    
     try:
-        print("  启动 Chrome 浏览器（用于 Tidal 登录）...")
-        driver = init_chrome_driver_with_retry("Tidal")
-        return driver
-        
+        if incognito:
+            print("  启动 Chrome（无痕模式，Tidal 登录）...")
+            return init_chrome_driver_with_retry("Tidal", incognito=True)
+        profile = Path(__file__).parent / TIDAL_CHROME_PROFILE_DIR
+        print(f"  启动 Chrome（Tidal 专用配置: {TIDAL_CHROME_PROFILE_DIR}）...")
+        return init_chrome_driver_with_retry("Tidal", incognito=False, profile_dir=profile)
     except Exception as e:
         print(f"✗ 浏览器初始化失败: {e}")
         return None
 
 
+def _tidal_page_blocked(driver) -> bool:
+    try:
+        text = driver.find_element(By.TAG_NAME, "body").text
+        blocked_markers = ("访问暂时受限", "Access temporarily restricted", "Access Restricted")
+        return any(m in text for m in blocked_markers)
+    except Exception:
+        return False
+
+
+def _tidal_set_input_value(driver, element, value: str) -> None:
+    driver.execute_script(
+        """
+        const el = arguments[0];
+        const val = arguments[1];
+        el.focus();
+        el.value = val;
+        el.dispatchEvent(new Event('input', {bubbles: true}));
+        el.dispatchEvent(new Event('change', {bubbles: true}));
+        """,
+        element,
+        value,
+    )
+
+
+def _tidal_click_primary_continue(driver, exclude_social: bool = True) -> bool:
+    buttons = driver.find_elements(By.CSS_SELECTOR, "button")
+    for btn in buttons:
+        try:
+            label = (btn.text or "").strip().lower()
+            if exclude_social and ("google" in label or "apple" in label):
+                continue
+            if "continue" in label or label == "log in":
+                if btn.is_displayed() and btn.is_enabled():
+                    btn.click()
+                    return True
+        except Exception:
+            continue
+    try:
+        btn = driver.find_element(By.CSS_SELECTOR, "button.btn-primary[type='submit']")
+        if btn.is_enabled():
+            btn.click()
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
-    """
-    使用 Selenium 自动完成 Tidal OAuth 登录流程
-    
-    流程：
-    1. 访问 OAuth 链接
-    2. 等待 5 秒
-    3. 输入邮箱，点击 Continue
-    4. 等待 2 秒
-    5. 输入密码，点击 Log In
-    6. 等待 5 秒
-    7. 点击 Continue（Link your device 页面）
-    """
+    """全自动完成 Tidal OAuth：打开链接、填邮箱/密码、Continue。"""
     try:
         print(f"  正在自动完成 OAuth 登录: {email}")
-        
-        # 1. 访问 OAuth 链接
         driver.get(auth_url)
-        time.sleep(5)
-        
-        # 2. 输入邮箱
-        try:
-            email_input = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "input#email, input[name='email'], input[type='email']"))
-            )
-            email_input.clear()
-            # 模拟人类输入
-            for char in email:
-                email_input.send_keys(char)
-                time.sleep(random.uniform(0.02, 0.08))
-            print(f"    ✓ 已输入邮箱")
-        except Exception as e:
-            print(f"    ✗ 输入邮箱失败: {e}")
+        time.sleep(3)
+
+        if _tidal_page_blocked(driver):
+            print("    ✗ Tidal 返回「访问受限」，请切换 VPN 节点后重试")
+            try:
+                driver.save_screenshot("vpn_assets/tidal_blocked.png")
+            except Exception:
+                pass
             return False
-        
-        time.sleep(1)
-        
-        # 3. 点击 Continue 按钮（邮箱页面）
-        try:
-            continue_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit'], button[ui-test-id='check-user-continue-button']"))
-            )
-            continue_btn.click()
-            print(f"    ✓ 已点击 Continue")
-        except Exception as e:
-            print(f"    ✗ 点击 Continue 失败: {e}")
+
+        # 邮箱
+        email_input = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((
+                By.CSS_SELECTOR,
+                "input#email, input[name='email'], input[type='email']",
+            ))
+        )
+        email_input.click()
+        time.sleep(0.3)
+        _tidal_set_input_value(driver, email_input, email)
+        email_input.send_keys(Keys.TAB)
+        time.sleep(0.5)
+        print("    ✓ 已输入邮箱")
+
+        def _continue_ready(d):
+            for btn in d.find_elements(By.CSS_SELECTOR, "button"):
+                label = (btn.text or "").strip().lower()
+                if "google" in label or "apple" in label:
+                    continue
+                if ("continue" in label or btn.get_attribute("type") == "submit") and btn.is_displayed():
+                    return btn.is_enabled()
             return False
-        
+
+        WebDriverWait(driver, 15).until(_continue_ready)
+        if not _tidal_click_primary_continue(driver):
+            raise RuntimeError("Continue 按钮不可点击")
+        print("    ✓ 已点击 Continue（邮箱）")
         time.sleep(2)
-        
-        # 4. 输入密码
-        try:
-            # 等待密码输入框可交互
-            password_input = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "input#password"))
-            )
-            # 先点击输入框确保获得焦点
-            password_input.click()
-            time.sleep(0.5)
-            password_input.clear()
-            time.sleep(0.3)
-            # 模拟人类输入
-            for char in password:
-                password_input.send_keys(char)
-                time.sleep(random.uniform(0.02, 0.08))
-            print(f"    ✓ 已输入密码")
-        except Exception as e:
-            print(f"    ✗ 输入密码失败: {e}")
+
+        if _tidal_page_blocked(driver):
+            print("    ✗ 密码页前被风控拦截")
             return False
-        
-        time.sleep(2)
-        
-        # 5. 点击 Log In 按钮
-        try:
-            login_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[ui-test-id='login-user-login-button'], button[type='submit']"))
+
+        # 密码
+        password_input = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input#password, input[type='password']"))
+        )
+        password_input.click()
+        time.sleep(0.3)
+        _tidal_set_input_value(driver, password_input, password)
+        time.sleep(0.5)
+        print("    ✓ 已输入密码")
+
+        if not _tidal_click_primary_continue(driver):
+            login_btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((
+                    By.CSS_SELECTOR,
+                    "button[ui-test-id='login-user-login-button'], button[type='submit']",
+                ))
             )
             login_btn.click()
-            print(f"    ✓ 已点击 Log In")
-        except Exception as e:
-            print(f"    ✗ 点击 Log In 失败: {e}")
-            return False
-        
-        time.sleep(5)
-        
-        # 6. 点击 Continue（Link your device 页面）
-        try:
-            # 等待页面变化，可能需要点击 "Continue" 来完成设备链接
-            link_continue_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn-primary, button[type='button']"))
-            )
-            # 确认是 Continue 按钮
-            btn_text = link_continue_btn.text.strip().lower()
-            if "continue" in btn_text or btn_text == "":
-                link_continue_btn.click()
-                print(f"    ✓ 已点击 Continue（完成设备链接）")
-            else:
-                # 尝试其他选择器
-                buttons = driver.find_elements(By.CSS_SELECTOR, "button")
-                for btn in buttons:
-                    if "continue" in btn.text.lower():
-                        btn.click()
-                        print(f"    ✓ 已点击 Continue（完成设备链接）")
-                        break
-        except Exception as e:
-            print(f"    ⚠ 设备链接页面处理: {e}")
-            # 可能已经自动完成，不一定失败
-        
+        print("    ✓ 已点击 Log In")
         time.sleep(3)
-        print(f"  ✓ OAuth 登录流程完成")
+
+        # 设备链接页 Continue
+        try:
+            WebDriverWait(driver, 15).until(
+                lambda d: any(
+                    "continue" in (b.text or "").lower()
+                    for b in d.find_elements(By.CSS_SELECTOR, "button.btn-primary, button[type='button']")
+                )
+            )
+            _tidal_click_primary_continue(driver)
+            print("    ✓ 已点击 Continue（设备链接）")
+        except Exception:
+            print("    ⚠ 未检测到设备链接页，可能已自动完成")
+
+        time.sleep(2)
+        print("  ✓ OAuth 浏览器流程完成")
         return True
-        
+
     except Exception as e:
         print(f"  ✗ OAuth 自动登录失败: {e}")
+        try:
+            driver.save_screenshot("vpn_assets/tidal_oauth_fail.png")
+        except Exception:
+            pass
         return False
 
 
@@ -763,10 +790,9 @@ def login_tidal_with_mcp_handoff(email: str, password: str, timeout: int | None 
         "started_at": datetime.now().isoformat(),
         "mcp_steps": [
             f"browser_navigate {auth_url}",
-            "browser_fill 邮箱输入框",
+            "browser_fill 邮箱 -> browser_press_key Tab（启用 Continue）",
             "browser_click Continue",
-            "browser_fill 密码输入框",
-            "browser_click Log In",
+            "browser_fill 密码 -> browser_click Log In",
             "browser_click Continue（设备链接页）",
         ],
     }
@@ -800,12 +826,13 @@ def login_tidal_with_mcp_handoff(email: str, password: str, timeout: int | None 
 
 
 def login_tidal_account(email: str, password: str, login_mode: str | None = None):
-    """按配置选择 MCP 或 Selenium 登录，返回 (session, driver)。"""
+    """登录 Tidal：auto/selenium=Python 全自动浏览器，mcp=Agent handoff。"""
     mode = (login_mode or TIDAL_LOGIN_MODE).lower()
     if mode == "mcp":
         session = login_tidal_with_mcp_handoff(email, password)
         return session, None
-    return login_tidal_with_automation(email, password)
+    incognito = mode == "selenium"
+    return login_tidal_with_automation(email, password, incognito=incognito)
 
 
 def login_tidal():
@@ -840,7 +867,7 @@ def login_tidal():
         return None
 
 
-def login_tidal_with_automation(email: str, password: str):
+def login_tidal_with_automation(email: str, password: str, *, incognito: bool = False):
     """
     使用自动化浏览器登录 Tidal
     
@@ -878,7 +905,7 @@ def login_tidal_with_automation(email: str, password: str):
         print(f"  OAuth 链接: {auth_url}")
         
         # 初始化浏览器
-        driver = init_tidal_browser()
+        driver = init_tidal_browser(incognito=incognito)
         if not driver:
             print("✗ 无法启动浏览器")
             return None, None
@@ -1396,7 +1423,7 @@ def run_tidal_for_single_account(account_info: dict, account_index: int, total_a
     print(f"处理账号 [{account_index + 1}/{total_accounts}]: {email}")
     print(f"{'='*60}")
     
-    # 1. 登录（默认 MCP 浏览器，可用 --tidal-login-mode selenium 切回）
+    # 1. 登录（默认 auto 全自动浏览器）
     session, driver = login_tidal_account(
         email, password, getattr(args, "tidal_login_mode", None)
     )
@@ -3460,9 +3487,9 @@ def main():
     )
     parser.add_argument(
         "--tidal-login-mode",
-        choices=["mcp", "selenium"],
+        choices=["auto", "mcp", "selenium"],
         default=None,
-        help=f"Tidal 登录方式，默认 {TIDAL_LOGIN_MODE}（mcp=Cursor MCP 浏览器）"
+        help=f"Tidal 登录方式，默认 {TIDAL_LOGIN_MODE}（auto=全自动浏览器）"
     )
     args = parser.parse_args()
 
