@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.31"  # 修复：登录历史图像识别依赖 opencv-python（requirements.txt）
+APP_VERSION = "0.1.32"  # 修复：登录历史页多尺度图像匹配 + 等待切换账号按钮后再识别点击
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -207,6 +207,7 @@ TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存�
 TIDAL_CHROME_PROFILE_DIR = "TidalChromeProfile"     # Tidal 专用 Chrome 配置（非无痕，绕风控）
 TIDAL_SWITCH_ACCOUNT_TEMPLATE = "tidal_assets/switch_account_label.png"  # 「No, switch account」截图模板
 TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD = 0.9          # 登录历史页图像识别阈值
+TIDAL_SWITCH_ACCOUNT_MATCH_SCALES = (0.65, 0.75, 0.85, 0.95, 1.0, 1.1, 1.2, 1.35, 1.5)
 TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # mcp 模式待办（仅 Agent handoff 用）
 TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, selenium=无痕, mcp=仅写待办等 Agent
 TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
@@ -585,61 +586,143 @@ def init_tidal_browser(*, incognito: bool = False):
         return None
 
 
-def _tidal_match_template_in_png(png_bytes: bytes, template_path: Path, threshold: float) -> tuple[tuple[int, int] | None, float]:
-    """在浏览器截图中匹配模板，返回 ((中心x, 中心y), 最高分) 或 (None, 分)。"""
+def _tidal_find_switch_account_button(driver):
+    for btn in driver.find_elements(By.CSS_SELECTOR, "button.btn-secondary-outline"):
+        try:
+            if btn.is_displayed() and "switch account" in (btn.text or "").lower():
+                return btn
+        except Exception:
+            continue
+    try:
+        return driver.find_element(
+            By.XPATH,
+            "//button[contains(@class,'btn-secondary-outline') and contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'switch account')]",
+        )
+    except Exception:
+        return None
+
+
+def _tidal_has_email_input(driver) -> bool:
+    try:
+        for el in driver.find_elements(
+            By.CSS_SELECTOR, "input#email, input[name='email'], input[type='email']"
+        ):
+            if el.is_displayed():
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _tidal_match_template_in_png(
+    png_bytes: bytes,
+    template_path: Path,
+    threshold: float,
+    scales: tuple[float, ...] | None = None,
+) -> tuple[tuple[int, int] | None, float, float | None]:
+    """多尺度模板匹配，返回 (中心点, 最高分, 命中时的缩放比例)。"""
     try:
         import cv2
         import numpy as np
     except ImportError:
         print("    ⚠ 未安装 opencv-python，跳过登录历史图像识别")
-        return None, 0.0
+        return None, 0.0, None
 
     haystack = cv2.imdecode(np.frombuffer(png_bytes, np.uint8), cv2.IMREAD_COLOR)
     template = cv2.imread(str(template_path))
     if haystack is None or template is None:
-        return None, 0.0
+        return None, 0.0, None
 
-    result = cv2.matchTemplate(haystack, template, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)
-    if max_val < threshold:
-        return None, float(max_val)
+    hay_gray = cv2.cvtColor(haystack, cv2.COLOR_BGR2GRAY)
+    tpl_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    th0, tw0 = tpl_gray.shape[:2]
+    h_h, h_w = hay_gray.shape[:2]
 
-    th, tw = template.shape[:2]
-    center = (max_loc[0] + tw // 2, max_loc[1] + th // 2)
-    return center, float(max_val)
+    best_val = 0.0
+    best_center: tuple[int, int] | None = None
+    best_scale: float | None = None
+    scale_list = scales or TIDAL_SWITCH_ACCOUNT_MATCH_SCALES
+
+    for scale in scale_list:
+        tw = max(10, int(tw0 * scale))
+        th = max(6, int(th0 * scale))
+        if tw >= h_w or th >= h_h:
+            continue
+        interp = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
+        tpl = cv2.resize(tpl_gray, (tw, th), interpolation=interp)
+        result = cv2.matchTemplate(hay_gray, tpl, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+        if max_val > best_val:
+            best_val = float(max_val)
+            best_center = (max_loc[0] + tw // 2, max_loc[1] + th // 2)
+            best_scale = scale
+
+    if best_val < threshold:
+        return None, best_val, best_scale
+    return best_center, best_val, best_scale
 
 
 def _tidal_dismiss_login_history_if_present(driver) -> bool:
     """
-    若 OAuth 页出现「记住上次账号」界面：
-    先用截图3模板做图像识别（阈值 0.9），命中则点击「No, switch account」按钮。
+    OAuth 页若出现「记住上次账号」：
+    等待切换按钮出现 → 多尺度图像匹配（阈值 0.9）→ 命中则点击 DOM 切换账号。
     """
     base = Path(__file__).parent
     template = base / TIDAL_SWITCH_ACCOUNT_TEMPLATE
     if not template.exists():
         return False
 
-    png = driver.get_screenshot_as_png()
-    center, score = _tidal_match_template_in_png(
-        png, template, TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD
-    )
-    if center is None:
-        print(f"    · 无登录历史页 (match={score:.2f})")
+    # 等待：邮箱输入框 或 切换账号按钮
+    try:
+        WebDriverWait(driver, 15).until(
+            lambda d: _tidal_has_email_input(d) or _tidal_find_switch_account_button(d) is not None
+        )
+    except Exception:
+        pass
+
+    switch_btn = _tidal_find_switch_account_button(driver)
+    if not switch_btn:
+        print("    · 无登录历史页")
         return False
 
-    print(f"    ✓ 检测到登录历史页 (match={score:.2f})，点击切换账号")
+    if _tidal_has_email_input(driver):
+        # 同时有邮箱框则不是纯历史页，不处理
+        print("    · 已是邮箱输入页")
+        return False
+
+    time.sleep(0.6)
+    png = driver.get_screenshot_as_png()
+    center, score, scale = _tidal_match_template_in_png(
+        png,
+        template,
+        TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD,
+    )
+    if center is None:
+        try:
+            debug = base / "tidal_assets" / "login_history_debug.png"
+            Path(debug).write_bytes(png)
+            print(
+                f"    · 图像未达 {TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD} "
+                f"(best={score:.2f}, scale={scale})，已保存 {debug.name}"
+            )
+        except Exception:
+            print(f"    · 图像未达阈值 (best={score:.2f})")
+        return False
+
+    print(
+        f"    ✓ 检测到登录历史页 (match={score:.2f}, scale={scale})，点击切换账号"
+    )
     try:
-        btn = WebDriverWait(driver, 8).until(
-            EC.element_to_be_clickable((
-                By.XPATH,
-                "//button[contains(@class,'btn-secondary-outline') and contains(., 'switch account')]",
-            ))
-        )
-        btn.click()
+        switch_btn = _tidal_find_switch_account_button(driver) or switch_btn
+        switch_btn.click()
         time.sleep(1.5)
+        WebDriverWait(driver, 12).until(
+            lambda d: _tidal_has_email_input(d)
+        )
+        print("    ✓ 已进入邮箱输入页")
         return True
     except Exception as e:
-        print(f"    ⚠ 切换账号按钮点击失败: {e}")
+        print(f"    ⚠ 切换账号后未出现邮箱框: {e}")
         return False
 
 
