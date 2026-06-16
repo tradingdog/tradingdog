@@ -129,32 +129,29 @@ def stop_browser_keep_alive():
         _browser_keep_alive = None
 
 # ===== 日志配置 =====
-def setup_logging(platform: str = "T") -> str:
-    """配置日志，输出到 logs/ 目录下的平台日志文件。"""
-    base_dir = Path(__file__).parent
-    logs_dir = base_dir / LOGS_DIR
-    logs_dir.mkdir(parents=True, exist_ok=True)
-
-    platform_key = (platform or "T").upper()
-    platform_name = PLATFORM_LOG_NAMES.get(platform_key, platform_key.lower())
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = logs_dir / f"{platform_name}_{timestamp}.txt"
-
-    log_format = logging.Formatter("%(asctime)s - %(message)s", datefmt="%H:%M:%S")
-    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+def setup_logging():
+    """配置日志，输出到文件"""
+    log_filename = f"qobuz_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    
+    # 创建日志格式
+    log_format = logging.Formatter('%(asctime)s - %(message)s', datefmt='%H:%M:%S')
+    
+    # 创建文件处理器（只输出到文件，不输出到控制台）
+    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
     file_handler.setFormatter(log_format)
     file_handler.setLevel(logging.INFO)
-
+    
+    # 获取 root logger
     logger = logging.getLogger()
-    logger.handlers.clear()
     logger.setLevel(logging.INFO)
     logger.addHandler(file_handler)
 
+    # 第三方库请求异常会重复输出原始HTTP错误，这里做降噪。
     tidal_request_logger = logging.getLogger("tidalapi.request")
     tidal_request_logger.setLevel(logging.CRITICAL)
     tidal_request_logger.propagate = False
-
-    return str(log_path)
+    
+    return log_filename
 
 # 自定义 print 函数，同时输出到控制台和日志文件
 _original_print = print
@@ -183,8 +180,9 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.33"  # 修复：Tidal Chrome 启动失败时清理残留进程，避免无限新开窗口
+DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.27"  # 修复：Apple Music 新版网页先点左侧搜索入口，再等待10秒并兼容新版顶部搜索框
+# 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -200,42 +198,11 @@ TIDAL_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
 TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
-TIDAL_ADD_CHUNK_SIZE = 5         # 每次批量添加的歌曲数（过大易触发 412/500）
-TIDAL_ADD_MAX_RETRIES = 4        # 单次添加失败的最大重试次数
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
-TIDAL_OAUTH_PAGE_LOAD_TIMEOUT = 45                  # OAuth 页面加载/跳转最长等待（秒）
-TIDAL_OAUTH_NAV_RETRIES = 4                         # OAuth 链接打开失败时的重试次数
-TIDAL_OAUTH_PASSWORD_WAIT = 35                      # 点击 Continue 后等待密码框（秒）
-TIDAL_OAUTH_API_RETRIES = 3                         # auth.tidal.com 请求失败重试次数
-TIDAL_PASSWORD_SELECTORS = (
-    "input#password, input[name='password'], input[type='password'], "
-    "input[autocomplete='current-password']"
-)
-TIDAL_EMAIL_SELECTORS = "input#email, input[name='email'], input[type='email']"
-TIDAL_WARMUP_URL = "https://tidal.com/"
-TIDAL_LOGIN_WARMUP_URL = "https://tidal.com/login"
-TIDAL_CHROME_PROFILE_DIR = Path(__file__).parent / "TidalChromeProfile"
-TIDAL_BROWSER_STARTUP_BLOCKED = False  # 浏览器无法启动时为 True，多账号流程应中止
-TIDAL_ACCESS_RESTRICTED_MARKERS = (
-    "访问受限",
-    "访问限制",
-    "access restricted",
-    "access denied",
-    "request blocked",
-    "errors.edgesuite.net",
-    "you don't have permission",
-    "403 forbidden",
-)
-TIDAL_BLOCKED_LOGIN_TITLES = (
-    "tidal.com",
-    "tidal - high fidelity music streaming",
-)
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
-LOGS_DIR = "logs"                                   # 运行日志目录
-PLATFORM_LOG_NAMES = {"T": "tidal", "A": "apple", "Q": "qobuz"}
 WEBDRIVER_STARTUP_RETRIES = 4  # 浏览器启动最大重试次数
 WEBDRIVER_STARTUP_RETRY_DELAY = 2.0  # 启动失败后的重试间隔（秒）
 WEBDRIVER_DOWNLOAD_TIMEOUT = 30  # chromedriver 下载与版本查询超时（秒）
@@ -522,16 +489,10 @@ def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
     return None
 
 
-def build_chrome_options(for_tidal: bool = False, user_data_dir: str | None = None):
+def build_chrome_options():
     """构建统一的 Chrome 启动参数。"""
     options = webdriver.ChromeOptions()
-    if for_tidal and user_data_dir:
-        options.add_argument(f"--user-data-dir={user_data_dir}")
-        options.add_argument("--profile-directory=Default")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-default-browser-check")
-    else:
-        options.add_argument("--incognito")
+    options.add_argument("--incognito")
 
     chrome_binary = resolve_chrome_binary_path()
     if chrome_binary:
@@ -552,86 +513,10 @@ def build_chrome_options(for_tidal: bool = False, user_data_dir: str | None = No
     options.add_argument("--disable-background-timer-throttling")
     options.add_argument("--disable-hang-monitor")
 
-    if for_tidal:
-        options.add_argument("--lang=zh-CN,en-US,en")
-
     return options
 
 
-def _get_tidal_chrome_profile_dir() -> str:
-    """Tidal 专用 Profile，与日常 ChromeProfile 隔离，避免 Profile 被占用。"""
-    profile = TIDAL_CHROME_PROFILE_DIR
-    profile.mkdir(parents=True, exist_ok=True)
-    return str(profile.resolve())
-
-
-def _release_tidal_chrome_profile_lock(profile_dir: Path) -> None:
-    """删除 Chrome Profile 锁文件，便于上次异常退出后重新启动。"""
-    for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
-        lock = profile_dir / name
-        try:
-            if lock.exists() or lock.is_symlink():
-                lock.unlink(missing_ok=True)
-        except Exception:
-            pass
-
-
-def _cleanup_tidal_chrome_orphans(profile_dir: str) -> None:
-    """关闭占用 Tidal Profile 的残留 Chrome/chromedriver，防止重试时越开越多窗口。"""
-    profile_path = Path(profile_dir).resolve()
-    profile_name = profile_path.name
-    _release_tidal_chrome_profile_lock(profile_path)
-    try:
-        subprocess.run(
-            ["taskkill", "/F", "/IM", "chromedriver.exe"],
-            capture_output=True,
-            timeout=15,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except Exception:
-        pass
-    try:
-        ps_cmd = (
-            f"Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
-            f"Where-Object {{ $_.CommandLine -like '*{profile_name}*' }} | "
-            f"ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
-        )
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command", ps_cmd],
-            capture_output=True,
-            timeout=20,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except Exception as e:
-        print(f"  ! 清理残留 Chrome 进程时出错: {e}")
-    time.sleep(1)
-
-
-def _is_chrome_startup_error(exc: Exception) -> bool:
-    err = str(exc).lower()
-    return (
-        "session not created" in err
-        or "chrome instance exited" in err
-        or "user data directory is already in use" in err
-        or "devtoolsactiveport" in err
-    )
-
-
-def _clear_tidal_session_cookies(driver) -> None:
-    """多账号切换时清除登录态，但保留 Profile 信任度。"""
-    try:
-        driver.execute_cdp_cmd("Network.enable", {})
-        driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
-    except Exception:
-        try:
-            driver.get(TIDAL_WARMUP_URL)
-            time.sleep(0.5)
-            driver.delete_all_cookies()
-        except Exception:
-            pass
-
-
-def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = None):
+def init_chrome_driver_with_retry(scene_name: str):
     """稳定启动 Chrome：本地缓存官方驱动 + 显式 Service + 重试。"""
     last_error = None
     chrome_binary = resolve_chrome_binary_path()
@@ -645,22 +530,11 @@ def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = N
         return None
 
     for attempt in range(1, WEBDRIVER_STARTUP_RETRIES + 1):
-        service = None
-        for_tidal = scene_name == "Tidal"
         try:
             if attempt > 1:
                 print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
 
-            if for_tidal and user_data_dir and attempt == 1:
-                _cleanup_tidal_chrome_orphans(user_data_dir)
-            elif for_tidal and user_data_dir and attempt > 1:
-                print("  清理残留 Chrome 进程后重试...")
-                _cleanup_tidal_chrome_orphans(user_data_dir)
-
-            options = build_chrome_options(
-                for_tidal=for_tidal,
-                user_data_dir=user_data_dir if for_tidal else None,
-            )
+            options = build_chrome_options()
             service = Service(executable_path=driver_path)
             driver = webdriver.Chrome(service=service, options=options)
             driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -670,21 +544,9 @@ def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = N
                     })
                 """
             })
-            if for_tidal:
-                try:
-                    driver.execute_cdp_cmd("Network.enable", {})
-                except Exception:
-                    pass
             return driver
         except Exception as e:
             last_error = e
-            if service:
-                try:
-                    service.stop()
-                except Exception:
-                    pass
-            if for_tidal and user_data_dir and _is_chrome_startup_error(e):
-                _cleanup_tidal_chrome_orphans(user_data_dir)
             print(f"  ! {scene_name} 浏览器启动失败（第 {attempt} 次）: {e}")
             if attempt < WEBDRIVER_STARTUP_RETRIES:
                 time.sleep(WEBDRIVER_STARTUP_RETRY_DELAY)
@@ -696,292 +558,19 @@ def init_chrome_driver_with_retry(scene_name: str, user_data_dir: str | None = N
 
 
 def init_tidal_browser():
-    """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（TidalChromeProfile）"""
-    global TIDAL_BROWSER_STARTUP_BLOCKED
+    """初始化用于 Tidal OAuth 自动化的 Chrome 浏览器（无痕模式）"""
     if not SELENIUM_AVAILABLE:
         print("✗ 错误：未安装 selenium，请运行: pip install selenium")
-        TIDAL_BROWSER_STARTUP_BLOCKED = True
         return None
     
     try:
         print("  启动 Chrome 浏览器（用于 Tidal 登录）...")
-        profile_dir = _get_tidal_chrome_profile_dir()
-        driver = init_chrome_driver_with_retry("Tidal", user_data_dir=profile_dir)
-        if driver:
-            _clear_tidal_session_cookies(driver)
-            try:
-                driver.set_page_load_timeout(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
-            except Exception:
-                pass
-            return driver
-        TIDAL_BROWSER_STARTUP_BLOCKED = True
-        print("  提示：请先手动关闭所有残留的 Tidal Chrome 窗口后重试")
-        return None
+        driver = init_chrome_driver_with_retry("Tidal")
+        return driver
         
     except Exception as e:
-        TIDAL_BROWSER_STARTUP_BLOCKED = True
         print(f"✗ 浏览器初始化失败: {e}")
         return None
-
-
-def _reset_tidal_browser_startup_state() -> None:
-    global TIDAL_BROWSER_STARTUP_BLOCKED
-    TIDAL_BROWSER_STARTUP_BLOCKED = False
-
-
-def _tidal_browser_startup_aborted_message() -> str:
-    return (
-        "\n✗ 浏览器无法启动，已停止后续账号。"
-        "请先关闭任务栏中所有残留的 Chrome 窗口，再重新运行程序。"
-    )
-
-
-def _tidal_oauth_page_debug(driver) -> str:
-    """失败时输出当前页面状态，便于排查。"""
-    try:
-        url = driver.current_url or "(空)"
-        title = driver.title or "(无标题)"
-        body_snippet = ""
-        try:
-            body = driver.find_element(By.TAG_NAME, "body").text.strip()
-            if body:
-                body_snippet = body[:200].replace("\n", " ")
-        except Exception:
-            pass
-        return f"url={url}, title={title}" + (f", page={body_snippet!r}" if body_snippet else "")
-    except Exception as e:
-        return f"无法读取页面状态: {e}"
-
-
-def _wait_for_document_ready(driver, timeout: float) -> bool:
-    try:
-        WebDriverWait(driver, timeout).until(
-            lambda d: d.execute_script("return document.readyState") == "complete"
-        )
-        return True
-    except Exception:
-        return False
-
-
-def _ensure_webdriver_alive(driver) -> bool:
-    try:
-        _ = driver.current_url
-        return True
-    except Exception:
-        return False
-
-
-def _tidal_page_text(driver) -> str:
-    parts = []
-    try:
-        parts.append(driver.title or "")
-    except Exception:
-        pass
-    try:
-        parts.append(driver.find_element(By.TAG_NAME, "body").text or "")
-    except Exception:
-        pass
-    return "\n".join(parts).lower()
-
-
-def _is_tidal_access_restricted(driver) -> bool:
-    try:
-        text = _tidal_page_text(driver)
-        return any(marker.lower() in text for marker in TIDAL_ACCESS_RESTRICTED_MARKERS)
-    except Exception:
-        return False
-
-
-def _is_tidal_login_blocked(driver) -> bool:
-    """login.tidal.com 上 title 仍为 tidal.com 时，通常是风控拦截页。"""
-    try:
-        url = (driver.current_url or "").lower()
-        title = (driver.title or "").strip().lower()
-        if "login.tidal.com" not in url:
-            return False
-        if title in TIDAL_BLOCKED_LOGIN_TITLES:
-            return True
-        return _is_tidal_access_restricted(driver)
-    except Exception:
-        return False
-
-
-def _accept_tidal_cookie_banner(driver) -> None:
-    for selector in (
-        "button#onetrust-accept-btn-handler",
-        "button[id*='accept']",
-        "[data-testid='cookie-accept']",
-    ):
-        try:
-            for btn in driver.find_elements(By.CSS_SELECTOR, selector):
-                if btn.is_displayed():
-                    _safe_click(driver, btn)
-                    time.sleep(1)
-                    return
-        except Exception:
-            continue
-
-
-def _set_tidal_navigation_referer(driver) -> None:
-    try:
-        driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
-            "headers": {"Referer": TIDAL_WARMUP_URL}
-        })
-    except Exception:
-        pass
-
-
-def _warm_up_tidal_session(driver) -> None:
-    """先经 tidal.com → tidal.com/login 建立正常登录会话，再打开 OAuth 设备授权链接。"""
-    print(f"    预热：访问 {TIDAL_WARMUP_URL}")
-    driver.get(TIDAL_WARMUP_URL)
-    _wait_for_document_ready(driver, min(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT, 30))
-    time.sleep(random.uniform(2.0, 3.5))
-    try:
-        driver.execute_script("window.scrollTo(0, Math.max(document.body.scrollHeight / 4, 200));")
-        time.sleep(random.uniform(0.5, 1.0))
-    except Exception:
-        pass
-    _accept_tidal_cookie_banner(driver)
-
-    print(f"    预热：经 {TIDAL_LOGIN_WARMUP_URL} 建立 login.tidal.com 会话")
-    driver.get(TIDAL_LOGIN_WARMUP_URL)
-    _wait_for_document_ready(driver, min(TIDAL_OAUTH_PAGE_LOAD_TIMEOUT, 30))
-    time.sleep(random.uniform(2.0, 3.5))
-    _accept_tidal_cookie_banner(driver)
-    try:
-        WebDriverWait(driver, 12).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, TIDAL_EMAIL_SELECTORS))
-        )
-        print("    ✓ tidal.com/login 登录表单已就绪")
-    except Exception:
-        print("    ⚠ tidal.com/login 未出现邮箱框，继续尝试 OAuth 链接")
-
-
-def _tidal_login_form_ready(driver, timeout: float = 15) -> bool:
-    try:
-        if _is_tidal_login_blocked(driver):
-            return False
-        WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, TIDAL_EMAIL_SELECTORS))
-        )
-        title = (driver.title or "").strip().lower()
-        return title not in TIDAL_BLOCKED_LOGIN_TITLES
-    except Exception:
-        return False
-
-
-def _navigate_tidal_oauth_url(driver, auth_url: str) -> bool:
-    """经 tidal.com 预热后打开 OAuth 短链；检测访问受限时重试。"""
-    last_error = None
-    for attempt in range(1, TIDAL_OAUTH_NAV_RETRIES + 1):
-        try:
-            if not _ensure_webdriver_alive(driver):
-                print("    ✗ 浏览器会话已断开，无法继续 OAuth")
-                return False
-
-            if attempt > 1:
-                print(f"    第 {attempt}/{TIDAL_OAUTH_NAV_RETRIES} 次重试打开 OAuth 链接...")
-
-            _warm_up_tidal_session(driver)
-            _set_tidal_navigation_referer(driver)
-            driver.get(auth_url)
-            _wait_for_document_ready(driver, TIDAL_OAUTH_PAGE_LOAD_TIMEOUT)
-            time.sleep(random.uniform(2, 3.5))
-
-            if _is_tidal_login_blocked(driver):
-                last_error = RuntimeError("login.tidal.com 被风控拦截（title=tidal.com / 访问受限）")
-                print("    ⚠ 检测到 login 页被拦截，将经 tidal.com/login 重新预热后重试")
-                print(f"    调试: {_tidal_oauth_page_debug(driver)}")
-                if attempt < TIDAL_OAUTH_NAV_RETRIES:
-                    time.sleep(3)
-                    continue
-                return False
-
-            current = (driver.current_url or "").lower()
-            if current in ("about:blank", "chrome://newtab/"):
-                last_error = RuntimeError("页面仍为空白，可能未成功导航")
-                if attempt < TIDAL_OAUTH_NAV_RETRIES:
-                    time.sleep(3)
-                    continue
-                break
-
-            if _tidal_login_form_ready(driver):
-                print(f"    ✓ 登录页已就绪: {driver.current_url}")
-                return True
-
-            last_error = RuntimeError("未找到邮箱登录表单")
-            print("    ⚠ 页面已打开但未出现邮箱输入框")
-            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
-            if attempt < TIDAL_OAUTH_NAV_RETRIES:
-                time.sleep(3)
-                continue
-        except Exception as e:
-            last_error = e
-            if not _ensure_webdriver_alive(driver):
-                print(f"    ✗ 浏览器会话已断开: {e}")
-                return False
-            err = str(e)
-            if attempt < TIDAL_OAUTH_NAV_RETRIES and (
-                "ERR_CONNECTION" in err
-                or "net::" in err
-                or "timeout" in err.lower()
-                or "Timed out" in err
-                or "invalid session id" in err.lower()
-            ):
-                time.sleep(3)
-                continue
-            print(f"    ✗ 打开 OAuth 链接失败: {e}")
-            return False
-    if last_error:
-        print(f"    ✗ 打开 OAuth 链接失败: {last_error}")
-        print(f"    调试: {_tidal_oauth_page_debug(driver)}")
-    return False
-
-
-def _safe_click(driver, element) -> None:
-    try:
-        element.click()
-    except Exception:
-        driver.execute_script("arguments[0].click();", element)
-
-
-def _wait_for_tidal_password_field(driver, timeout: float):
-    """Continue 之后等待密码框出现（含慢速跳转与加载遮罩）。"""
-    end = time.time() + timeout
-    last_debug = ""
-    while time.time() < end:
-        for el in driver.find_elements(By.CSS_SELECTOR, TIDAL_PASSWORD_SELECTORS):
-            try:
-                if el.is_displayed() and el.is_enabled():
-                    return el
-            except Exception:
-                continue
-        last_debug = _tidal_oauth_page_debug(driver)
-        time.sleep(0.5)
-    raise TimeoutError(f"等待密码输入框超时（{timeout}s）; {_tidal_oauth_page_debug(driver) or last_debug}")
-
-
-def _start_tidal_oauth_session(session):
-    """调用 device authorization，网络异常时重试。"""
-    last_error = None
-    for attempt in range(1, TIDAL_OAUTH_API_RETRIES + 1):
-        try:
-            return session.login_oauth()
-        except Exception as e:
-            last_error = e
-            err = str(e)
-            retryable = any(
-                token in err
-                for token in ("SSL", "EOF", "Connection", "timeout", "Max retries", "HTTPSConnectionPool")
-            )
-            if retryable and attempt < TIDAL_OAUTH_API_RETRIES:
-                wait_s = 3 * attempt
-                print(f"  ! OAuth API 请求失败，{wait_s}s 后重试 ({attempt}/{TIDAL_OAUTH_API_RETRIES}): {e}")
-                time.sleep(wait_s)
-                continue
-            raise
-    raise last_error
 
 
 def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
@@ -1000,18 +589,14 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
     try:
         print(f"  正在自动完成 OAuth 登录: {email}")
         
-        # 1. 访问 OAuth 链接（含 tidal.com 预热、访问受限检测与重试）
-        if not _navigate_tidal_oauth_url(driver, auth_url):
-            return False
-
-        if not _ensure_webdriver_alive(driver):
-            print("    ✗ 浏览器会话已断开，无法输入登录信息")
-            return False
+        # 1. 访问 OAuth 链接
+        driver.get(auth_url)
+        time.sleep(5)
         
         # 2. 输入邮箱
         try:
-            email_input = WebDriverWait(driver, TIDAL_OAUTH_PAGE_LOAD_TIMEOUT).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, TIDAL_EMAIL_SELECTORS))
+            email_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "input#email, input[name='email'], input[type='email']"))
             )
             email_input.clear()
             # 模拟人类输入
@@ -1021,51 +606,54 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
             print(f"    ✓ 已输入邮箱")
         except Exception as e:
             print(f"    ✗ 输入邮箱失败: {e}")
-            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
         time.sleep(1)
         
         # 3. 点击 Continue 按钮（邮箱页面）
         try:
-            continue_btn = WebDriverWait(driver, 15).until(
+            continue_btn = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit'], button[ui-test-id='check-user-continue-button']"))
             )
-            _safe_click(driver, continue_btn)
+            continue_btn.click()
             print(f"    ✓ 已点击 Continue")
         except Exception as e:
             print(f"    ✗ 点击 Continue 失败: {e}")
-            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
-        # 4. 输入密码（等待跳转/加载完成，避免 10s 过短导致误报）
+        time.sleep(2)
+        
+        # 4. 输入密码
         try:
-            password_input = _wait_for_tidal_password_field(driver, TIDAL_OAUTH_PASSWORD_WAIT)
-            _safe_click(driver, password_input)
+            # 等待密码输入框可交互
+            password_input = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input#password"))
+            )
+            # 先点击输入框确保获得焦点
+            password_input.click()
             time.sleep(0.5)
             password_input.clear()
             time.sleep(0.3)
+            # 模拟人类输入
             for char in password:
                 password_input.send_keys(char)
                 time.sleep(random.uniform(0.02, 0.08))
             print(f"    ✓ 已输入密码")
         except Exception as e:
             print(f"    ✗ 输入密码失败: {e}")
-            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
         time.sleep(2)
         
         # 5. 点击 Log In 按钮
         try:
-            login_btn = WebDriverWait(driver, 15).until(
+            login_btn = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button[ui-test-id='login-user-login-button'], button[type='submit']"))
             )
-            _safe_click(driver, login_btn)
+            login_btn.click()
             print(f"    ✓ 已点击 Log In")
         except Exception as e:
             print(f"    ✗ 点击 Log In 失败: {e}")
-            print(f"    调试: {_tidal_oauth_page_debug(driver)}")
             return False
         
         time.sleep(5)
@@ -1186,19 +774,20 @@ def login_tidal_with_automation(email: str, password: str):
         if cred_path.exists():
             cred_path.unlink()
         
+        # 启动 OAuth 流程
         print(f"\n开始 Tidal OAuth 验证: {email}")
+        login_info, future = session.login_oauth()
+        auth_url = login_info.verification_uri_complete
+        # 确保 URL 有协议前缀
+        if auth_url and not auth_url.startswith("http"):
+            auth_url = "https://" + auth_url
+        print(f"  OAuth 链接: {auth_url}")
         
-        # 先启动浏览器，再请求 OAuth，减少「拿到链接后迟迟未打开页面」导致失败
+        # 初始化浏览器
         driver = init_tidal_browser()
         if not driver:
             print("✗ 无法启动浏览器")
             return None, None
-        
-        login_info, future = _start_tidal_oauth_session(session)
-        auth_url = login_info.verification_uri_complete
-        if auth_url and not auth_url.startswith("http"):
-            auth_url = "https://" + auth_url
-        print(f"  OAuth 链接: {auth_url}")
         
         # 使用浏览器自动完成 OAuth 登录
         success = auto_complete_tidal_oauth(driver, auth_url, email, password)
@@ -1414,232 +1003,19 @@ def search_album_on_tidal(session, artist_name: str, album_name: str, retry_on_4
     
     return None
 
-def _parse_tidal_playlist_list_item(item) -> dict | None:
-    """从 users/{id}/playlists 的单条记录提取 id 与标题。"""
-    if not isinstance(item, dict):
-        return None
-    data = item.get("data", item)
-    if not isinstance(data, dict):
-        return None
-    playlist_id = data.get("uuid")
-    title = data.get("title")
-    if playlist_id and title:
-        return {"id": playlist_id, "title": title, "raw": data}
-    return None
-
-
-def fetch_tidal_user_playlist_summaries(session) -> list[dict]:
-    """
-    只请求播放列表列表接口，不逐个 GET 详情。
-    tidalapi 默认会对每个用户列表再请求 playlists/{id}，账号里有一个坏列表就会整批 500 失败。
-    """
-    user_id = session.user.id
-    endpoint = f"users/{user_id}/playlists"
-    resp = session.request.request("GET", endpoint)
-    resp.raise_for_status()
-    json_obj = resp.json()
-    items = json_obj.get("items", [])
-    summaries = []
-    for item in items:
-        parsed = _parse_tidal_playlist_list_item(item)
-        if parsed:
-            summaries.append(parsed)
-    return summaries
-
-
-def load_tidal_user_playlist(session, playlist_id: str, summary_raw=None, max_retries: int = 3):
-    """加载可 add() 的 UserPlaylist；优先用列表摘要，避免对坏列表重复 GET。"""
-    if TIDAL_AVAILABLE:
-        import tidalapi.playlist as tidal_playlist
-    else:
-        raise RuntimeError("tidalapi 不可用")
-
-    if summary_raw:
-        playlist = tidal_playlist.UserPlaylist(session, None)
-        playlist.parse(summary_raw)
-        return playlist
-
-    last_error = None
-    for attempt in range(1, max_retries + 1):
-        try:
-            return tidal_playlist.UserPlaylist(session, playlist_id)
-        except Exception as e:
-            last_error = e
-            err = str(e)
-            if any(code in err for code in ("500", "502", "503", "504")) and attempt < max_retries:
-                wait_s = 2 * attempt
-                print(f"    ! 播放列表详情加载失败，{wait_s}s 后重试 ({attempt}/{max_retries})...")
-                time.sleep(wait_s)
-                continue
-            raise
-    if last_error:
-        raise last_error
-    raise RuntimeError(f"无法加载播放列表: {playlist_id}")
-
-
-def find_tidal_playlist_by_name(session, playlist_name: str):
-    """按名称查找播放列表；单个损坏列表不会拖垮整个流程。"""
-    target = playlist_name.lower()
-    broken_count = 0
-    for summary in fetch_tidal_user_playlist_summaries(session):
-        if summary["title"].lower() != target:
-            continue
-        try:
-            return load_tidal_user_playlist(session, summary["id"], summary_raw=summary["raw"])
-        except Exception as e:
-            broken_count += 1
-            print(f"    ! 播放列表「{summary['title']}」加载失败，跳过: {e}")
-    if broken_count:
-        print(f"    ! 共 {broken_count} 个同名或损坏列表项无法加载")
-    return None
-
-
 def get_or_create_playlist_on_tidal(session, playlist_name: str, description: str = ""):
     """获取或创建 Tidal 播放列表"""
-    try:
-        existing = find_tidal_playlist_by_name(session, playlist_name)
-        if existing:
-            try:
-                sync_tidal_playlist_state(session, existing)
-            except Exception as e:
-                print(f"  ! 播放列表状态同步失败，继续使用摘要对象: {e}")
-            return existing, False
-    except Exception as e:
-        print(f"  ! 列举播放列表时出错，将直接创建新列表: {e}")
-
+    # 获取用户的所有播放列表
+    user_playlists = session.user.playlists()
+    
+    # 查找是否已存在
+    for playlist in user_playlists:
+        if playlist.name and playlist.name.lower() == playlist_name.lower():
+            return playlist, False
+    
+    # 创建新播放列表
     playlist = session.user.create_playlist(playlist_name, description)
     return playlist, True
-
-
-def _is_tidal_retryable_error(err: str) -> bool:
-    return any(code in err for code in ("401", "412", "429", "500", "502", "503", "504"))
-
-
-def sync_tidal_playlist_state(session, playlist, max_retries: int = 3):
-    """加歌前同步 ETag 与曲目数，避免 412 precondition failed。"""
-    playlist_id = getattr(playlist, "id", None)
-    if not playlist_id:
-        return playlist
-    last_error = None
-    for attempt in range(1, max_retries + 1):
-        try:
-            resp = session.request.request("GET", f"playlists/{playlist_id}")
-            etag = resp.headers.get("etag")
-            if etag:
-                playlist._etag = etag
-            playlist.parse(resp.json())
-            return playlist
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries:
-                time.sleep(2 * attempt)
-                continue
-            raise last_error
-    if last_error:
-        raise last_error
-    return playlist
-
-
-def _tidal_post_add_tracks(session, playlist, track_ids: list, *, use_etag: bool = True) -> int:
-    """POST 添加曲目；返回成功添加的数量。"""
-    ids = [str(tid) for tid in track_ids if tid is not None]
-    if not ids:
-        return 0
-    num_tracks = playlist.num_tracks if getattr(playlist, "num_tracks", -1) >= 0 else 0
-    data = {
-        "onArtifactNotFound": "SKIP",
-        "trackIds": ",".join(ids),
-        "toIndex": num_tracks,
-        "onDupes": "SKIP",
-    }
-    headers = None
-    if use_etag:
-        etag = getattr(playlist, "_etag", None)
-        if etag:
-            headers = {"If-None-Match": etag}
-    resp = session.request.request(
-        "POST",
-        f"playlists/{playlist.id}/items",
-        params={"limit": len(ids)},
-        data=data,
-        headers=headers,
-    )
-    resp.raise_for_status()
-    new_etag = resp.headers.get("etag")
-    if new_etag:
-        playlist._etag = new_etag
-    payload = resp.json()
-    added_items = payload.get("addedItemIds") or []
-    added_count = len(added_items) if added_items else len(ids)
-    playlist.num_tracks = num_tracks + added_count
-    return added_count
-
-
-def _tidal_add_chunk_with_retry(session, playlist, track_ids: list, retry_401_state: dict) -> int:
-    """对单个分块执行添加，含 412/500 重试与逐首降级。"""
-    for attempt in range(1, TIDAL_ADD_MAX_RETRIES + 1):
-        use_etag = attempt < TIDAL_ADD_MAX_RETRIES
-        try:
-            sync_tidal_playlist_state(session, playlist)
-            return _tidal_post_add_tracks(session, playlist, track_ids, use_etag=use_etag)
-        except Exception as e:
-            err = str(e)
-            if "401" in err and not retry_401_state.get("done"):
-                print("    ⚠ 认证失效，刷新 session 后重试...")
-                if refresh_tidal_session(session):
-                    retry_401_state["done"] = True
-                    continue
-                return 0
-            if _is_tidal_retryable_error(err) and attempt < TIDAL_ADD_MAX_RETRIES:
-                if "412" in err:
-                    print(f"    ! 412 状态过期，同步后重试 ({attempt}/{TIDAL_ADD_MAX_RETRIES})...")
-                else:
-                    wait_s = 1.5 * attempt
-                    print(f"    ! 添加失败 {err[:80]}，{wait_s:.1f}s 后重试 ({attempt}/{TIDAL_ADD_MAX_RETRIES})...")
-                    time.sleep(wait_s)
-                continue
-            print(f"    ⚠ 分块添加失败，降级逐首: {e}")
-            break
-
-    added = 0
-    for tid in track_ids:
-        for attempt in range(1, TIDAL_ADD_MAX_RETRIES + 1):
-            use_etag = attempt < TIDAL_ADD_MAX_RETRIES
-            try:
-                sync_tidal_playlist_state(session, playlist)
-                added += _tidal_post_add_tracks(session, playlist, [tid], use_etag=use_etag)
-                random_delay()
-                break
-            except Exception as e:
-                err = str(e)
-                if "401" in err and not retry_401_state.get("done"):
-                    if refresh_tidal_session(session):
-                        retry_401_state["done"] = True
-                        continue
-                    return added
-                if _is_tidal_retryable_error(err) and attempt < TIDAL_ADD_MAX_RETRIES:
-                    time.sleep(1.5 * attempt)
-                    continue
-                print(f"    ✗ 添加歌曲失败: {e}")
-                break
-    return added
-
-
-def tidal_add_tracks_with_retry(session, playlist, track_ids: list) -> int:
-    """分批添加歌曲，每批加歌前同步播放列表状态。"""
-    if not track_ids:
-        return 0
-    retry_401_state = {"done": False}
-    added_total = 0
-    chunks = [
-        track_ids[i:i + TIDAL_ADD_CHUNK_SIZE]
-        for i in range(0, len(track_ids), TIDAL_ADD_CHUNK_SIZE)
-    ]
-    for chunk in chunks:
-        added_total += _tidal_add_chunk_with_retry(session, playlist, chunk, retry_401_state)
-        random_delay()
-    return added_total
-
 
 def random_delay():
     """随机延迟，避免操作过快"""
@@ -1647,18 +1023,103 @@ def random_delay():
     time.sleep(delay)
 
 def add_tracks_to_playlist_with_delay(session, playlist, tracks, track_count: int):
-    """将歌曲添加到播放列表（分批同步 ETag，缓解 412/500）"""
+    """将歌曲添加到播放列表（优先批量添加，支持401/412重试与降级）"""
     if not tracks:
         return 0
-
+    
+    # 随机选择指定数量的歌曲（而不是按顺序取前N首）
     if len(tracks) <= track_count:
+        # 歌曲数量不足，全部添加但打乱顺序
         tracks_to_add = list(tracks)
         random.shuffle(tracks_to_add)
     else:
+        # 从专辑中随机抽取指定数量的歌曲
         tracks_to_add = random.sample(list(tracks), track_count)
-
+    
     track_ids = [track.id for track in tracks_to_add]
-    return tidal_add_tracks_with_retry(session, playlist, track_ids)
+    added_count = 0
+    retry_401_done = False
+
+    def _refresh_playlist_ref(cur_playlist):
+        """按 ID 重新获取播放列表实例，避免 session 刷新后继续使用旧对象。"""
+        playlist_id = getattr(cur_playlist, "id", None)
+        if not playlist_id:
+            return cur_playlist
+        try:
+            for item in session.user.playlists():
+                if getattr(item, "id", None) == playlist_id:
+                    return item
+        except Exception:
+            pass
+        return cur_playlist
+
+    # 先尝试批量添加（更稳定，也能显著减少请求次数）
+    try:
+        playlist.add(track_ids)
+        return len(track_ids)
+    except Exception as e:
+        error_str = str(e)
+
+        if "401" in error_str and not retry_401_done:
+            print("    ⚠ 认证状态失效，正在刷新 session 后重试批量添加...")
+            if refresh_tidal_session(session):
+                retry_401_done = True
+                playlist = _refresh_playlist_ref(playlist)
+                try:
+                    playlist.add(track_ids)
+                    return len(track_ids)
+                except Exception as e2:
+                    error_str = str(e2)
+                    print(f"    ⚠ 批量重试仍失败，降级为逐首添加: {e2}")
+            else:
+                print("    ✗ 刷新 session 失败，跳过本专辑")
+                return 0
+
+        elif "412" in error_str:
+            print("    ⚠ 批量添加返回 412，先刷新 session/凭证，再刷新播放列表后重试...")
+            if refresh_tidal_session(session):
+                retry_401_done = True
+                playlist = _refresh_playlist_ref(playlist)
+                try:
+                    playlist.add(track_ids)
+                    return len(track_ids)
+                except Exception as e2:
+                    print(f"    ⚠ 批量重试仍失败，降级为逐首添加: {e2}")
+            else:
+                print(f"    ⚠ session 刷新失败，降级为逐首添加: {e}")
+        else:
+            print(f"    ⚠ 批量添加失败，降级为逐首添加: {e}")
+
+    # 降级方案：逐首添加，尽量保住部分成功率
+    for track in tracks_to_add:
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                playlist.add([track.id])
+                added_count += 1
+                random_delay()
+                break
+            except Exception as e:
+                error_str = str(e)
+                if "401" in error_str and not retry_401_done:
+                    print("    ⚠ 逐首添加遇到 401，尝试刷新 session...")
+                    if refresh_tidal_session(session):
+                        retry_401_done = True
+                        playlist = _refresh_playlist_ref(playlist)
+                        continue
+                    else:
+                        print("    ✗ 刷新 session 失败，停止本专辑添加")
+                        return added_count
+                if "412" in error_str and attempt < max_attempts - 1:
+                    if not retry_401_done and refresh_tidal_session(session):
+                        retry_401_done = True
+                    playlist = _refresh_playlist_ref(playlist)
+                    time.sleep(random.uniform(0.8, 1.5))
+                    continue
+                print(f"    ✗ 添加歌曲失败: {e}")
+                break
+
+    return added_count
 
 def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_count_max: int, base_dir: Path = None):
     """处理 Tidal 播放列表添加流程（支持自动补充缺失歌曲）"""
@@ -1965,24 +1426,15 @@ def delete_tracks_from_tidal_playlists(session, delete_list: list[dict]) -> dict
     for item in delete_list:
         print(f"  - {item['artist']} - {item['album']}")
     
+    # 获取用户的所有播放列表
     try:
-        summaries = fetch_tidal_user_playlist_summaries(session)
-        print(f"\n找到 {len(summaries)} 个播放列表")
+        user_playlists = session.user.playlists()
+        print(f"\n找到 {len(user_playlists)} 个播放列表")
     except Exception as e:
         print(f"✗ 获取播放列表失败: {e}")
         stats["errors"].append(f"获取播放列表失败: {e}")
         return stats
-
-    user_playlists = []
-    for summary in summaries:
-        try:
-            user_playlists.append(
-                load_tidal_user_playlist(session, summary["id"], summary_raw=summary["raw"])
-            )
-        except Exception as e:
-            print(f"  ! 跳过无法加载的播放列表「{summary['title']}」: {e}")
-            stats["errors"].append(f"跳过列表 {summary['title']}: {e}")
-
+    
     # 遍历每个播放列表
     for playlist in user_playlists:
         playlist_name = playlist.name if playlist.name else "(未命名)"
@@ -3861,8 +3313,13 @@ def get_category_history_data(category: str, history: dict):
 def main():
     # ===== 记录程序开始时间 =====
     start_time = time.time()
+    print(f"v{APP_VERSION} Playlist 自动化工具")
+    
+    # ===== 初始化日志 =====
+    log_file = setup_logging()
+    
     base_dir = Path(__file__).parent
-
+    
     parser = argparse.ArgumentParser(description="随机生成播放列表")
     parser.add_argument(
         "--Platform",
@@ -3900,10 +3357,6 @@ def main():
         help="启用 Tidal 删除模式：从所有播放列表中删除指定专辑的歌曲"
     )
     args = parser.parse_args()
-
-    log_file = setup_logging(args.Platform)
-    print(f"v{APP_VERSION} Playlist 自动化工具")
-    print(f"日志文件: {log_file}")
 
     # 当平台为 Tidal 时，默认启用 Tidal 添加功能
     if args.Platform == "T" and not args.tidal:
@@ -3967,6 +3420,7 @@ def main():
         
         print("="*60)
         print("Qobuz 播放列表自动添加工具")
+        print(f"日志文件: {log_file}")
         print("="*60)
         print()
 
@@ -4000,7 +3454,6 @@ def main():
         print(f"开始 Tidal 多账号删除处理（共 {len(tidal_accounts)} 个账号）")
         print(f"{'='*60}")
         
-        _reset_tidal_browser_startup_state()
         success_count = 0
         success_accounts = []
         failed_accounts = []
@@ -4013,12 +3466,6 @@ def main():
                 success_accounts.append(account["email"])
             else:
                 failed_accounts.append(account["email"])
-            
-            if TIDAL_BROWSER_STARTUP_BLOCKED:
-                print(_tidal_browser_startup_aborted_message())
-                for remaining in tidal_accounts[i + 1:]:
-                    failed_accounts.append(remaining["email"])
-                break
             
             # 账号之间等待一下
             if i < len(tidal_accounts) - 1:
@@ -4056,7 +3503,6 @@ def main():
         print(f"开始 Tidal 多账号自动化处理（共 {len(tidal_accounts)} 个账号）")
         print(f"{'='*60}")
         
-        _reset_tidal_browser_startup_state()
         success_count = 0
         success_accounts = []
         failed_accounts = []
@@ -4069,12 +3515,6 @@ def main():
                 success_accounts.append(account["email"])
             else:
                 failed_accounts.append(account["email"])
-            
-            if TIDAL_BROWSER_STARTUP_BLOCKED:
-                print(_tidal_browser_startup_aborted_message())
-                for remaining in tidal_accounts[i + 1:]:
-                    failed_accounts.append(remaining["email"])
-                break
             
             # 账号之间等待一下
             if i < len(tidal_accounts) - 1:
@@ -4227,7 +3667,6 @@ def main():
         print(f"总耗时: {minutes}分钟 {seconds}秒")
     else:
         print(f"总耗时: {seconds}秒")
-    print(f"日志已保存: {log_file}")
     print(f"{'='*60}")
 
 
