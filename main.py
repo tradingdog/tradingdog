@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.35"  # 修复：Tidal OAuth 登录完成后立即关闭 Chrome，避免多账号闲置占内存
+APP_VERSION = "0.1.36"  # 修复：清理 TidalChromeProfile 孤儿 Chrome，避免每账号多开一个空浏览器
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -545,10 +545,17 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
         print(f"✗ {scene_name} 浏览器初始化失败：无法准备 chromedriver")
         return None
 
+    if profile_dir is not None:
+        _cleanup_chrome_using_profile(profile_dir)
+
+    driver = None
+    service = None
     for attempt in range(1, WEBDRIVER_STARTUP_RETRIES + 1):
         try:
             if attempt > 1:
                 print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
+                if profile_dir is not None:
+                    _cleanup_chrome_using_profile(profile_dir)
 
             options = build_chrome_options(incognito=incognito, profile_dir=profile_dir)
             service = Service(executable_path=driver_path)
@@ -564,6 +571,9 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
         except Exception as e:
             last_error = e
             print(f"  ! {scene_name} 浏览器启动失败（第 {attempt} 次）: {e}")
+            _safely_dispose_chrome_attempt(driver, service)
+            driver = None
+            service = None
             if attempt < WEBDRIVER_STARTUP_RETRIES:
                 time.sleep(WEBDRIVER_STARTUP_RETRY_DELAY)
 
@@ -571,6 +581,83 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
     if last_error:
         print(f"  最终错误: {last_error}")
     return None
+
+
+def _cleanup_chrome_using_profile(profile_dir: Path) -> None:
+    """关闭仍占用指定 user-data-dir 的孤儿 Chrome 进程（Windows）。"""
+    if not profile_dir:
+        return
+    marker = profile_dir.name.replace("'", "''")
+    ps_script = (
+        f"$m='{marker}'; "
+        "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" -ErrorAction SilentlyContinue | "
+        "Where-Object { $_.CommandLine -and ($_.CommandLine -like ('*'+$m+'*')) } | "
+        "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+    )
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_script],
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+    except Exception:
+        pass
+    time.sleep(0.4)
+
+
+def _cleanup_webdriver_chrome_orphans() -> None:
+    """关闭 Selenium/chromedriver 启动的孤儿 Chrome（含 profile 被占用时的空窗口）。"""
+    ps_script = (
+        "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" -ErrorAction SilentlyContinue | "
+        "Where-Object { "
+        "  $_.CommandLine -and ("
+        "    $_.CommandLine -like '*--enable-automation*' -or "
+        "    $_.CommandLine -like '*--test-type=webdriver*' -or "
+        "    $_.CommandLine -like '*--remote-debugging-port*'"
+        "  ) "
+        "} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+    )
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_script],
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+    except Exception:
+        pass
+
+
+def _cleanup_chromedriver_orphans() -> None:
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "chromedriver.exe"],
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except Exception:
+        pass
+
+
+def _cleanup_tidal_browser_leftovers() -> None:
+    """登录前/后清理 Tidal 相关孤儿 Chrome 与 chromedriver。"""
+    profile = Path(__file__).parent / TIDAL_CHROME_PROFILE_DIR
+    _cleanup_chrome_using_profile(profile)
+    _cleanup_webdriver_chrome_orphans()
+    _cleanup_chromedriver_orphans()
+    time.sleep(0.3)
+
+
+def _safely_dispose_chrome_attempt(driver, service) -> None:
+    """启动失败或重试前，清理本次尝试残留的 driver / chromedriver。"""
+    _quit_chrome_driver(driver, "启动失败清理")
+    try:
+        if service and getattr(service, "process", None):
+            service.process.kill()
+    except Exception:
+        pass
 
 
 def _quit_chrome_driver(driver, label: str = "") -> None:
@@ -586,6 +673,11 @@ def _quit_chrome_driver(driver, label: str = "") -> None:
             driver.close()
         except Exception:
             pass
+    try:
+        if getattr(driver, "service", None):
+            driver.service.stop()
+    except Exception:
+        pass
 
 
 def init_tidal_browser(*, incognito: bool = False):
