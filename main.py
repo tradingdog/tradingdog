@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.29"  # 修复：Tidal 登录改回 Python 全自动浏览器（持久化配置目录，非 handoff 等待）
+APP_VERSION = "0.1.30"  # 优化：Tidal OAuth 有登录历史时图像识别后点「切换账号」再填邮箱
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -205,6 +205,8 @@ TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
 TIDAL_CHROME_PROFILE_DIR = "TidalChromeProfile"     # Tidal 专用 Chrome 配置（非无痕，绕风控）
+TIDAL_SWITCH_ACCOUNT_TEMPLATE = "tidal_assets/switch_account_label.png"  # 「No, switch account」截图模板
+TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD = 0.9          # 登录历史页图像识别阈值
 TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # mcp 模式待办（仅 Agent handoff 用）
 TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, selenium=无痕, mcp=仅写待办等 Agent
 TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
@@ -583,6 +585,64 @@ def init_tidal_browser(*, incognito: bool = False):
         return None
 
 
+def _tidal_match_template_in_png(png_bytes: bytes, template_path: Path, threshold: float) -> tuple[tuple[int, int] | None, float]:
+    """在浏览器截图中匹配模板，返回 ((中心x, 中心y), 最高分) 或 (None, 分)。"""
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        print("    ⚠ 未安装 opencv-python，跳过登录历史图像识别")
+        return None, 0.0
+
+    haystack = cv2.imdecode(np.frombuffer(png_bytes, np.uint8), cv2.IMREAD_COLOR)
+    template = cv2.imread(str(template_path))
+    if haystack is None or template is None:
+        return None, 0.0
+
+    result = cv2.matchTemplate(haystack, template, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    if max_val < threshold:
+        return None, float(max_val)
+
+    th, tw = template.shape[:2]
+    center = (max_loc[0] + tw // 2, max_loc[1] + th // 2)
+    return center, float(max_val)
+
+
+def _tidal_dismiss_login_history_if_present(driver) -> bool:
+    """
+    若 OAuth 页出现「记住上次账号」界面：
+    先用截图3模板做图像识别（阈值 0.9），命中则点击「No, switch account」按钮。
+    """
+    base = Path(__file__).parent
+    template = base / TIDAL_SWITCH_ACCOUNT_TEMPLATE
+    if not template.exists():
+        return False
+
+    png = driver.get_screenshot_as_png()
+    center, score = _tidal_match_template_in_png(
+        png, template, TIDAL_SWITCH_ACCOUNT_MATCH_THRESHOLD
+    )
+    if center is None:
+        print(f"    · 无登录历史页 (match={score:.2f})")
+        return False
+
+    print(f"    ✓ 检测到登录历史页 (match={score:.2f})，点击切换账号")
+    try:
+        btn = WebDriverWait(driver, 8).until(
+            EC.element_to_be_clickable((
+                By.XPATH,
+                "//button[contains(@class,'btn-secondary-outline') and contains(., 'switch account')]",
+            ))
+        )
+        btn.click()
+        time.sleep(1.5)
+        return True
+    except Exception as e:
+        print(f"    ⚠ 切换账号按钮点击失败: {e}")
+        return False
+
+
 def _tidal_page_blocked(driver) -> bool:
     try:
         text = driver.find_element(By.TAG_NAME, "body").text
@@ -644,6 +704,8 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
             except Exception:
                 pass
             return False
+
+        _tidal_dismiss_login_history_if_present(driver)
 
         # 邮箱
         email_input = WebDriverWait(driver, 20).until(
