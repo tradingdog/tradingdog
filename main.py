@@ -186,7 +186,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.36"  # 修复：清理 TidalChromeProfile 孤儿 Chrome，避免每账号多开一个空浏览器
+APP_VERSION = "0.1.37"  # 数据：apple/tidal/qobuz 新增 Kael Rainer - Pandoran Kin Weave
 # 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
 DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -546,7 +546,7 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
         return None
 
     if profile_dir is not None:
-        _cleanup_chrome_using_profile(profile_dir)
+        _cleanup_tidal_browser_leftovers()
 
     driver = None
     service = None
@@ -555,7 +555,7 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
             if attempt > 1:
                 print(f"  第 {attempt}/{WEBDRIVER_STARTUP_RETRIES} 次重试启动浏览器...")
                 if profile_dir is not None:
-                    _cleanup_chrome_using_profile(profile_dir)
+                    _cleanup_tidal_browser_leftovers()
 
             options = build_chrome_options(incognito=incognito, profile_dir=profile_dir)
             service = Service(executable_path=driver_path)
@@ -1330,6 +1330,8 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
 
     finally:
         _quit_chrome_driver(driver, "Tidal OAuth")
+        _cleanup_tidal_browser_leftovers()
+        _cleanup_tidal_browser_leftovers()
         if logged_in:
             print("  OAuth 浏览器已关闭，后续使用 API 操作")
 
@@ -1897,6 +1899,7 @@ def run_tidal_for_single_account(account_info: dict, account_index: int, total_a
         
     finally:
         _quit_chrome_driver(driver, "Tidal OAuth")
+        _cleanup_tidal_browser_leftovers()
 
 
 # ==================== Tidal 删除歌曲功能 ====================
@@ -2077,6 +2080,7 @@ def run_tidal_delete_for_single_account(
         
     finally:
         _quit_chrome_driver(driver, "Tidal OAuth")
+        _cleanup_tidal_browser_leftovers()
 
 
 # ==================== Apple Music 集成功能 ====================

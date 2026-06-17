@@ -70,12 +70,6 @@
         ]
     },
     {
-        "artist": "Zeya Ryn",
-        "albums": [
-            "Dusted Metal Bloom"
-        ]
-    },
-    {
         "artist": "Kyn Veyr",
         "albums": [
             "Stitched Accounts"
@@ -88,12 +82,6 @@
         ]
     },
     {
-        "artist": "Jaxen Thal",
-        "albums": [
-            "Snow Cabin Judgments"
-        ]
-    },
-    {
         "artist": "Esmund Slora",
         "albums": [
             "Woven Across Miles"
@@ -103,6 +91,18 @@
         "artist": "Rex Veyr",
         "albums": [
             "Size Shifter Saga"
+        ]
+    },
+    {
+        "artist": "Kaelin Veyra",
+        "albums": [
+            "Cherry Tree Lane Pages"
+        ]
+    },
+    {
+        "artist": "Kael Rainer",
+        "albums": [
+            "Pandoran Kin Weave"
         ]
     }
 ]
