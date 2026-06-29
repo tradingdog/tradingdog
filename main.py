@@ -208,32 +208,58 @@ def configure_tidal_session_network(session) -> None:
     req = getattr(session, "request_session", None)
     if req is not None:
         req.trust_env = False
-        req.proxies = {"http": None, "https": None}
+        req.proxies = {}
+
+
+# 进程启动时清除失效代理，避免 import 后首次 API 请求仍走 127.0.0.1
+sanitize_stale_process_proxy()
 
 # ===== 日志配置 =====
-def setup_logging():
-    """配置日志，输出到文件"""
-    log_filename = f"qobuz_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    
-    # 创建日志格式
-    log_format = logging.Formatter('%(asctime)s - %(message)s', datefmt='%H:%M:%S')
-    
-    # 创建文件处理器（只输出到文件，不输出到控制台）
-    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+LOGS_DIR = "logs"
+PLATFORM_LOG_NAMES = {"T": "tidal", "A": "apple", "Q": "qobuz"}
+_CURRENT_LOG_FILE: str | None = None
+
+
+def setup_logging(platform: str = "T") -> str:
+    """每次运行写入 logs/{平台}_{时间}.txt，并同步更新 logs/run_latest.txt。"""
+    global _CURRENT_LOG_FILE
+    base_dir = Path(__file__).parent
+    logs_dir = base_dir / LOGS_DIR
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    platform_name = PLATFORM_LOG_NAMES.get((platform or "T").upper(), "run")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = logs_dir / f"{platform_name}_{timestamp}.txt"
+
+    log_format = logging.Formatter("%(asctime)s - %(message)s", datefmt="%H:%M:%S")
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
     file_handler.setFormatter(log_format)
     file_handler.setLevel(logging.INFO)
-    
-    # 获取 root logger
+
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(logging.INFO)
     logger.addHandler(file_handler)
 
-    # 第三方库请求异常会重复输出原始HTTP错误，这里做降噪。
     tidal_request_logger = logging.getLogger("tidalapi.request")
     tidal_request_logger.setLevel(logging.CRITICAL)
     tidal_request_logger.propagate = False
-    
-    return log_filename
+
+    _CURRENT_LOG_FILE = str(log_path)
+    finalize_run_log(str(log_path))
+    return str(log_path)
+
+
+def finalize_run_log(log_file: str | None = None) -> None:
+    """将本次日志复制为 logs/run_latest.txt，便于快速查看最近一次运行。"""
+    path = Path(log_file or _CURRENT_LOG_FILE or "")
+    if not path.exists():
+        return
+    try:
+        latest = Path(__file__).parent / LOGS_DIR / "run_latest.txt"
+        shutil.copy2(path, latest)
+    except Exception:
+        pass
 
 # 自定义 print 函数，同时输出到控制台和日志文件
 _original_print = print
@@ -268,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.38"  # 修复：VPN 代理未运行时自动改直连，避免 Tidal/chromedriver 请求失败
-# 更新内容：清除不可用的 127.0.0.1:17890 等残留代理，urllib 与 tidalapi 不再误走代理
+APP_VERSION = "0.1.39"  # 修复：OAuth 失败时延迟关浏览器；日志统一写入 logs/ 目录
+# 更新内容：先开浏览器再调 OAuth API；失败保留 20s 供查看页面；每次运行独立日志文件
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -297,6 +323,8 @@ TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, sele
 TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
 TIDAL_OAUTH_WAIT_TIMEOUT = 120    # 浏览器 OAuth 完成后等待 tidalapi 就绪（秒）
 TIDAL_OAUTH_CHECK_INTERVAL = 3.0  # check_login 轮询间隔（秒）
+TIDAL_OAUTH_API_RETRIES = 3                         # auth.tidal.com 请求失败重试次数
+TIDAL_OAUTH_FAILURE_BROWSER_PAUSE = 20              # 登录失败时保留浏览器秒数，便于查看页面
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
@@ -1066,6 +1094,43 @@ def _tidal_click_primary_continue(driver, exclude_social: bool = True) -> bool:
     return False
 
 
+def _tidal_oauth_page_debug(driver) -> str:
+    try:
+        url = driver.current_url or "(空)"
+        title = driver.title or "(无标题)"
+        return f"url={url}, title={title}"
+    except Exception as e:
+        return f"无法读取页面: {e}"
+
+
+def _start_tidal_oauth_session(session):
+    """device authorization；网络/代理异常时重试。"""
+    last_error = None
+    for attempt in range(1, TIDAL_OAUTH_API_RETRIES + 1):
+        try:
+            configure_tidal_session_network(session)
+            return session.login_oauth()
+        except Exception as e:
+            last_error = e
+            err = str(e)
+            if "Proxy" in err or "proxy" in err or "17890" in err:
+                sanitize_stale_process_proxy()
+                configure_tidal_session_network(session)
+            retryable = any(
+                token in err
+                for token in ("SSL", "EOF", "Connection", "timeout", "Max retries", "Proxy", "17890")
+            )
+            if retryable and attempt < TIDAL_OAUTH_API_RETRIES:
+                wait_s = 2 * attempt
+                print(f"  ! OAuth API 失败，{wait_s}s 后重试 ({attempt}/{TIDAL_OAUTH_API_RETRIES}): {e}")
+                time.sleep(wait_s)
+                continue
+            raise
+    if last_error:
+        raise last_error
+    raise RuntimeError("OAuth API 请求失败")
+
+
 def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
     """全自动完成 Tidal OAuth：打开链接、填邮箱/密码、Continue。"""
     try:
@@ -1393,18 +1458,19 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
         if cred_path.exists():
             cred_path.unlink()
 
-        # 启动 OAuth 流程
+        # 先开浏览器，再请求 OAuth（API 失败时浏览器已打开，便于排查）
         print(f"\n开始 Tidal OAuth 验证: {email}")
-        login_info, future = session.login_oauth()
-        auth_url = login_info.verification_uri_complete
-        if auth_url and not auth_url.startswith("http"):
-            auth_url = "https://" + auth_url
-        print(f"  OAuth 链接: {auth_url}")
 
         driver = init_tidal_browser(incognito=incognito)
         if not driver:
             print("✗ 无法启动浏览器")
             return None, None
+
+        login_info, future = _start_tidal_oauth_session(session)
+        auth_url = login_info.verification_uri_complete
+        if auth_url and not auth_url.startswith("http"):
+            auth_url = "https://" + auth_url
+        print(f"  OAuth 链接: {auth_url}")
 
         success = auto_complete_tidal_oauth(driver, auth_url, email, password)
         if not success:
@@ -1422,14 +1488,21 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
 
     except Exception as e:
         print(f"✗ Tidal 自动登录过程出错: {e}")
+        if driver:
+            print(f"  调试: {_tidal_oauth_page_debug(driver)}")
         return None, None
 
     finally:
-        _quit_chrome_driver(driver, "Tidal OAuth")
-        _cleanup_tidal_browser_leftovers()
-        _cleanup_tidal_browser_leftovers()
-        if logged_in:
-            print("  OAuth 浏览器已关闭，后续使用 API 操作")
+        if driver:
+            if not logged_in:
+                print(
+                    f"  登录未成功，浏览器将保留 {TIDAL_OAUTH_FAILURE_BROWSER_PAUSE} 秒便于查看当前页面..."
+                )
+                time.sleep(TIDAL_OAUTH_FAILURE_BROWSER_PAUSE)
+            _quit_chrome_driver(driver, "Tidal OAuth")
+            if logged_in:
+                _cleanup_tidal_browser_leftovers()
+                print("  OAuth 浏览器已关闭，后续使用 API 操作")
 
 
 def refresh_tidal_session(session):
@@ -3921,18 +3994,9 @@ def main():
     # ===== 记录程序开始时间 =====
     start_time = time.time()
     removed_proxies = sanitize_stale_process_proxy()
-    print(f"v{APP_VERSION} Playlist 自动化工具")
-    
-    # ===== 初始化日志 =====
-    log_file = setup_logging()
-    if removed_proxies:
-        print("⚠ 检测到本地 VPN/代理未运行，已改为直连（避免 127.0.0.1 代理拒绝连接）：")
-        for item in removed_proxies:
-            print(f"  - 已忽略 {item}")
-        print("  提示：若需走 VPN 测试 Tidal，请先启动狗急加速/代理客户端。")
-    
+
     base_dir = Path(__file__).parent
-    
+
     parser = argparse.ArgumentParser(description="随机生成播放列表")
     parser.add_argument(
         "--Platform",
@@ -3976,6 +4040,15 @@ def main():
         help=f"Tidal 登录方式，默认 {TIDAL_LOGIN_MODE}（auto=全自动浏览器）"
     )
     args = parser.parse_args()
+
+    log_file = setup_logging(args.Platform)
+    print(f"v{APP_VERSION} Playlist 自动化工具")
+    print(f"日志文件: {log_file}")
+    if removed_proxies:
+        print("⚠ 检测到本地 VPN/代理未运行，已改为直连（避免 127.0.0.1 代理拒绝连接）：")
+        for item in removed_proxies:
+            print(f"  - 已忽略 {item}")
+        print("  提示：若需走 VPN 测试 Tidal，请先启动狗急加速/代理客户端。")
 
     # 当平台为 Tidal 时，默认启用 Tidal 添加功能
     if args.Platform == "T" and not args.tidal:
@@ -4286,6 +4359,8 @@ def main():
         print(f"总耗时: {minutes}分钟 {seconds}秒")
     else:
         print(f"总耗时: {seconds}秒")
+    print(f"日志已保存: {log_file}")
+    finalize_run_log(log_file)
     print(f"{'='*60}")
 
 
