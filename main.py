@@ -6,6 +6,8 @@ import re
 import random
 import logging
 import sys
+import os
+import socket
 import threading
 import ctypes
 import shutil
@@ -14,6 +16,7 @@ import urllib.request
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Windows API 常量（用于激活窗口）
 SW_RESTORE = 9
@@ -128,6 +131,85 @@ def stop_browser_keep_alive():
         _browser_keep_alive.stop()
         _browser_keep_alive = None
 
+# ===== 网络 / 代理 =====
+_PROXY_ENV_KEYS = (
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+    "http_proxy", "https_proxy", "all_proxy",
+)
+_DIRECT_URL_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+def _parse_proxy_endpoint(proxy_value: str) -> tuple[str, int] | None:
+    if not proxy_value or proxy_value.strip().lower() in ("direct", "none", ""):
+        return None
+    value = proxy_value.strip()
+    if "://" not in value:
+        value = f"http://{value}"
+    parsed = urlparse(value)
+    host = parsed.hostname
+    if not host:
+        return None
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    return host, port
+
+
+def _proxy_endpoint_alive(host: str, port: int, timeout: float = 1.5) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def sanitize_stale_process_proxy() -> list[str]:
+    """
+    清除当前进程内不可用的 HTTP 代理环境变量。
+    常见于 VPN（如狗急加速/Clash）关闭后仍残留 http://127.0.0.1:17890，导致 Python 无法连网而浏览器正常。
+    """
+    dead_endpoints: set[tuple[str, int]] = set()
+    seen_endpoints: set[tuple[str, int]] = set()
+
+    for key in _PROXY_ENV_KEYS:
+        value = os.environ.get(key)
+        if not value:
+            continue
+        endpoint = _parse_proxy_endpoint(value)
+        if endpoint is None or endpoint in seen_endpoints:
+            continue
+        seen_endpoints.add(endpoint)
+        if not _proxy_endpoint_alive(*endpoint):
+            dead_endpoints.add(endpoint)
+
+    removed: list[str] = []
+    if not dead_endpoints:
+        return removed
+
+    for key in _PROXY_ENV_KEYS:
+        value = os.environ.get(key)
+        if not value:
+            continue
+        endpoint = _parse_proxy_endpoint(value)
+        if endpoint in dead_endpoints:
+            os.environ.pop(key, None)
+            removed.append(f"{key}={value}")
+
+    os.environ["NO_PROXY"] = "*"
+    os.environ["no_proxy"] = "*"
+    return removed
+
+
+def urlopen_direct(url: str, timeout: float):
+    """urllib 直连，不受系统/VPN 残留代理影响。"""
+    return _DIRECT_URL_OPENER.open(url, timeout=timeout)
+
+
+def configure_tidal_session_network(session) -> None:
+    """Tidal API 请求强制直连，避免 requests 读取失效代理。"""
+    req = getattr(session, "request_session", None)
+    if req is not None:
+        req.trust_env = False
+        req.proxies = {"http": None, "https": None}
+
 # ===== 日志配置 =====
 def setup_logging():
     """配置日志，输出到文件"""
@@ -186,9 +268,9 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.37"  # 数据：apple/tidal/qobuz 新增 Kael Rainer - Pandoran Kin Weave
-# 更新内容：适配 Apple Music 搜索入口改版，避免直接查找旧搜索框导致搜索失败
-DEFAULT_ALBUM_COUNT = 16         # 中间部分从主库抽取的专辑数量
+APP_VERSION = "0.1.38"  # 修复：VPN 代理未运行时自动改直连，避免 Tidal/chromedriver 请求失败
+# 更新内容：清除不可用的 127.0.0.1:17890 等残留代理，urllib 与 tidalapi 不再误走代理
+DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
 MIN_COMBINATION_DIFF = 0.85      # 最小组合差异度（0-1），低于此值会重新生成
@@ -372,7 +454,7 @@ def resolve_chromedriver_version(chrome_version: str) -> str | None:
     metadata_url = "https://googlechromelabs.github.io/chrome-for-testing/latest-patch-versions-per-build.json"
 
     try:
-        with urllib.request.urlopen(metadata_url, timeout=WEBDRIVER_DOWNLOAD_TIMEOUT) as response:
+        with urlopen_direct(metadata_url, WEBDRIVER_DOWNLOAD_TIMEOUT) as response:
             data = json.loads(response.read().decode("utf-8"))
         build_info = data.get("builds", {}).get(build_version)
         if build_info:
@@ -429,17 +511,21 @@ def find_existing_chromedriver(driver_version: str) -> str | None:
 
 
 def download_file(url: str, target_path: Path) -> bool:
-    """下载文件，失败时回退到 PowerShell。"""
+    """下载文件，失败时回退到 PowerShell（均不走失效代理）。"""
+    last_error = None
     try:
-        with urllib.request.urlopen(url, timeout=WEBDRIVER_DOWNLOAD_TIMEOUT) as response, open(target_path, "wb") as target:
+        with urlopen_direct(url, WEBDRIVER_DOWNLOAD_TIMEOUT) as response, open(target_path, "wb") as target:
             shutil.copyfileobj(response, target)
         if target_path.exists() and target_path.stat().st_size > 0:
             return True
-    except Exception:
-        pass
+    except Exception as e:
+        last_error = e
 
     try:
-        ps_command = f"Invoke-WebRequest -UseBasicParsing '{url}' -OutFile '{target_path}'"
+        ps_command = (
+            f"$ProgressPreference='SilentlyContinue'; "
+            f"Invoke-WebRequest -UseBasicParsing -Uri '{url}' -OutFile '{target_path}' -Proxy $null"
+        )
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", ps_command],
             capture_output=True,
@@ -449,9 +535,16 @@ def download_file(url: str, target_path: Path) -> bool:
             timeout=WEBDRIVER_DOWNLOAD_TIMEOUT,
             check=False,
         )
-        return result.returncode == 0 and target_path.exists() and target_path.stat().st_size > 0
-    except Exception:
-        return False
+        if result.returncode == 0 and target_path.exists() and target_path.stat().st_size > 0:
+            return True
+        if result.stderr:
+            last_error = result.stderr.strip()
+    except Exception as e:
+        last_error = e
+
+    if last_error:
+        print(f"  ! 下载失败: {last_error}")
+    return False
 
 
 def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
@@ -1172,6 +1265,7 @@ def login_tidal_with_mcp_handoff(email: str, password: str, timeout: int | None 
 
     wait_seconds = timeout or TIDAL_MCP_LOGIN_TIMEOUT
     session = tidalapi.Session()
+    configure_tidal_session_network(session)
 
     cred_path = Path(TIDAL_CREDENTIALS_FILE)
     if cred_path.exists():
@@ -1243,6 +1337,7 @@ def login_tidal():
         return None
     
     session = tidalapi.Session()
+    configure_tidal_session_network(session)
     
     # 删除旧的凭据文件（强制重新登录）
     cred_path = Path(TIDAL_CREDENTIALS_FILE)
@@ -1288,6 +1383,7 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
         return None, None
     
     session = tidalapi.Session()
+    configure_tidal_session_network(session)
     driver = None
     logged_in = False
 
@@ -3824,10 +3920,16 @@ def get_category_history_data(category: str, history: dict):
 def main():
     # ===== 记录程序开始时间 =====
     start_time = time.time()
+    removed_proxies = sanitize_stale_process_proxy()
     print(f"v{APP_VERSION} Playlist 自动化工具")
     
     # ===== 初始化日志 =====
     log_file = setup_logging()
+    if removed_proxies:
+        print("⚠ 检测到本地 VPN/代理未运行，已改为直连（避免 127.0.0.1 代理拒绝连接）：")
+        for item in removed_proxies:
+            print(f"  - 已忽略 {item}")
+        print("  提示：若需走 VPN 测试 Tidal，请先启动狗急加速/代理客户端。")
     
     base_dir = Path(__file__).parent
     
