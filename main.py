@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.40"  # 修复：chromedriver 同大版本缓存复用，下载显示进度与更长超时
-# 更新内容：Chrome 升到 150 时优先复用已有 150.x 驱动；下载约 19MB 显示进度，避免静默卡住
+APP_VERSION = "0.1.41"  # 修复：Apple 播放列表名含撇号（如 Dawn's Whisper）无法匹配
+# 更新内容：XPath 单引号被截断导致找不到列表；改为规范化撇号后在菜单项中匹配
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2320,6 +2320,58 @@ def apple_move_to_element(driver, element):
     actions.perform()
 
 
+def normalize_playlist_name(name: str) -> str:
+    """统一各类撇号/引号，避免 Dawn's 与 Dawn's 匹配失败。"""
+    if not name:
+        return ""
+    text = str(name).strip().casefold()
+    for ch in ("\u2018", "\u2019", "\u201A", "\u2032", "\u0060", "\u00B4", '"', "\u201C", "\u201D"):
+        text = text.replace(ch, "'")
+    text = re.sub(r"\s+", " ", text)
+    return text
+
+
+def find_apple_playlist_menu_option(driver, playlist_name: str):
+    """
+    在「Add to Playlist」子菜单中查找目标播放列表。
+    不用把名称直接拼进 XPath（名称含 ' 会截断字符串，如 Dawn's Whisper）。
+    """
+    target = normalize_playlist_name(playlist_name)
+    if not target:
+        return None
+
+    candidates = []
+    try:
+        candidates = driver.find_elements(By.CSS_SELECTOR, "span.contextual-menu-item__option-text")
+    except Exception:
+        return None
+
+    skip_labels = {
+        normalize_playlist_name(x)
+        for x in (
+            "New Playlist", "新建播放列表", "新播放清單", "Neue Playlist",
+            "Add to Playlist", "添加到播放列表", "加入播放清單",
+        )
+    }
+    exact_hit = None
+    contains_hit = None
+    for el in candidates:
+        try:
+            if not el.is_displayed():
+                continue
+            label = normalize_playlist_name(el.text or "")
+        except Exception:
+            continue
+        if not label or label in skip_labels:
+            continue
+        if label == target:
+            exact_hit = el
+            break
+        if target in label or label in target:
+            contains_hit = contains_hit or el
+    return exact_hit or contains_hit
+
+
 def init_apple_browser():
     """初始化 Chrome 浏览器（无痕模式）"""
     if not SELENIUM_AVAILABLE:
@@ -2817,16 +2869,24 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                         
                         for retry_attempt in range(max_retry_attempts):
                             try:
-                                playlist_option = WebDriverWait(driver, 5).until(
-                                    EC.element_to_be_clickable((By.XPATH, f"//span[contains(@class, 'contextual-menu-item__option-text') and contains(text(), '{playlist_name}')]"))
-                                )
+                                playlist_option = None
+                                deadline = time.time() + 5
+                                while time.time() < deadline and playlist_option is None:
+                                    playlist_option = find_apple_playlist_menu_option(driver, playlist_name)
+                                    if playlist_option is None:
+                                        time.sleep(0.35)
+                                if playlist_option is None:
+                                    raise TimeoutError(f"菜单中未找到播放列表: {playlist_name}")
                                 apple_move_to_element(driver, playlist_option)
                                 apple_human_delay(0.3, 0.6)
-                                playlist_option.click()
+                                try:
+                                    playlist_option.click()
+                                except Exception:
+                                    driver.execute_script("arguments[0].click();", playlist_option)
                                 print(f"    ✓ 已添加第 {idx+1} 首")
                                 playlist_found = True
                                 break
-                            except:
+                            except Exception as find_err:
                                 if retry_attempt < max_retry_attempts - 1:
                                     # 关闭菜单，等待几秒后重试
                                     try:
@@ -2835,9 +2895,47 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                                     except:
                                         pass
                                     print(f"    播放列表未找到，等待重试... (尝试 {retry_attempt+1}/{max_retry_attempts})")
-                                    apple_human_delay(2, 3)
+                                    # 重新打开 Add to Playlist 菜单
+                                    try:
+                                        songs = driver.find_elements(By.CSS_SELECTOR, ".songs-list-row, [data-testid='track-cell']")
+                                        if idx < len(songs):
+                                            song = songs[idx]
+                                            more_btn = None
+                                            try:
+                                                more_btn = song.find_element(By.CSS_SELECTOR, "span.more-button")
+                                            except Exception:
+                                                try:
+                                                    more_btn = song.find_element(By.CSS_SELECTOR, "button[aria-label*='更多'], button[aria-label*='more']")
+                                                except Exception:
+                                                    pass
+                                            if more_btn:
+                                                try:
+                                                    more_btn.click()
+                                                except Exception:
+                                                    driver.execute_script("arguments[0].click();", more_btn)
+                                                apple_human_delay(1, 2)
+                                                add_to_playlist = WebDriverWait(driver, 5).until(
+                                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
+                                                )
+                                                add_to_playlist.click()
+                                                apple_human_delay(1, 2)
+                                    except Exception:
+                                        pass
+                                    apple_human_delay(1, 2)
                                 else:
                                     print(f"    ! 播放列表未找到，跳过歌曲 {idx+1}")
+                                    if retry_attempt == max_retry_attempts - 1:
+                                        print(f"      调试: 目标={playlist_name!r}, 原因={find_err}")
+                                        try:
+                                            labels = [
+                                                (el.text or "").strip()
+                                                for el in driver.find_elements(By.CSS_SELECTOR, "span.contextual-menu-item__option-text")
+                                                if (el.text or "").strip()
+                                            ]
+                                            if labels:
+                                                print(f"      当前菜单项: {labels[:12]}")
+                                        except Exception:
+                                            pass
                         
                         if not playlist_found:
                             # 关闭菜单后继续下一首
