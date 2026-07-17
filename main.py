@@ -293,9 +293,9 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.39"  # 修复：OAuth 失败时延迟关浏览器；日志统一写入 logs/ 目录
-# 更新内容：先开浏览器再调 OAuth API；失败保留 20s 供查看页面；每次运行独立日志文件
+DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.40"  # 修复：chromedriver 同大版本缓存复用，下载显示进度与更长超时
+# 更新内容：Chrome 升到 150 时优先复用已有 150.x 驱动；下载约 19MB 显示进度，避免静默卡住
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -331,7 +331,8 @@ PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
 PLAYLIST_HISTORY_FILE = ".playlist_history.json"    # 已使用的播放列表名称历史
 WEBDRIVER_STARTUP_RETRIES = 4  # 浏览器启动最大重试次数
 WEBDRIVER_STARTUP_RETRY_DELAY = 2.0  # 启动失败后的重试间隔（秒）
-WEBDRIVER_DOWNLOAD_TIMEOUT = 30  # chromedriver 下载与版本查询超时（秒）
+WEBDRIVER_DOWNLOAD_TIMEOUT = 120  # chromedriver 下载超时（秒，约 19MB）
+WEBDRIVER_META_TIMEOUT = 20  # chromedriver 版本查询超时（秒）
 CHROMEDRIVER_PLATFORM = "win64"
 CHROMEDRIVER_CACHE_DIR = ".webdriver_cache"
 
@@ -482,7 +483,7 @@ def resolve_chromedriver_version(chrome_version: str) -> str | None:
     metadata_url = "https://googlechromelabs.github.io/chrome-for-testing/latest-patch-versions-per-build.json"
 
     try:
-        with urlopen_direct(metadata_url, WEBDRIVER_DOWNLOAD_TIMEOUT) as response:
+        with urlopen_direct(metadata_url, WEBDRIVER_META_TIMEOUT) as response:
             data = json.loads(response.read().decode("utf-8"))
         build_info = data.get("builds", {}).get(build_version)
         if build_info:
@@ -493,63 +494,87 @@ def resolve_chromedriver_version(chrome_version: str) -> str | None:
     return chrome_version
 
 
-def find_existing_chromedriver(driver_version: str) -> str | None:
-    """优先复用已存在的 chromedriver，避免重复下载。
-    精确版本不存在时，自动降级使用同一 major.minor.build 下已缓存的最新版本。"""
-    candidates = [
-        Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM / driver_version / "chromedriver.exe",
-        Path(__file__).parent / CHROMEDRIVER_CACHE_DIR / driver_version / f"chromedriver-{CHROMEDRIVER_PLATFORM}" / "chromedriver.exe",
+def _chromedriver_exe_candidates(version: str) -> list[Path]:
+    return [
+        Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM / version / "chromedriver.exe",
+        Path(__file__).parent / CHROMEDRIVER_CACHE_DIR / version / f"chromedriver-{CHROMEDRIVER_PLATFORM}" / "chromedriver.exe",
     ]
 
-    for candidate in candidates:
-        if candidate.exists():
+
+def _scan_cached_chromedriver(prefix: str) -> tuple[str, str] | None:
+    """在本地/Selenium 缓存中找以 prefix 开头且含 chromedriver.exe 的最新版本。"""
+    best = None
+    roots = [
+        (Path(__file__).parent / CHROMEDRIVER_CACHE_DIR, f"chromedriver-{CHROMEDRIVER_PLATFORM}/chromedriver.exe"),
+        (Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM, "chromedriver.exe"),
+    ]
+    for root, rel in roots:
+        if not root.exists():
+            continue
+        for version_dir in root.iterdir():
+            if not version_dir.is_dir():
+                continue
+            ver = version_dir.name
+            if not ver.startswith(prefix):
+                continue
+            exe = version_dir / rel
+            if exe.exists() and exe.stat().st_size > 0:
+                if best is None or ver > best[0]:
+                    best = (ver, str(exe))
+    return best
+
+
+def find_existing_chromedriver(driver_version: str) -> str | None:
+    """优先复用已存在的 chromedriver，避免重复下载。
+    精确版本 → 同 build → 同 major（如 150.x）逐级降级。"""
+    for candidate in _chromedriver_exe_candidates(driver_version):
+        if candidate.exists() and candidate.stat().st_size > 0:
             return str(candidate)
 
-    # 降级匹配：找同一 major.minor.build（前三段）下已缓存的最新版本
-    build_prefix = ".".join(driver_version.split(".")[:3])  # 如 "148.0.7778"
+    build_prefix = ".".join(driver_version.split(".")[:3]) + "."  # 150.0.7871.
+    major_prefix = driver_version.split(".", 1)[0] + "."         # 150.
 
-    # 搜索本地缓存目录
-    local_cache = Path(__file__).parent / CHROMEDRIVER_CACHE_DIR
-    best = None
-    if local_cache.exists():
-        for version_dir in local_cache.iterdir():
-            ver = version_dir.name
-            if ver.startswith(build_prefix + "."):
-                exe = version_dir / f"chromedriver-{CHROMEDRIVER_PLATFORM}" / "chromedriver.exe"
-                if exe.exists():
-                    if best is None or ver > best[0]:
-                        best = (ver, str(exe))
-
-    # 搜索 selenium manager 缓存目录
-    selenium_cache = Path.home() / ".cache" / "selenium" / "chromedriver" / CHROMEDRIVER_PLATFORM
-    if selenium_cache.exists():
-        for version_dir in selenium_cache.iterdir():
-            ver = version_dir.name
-            if ver.startswith(build_prefix + "."):
-                exe = version_dir / "chromedriver.exe"
-                if exe.exists():
-                    if best is None or ver > best[0]:
-                        best = (ver, str(exe))
-
-    if best:
-        print(f"  ! 未找到 chromedriver {driver_version}，降级使用缓存版本 {best[0]}")
-        return best[1]
-
+    for prefix, label in ((build_prefix, "同 build"), (major_prefix, "同大版本")):
+        best = _scan_cached_chromedriver(prefix)
+        if best and best[0] != driver_version:
+            print(f"  ! 未找到 chromedriver {driver_version}，{label}降级使用缓存 {best[0]}")
+            return best[1]
+        if best:
+            return best[1]
     return None
 
 
 def download_file(url: str, target_path: Path) -> bool:
-    """下载文件，失败时回退到 PowerShell（均不走失效代理）。"""
+    """下载文件并打印进度；失败时回退 PowerShell（均不走失效代理）。"""
     last_error = None
     try:
         with urlopen_direct(url, WEBDRIVER_DOWNLOAD_TIMEOUT) as response, open(target_path, "wb") as target:
-            shutil.copyfileobj(response, target)
+            total = response.headers.get("Content-Length")
+            total_n = int(total) if total and str(total).isdigit() else 0
+            if total_n:
+                print(f"  下载大小约 {total_n / 1024 / 1024:.1f} MB，最长等待 {WEBDRIVER_DOWNLOAD_TIMEOUT}s ...")
+            copied = 0
+            last_pct = -1
+            while True:
+                chunk = response.read(256 * 1024)
+                if not chunk:
+                    break
+                target.write(chunk)
+                copied += len(chunk)
+                if total_n:
+                    pct = int(copied * 100 / total_n)
+                    if pct >= last_pct + 10:
+                        print(f"  下载进度 {pct}% ({copied / 1024 / 1024:.1f}/{total_n / 1024 / 1024:.1f} MB)")
+                        last_pct = pct
         if target_path.exists() and target_path.stat().st_size > 0:
+            print(f"  ✓ 下载完成 ({target_path.stat().st_size / 1024 / 1024:.1f} MB)")
             return True
     except Exception as e:
         last_error = e
+        print(f"  ! urllib 下载失败，尝试 PowerShell: {e}")
 
     try:
+        print(f"  PowerShell 下载中（最长 {WEBDRIVER_DOWNLOAD_TIMEOUT}s）...")
         ps_command = (
             f"$ProgressPreference='SilentlyContinue'; "
             f"Invoke-WebRequest -UseBasicParsing -Uri '{url}' -OutFile '{target_path}' -Proxy $null"
@@ -564,6 +589,7 @@ def download_file(url: str, target_path: Path) -> bool:
             check=False,
         )
         if result.returncode == 0 and target_path.exists() and target_path.stat().st_size > 0:
+            print(f"  ✓ PowerShell 下载完成 ({target_path.stat().st_size / 1024 / 1024:.1f} MB)")
             return True
         if result.stderr:
             last_error = result.stderr.strip()
@@ -581,6 +607,7 @@ def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
     if not chrome_version:
         print("  ! 无法识别 Chrome 版本")
         return None
+    print(f"  本机 Chrome: {chrome_version}")
 
     driver_version = resolve_chromedriver_version(chrome_version)
     if not driver_version:
@@ -589,37 +616,56 @@ def ensure_local_chromedriver(chrome_binary_path: str) -> str | None:
 
     existing_driver = find_existing_chromedriver(driver_version)
     if existing_driver:
-        print(f"  使用已缓存 chromedriver: {driver_version}")
+        print(f"  使用已缓存 chromedriver: {Path(existing_driver).parent.parent.name if 'webdriver_cache' in existing_driver else driver_version}")
+        print(f"  路径: {existing_driver}")
         return existing_driver
 
     cache_root = Path(__file__).parent / CHROMEDRIVER_CACHE_DIR / driver_version
     driver_dir = cache_root / f"chromedriver-{CHROMEDRIVER_PLATFORM}"
     driver_path = driver_dir / "chromedriver.exe"
-    if driver_path.exists():
+    if driver_path.exists() and driver_path.stat().st_size > 0:
         return str(driver_path)
 
     cache_root.mkdir(parents=True, exist_ok=True)
     zip_path = cache_root / "chromedriver.zip"
+    # 清理上次未完成的损坏 zip，避免文件锁/半截包
+    if zip_path.exists() and zip_path.stat().st_size < 1_000_000:
+        try:
+            zip_path.unlink()
+        except Exception:
+            pass
+
     download_url = (
         f"https://storage.googleapis.com/chrome-for-testing-public/"
         f"{driver_version}/{CHROMEDRIVER_PLATFORM}/chromedriver-{CHROMEDRIVER_PLATFORM}.zip"
     )
 
     try:
-        print(f"  下载 chromedriver {driver_version} ...")
+        print(f"  本地无可用缓存，开始下载 chromedriver {driver_version} ...")
         if not download_file(download_url, zip_path):
+            # 下载失败时再扫一次同大版本缓存
+            fallback = find_existing_chromedriver(driver_version)
+            if fallback:
+                return fallback
             raise RuntimeError("下载结果为空或下载失败")
 
         with zipfile.ZipFile(zip_path, "r") as zip_file:
             zip_file.extractall(cache_root)
+        print(f"  ✓ 已解压到 {driver_dir}")
     except Exception as e:
         print(f"  ! 下载 chromedriver 失败: {e}")
+        fallback = find_existing_chromedriver(driver_version)
+        if fallback:
+            return fallback
         return None
     finally:
         if zip_path.exists():
-            zip_path.unlink(missing_ok=True)
+            try:
+                zip_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
-    if driver_path.exists():
+    if driver_path.exists() and driver_path.stat().st_size > 0:
         return str(driver_path)
 
     print("  ! chromedriver 解压后未找到可执行文件")
