@@ -10,6 +10,15 @@ alwaysApply: true
 1. **更新版本号**：在 `main.py` 中递增 `APP_VERSION`（如 `0.1.28` → `0.1.29`），并在同行注释用中文简述本次变更。
 2. **仅提交相关文件**：通常包括 `main.py` 及本次修改的 `*_artists.json` 等；不要提交凭据、ChromeProfile、日志、运行历史等本地文件。
 3. **提交信息格式**：`v0.1.xx 修复/新增：中文说明`（与历史 commit 风格一致）。
-4. **推送到远程**：`git push origin main`；若网络失败，告知用户本地已提交，请手动推送。
+4. **推送到远程**：必须推到 `origin/main`。本机浏览器能上网不代表 Git 能直连 GitHub。
+   - 先读 Windows 系统代理：`HKCU\...\Internet Settings` 的 `ProxyEnable` / `ProxyServer`（当前常见为 `127.0.0.1:18081`）。
+   - 若该端口可连接，用该代理推送，例如：
+     ```powershell
+     $proxy='http://127.0.0.1:18081'
+     $env:HTTP_PROXY=$proxy; $env:HTTPS_PROXY=$proxy
+     git -c http.proxy=$proxy -c https.proxy=$proxy push origin main
+     ```
+   - 不要在代理可用时强行清掉代理直连 GitHub（会超时）；也不要用已失效的旧端口（如 `17890`）。
+   - 仅当代理端口不通且直连也失败时，才告知用户本地已提交、请手动推送。
 
 完成修改后主动向用户汇报：版本号、commit hash、是否已成功推送。
