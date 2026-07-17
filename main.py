@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.41"  # 修复：Apple 播放列表名含撇号（如 Dawn's Whisper）无法匹配
-# 更新内容：XPath 单引号被截断导致找不到列表；改为规范化撇号后在菜单项中匹配
+APP_VERSION = "0.1.42"  # 修复：Apple 播放列表名选定后立即标记已用，避免重跑复用旧名
+# 更新内容：中断/关浏览器时报错不再丢掉已用标记；Dawn's Whisper 类名称选定即写入历史
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -1637,11 +1637,40 @@ def get_next_playlist_name() -> str | None:
     return all_names[0] if all_names else None
 
 def mark_playlist_name_used(name: str) -> None:
-    """标记播放列表名称为已使用"""
+    """标记播放列表名称为已使用（选定即写入，避免中途失败后重跑复用）。"""
+    if not name:
+        return
     used_names = load_playlist_history()
     if name not in used_names:
         used_names.append(name)
         save_playlist_history(used_names)
+        print(f"  ✓ 已标记播放列表名称为已使用: {name}")
+
+
+def claim_next_playlist_name(*, exclude: set[str] | None = None) -> str | None:
+    """获取并立即占用下一个可用播放列表名称。"""
+    exclude = exclude or set()
+    all_names = load_available_playlist_names()
+    used_names = load_playlist_history()
+    blocked = set(used_names) | set(exclude)
+
+    for name in all_names:
+        if name not in blocked:
+            mark_playlist_name_used(name)
+            return name
+
+    print("⚠ 所有播放列表名称都已使用，将重置历史记录")
+    save_playlist_history([])
+    if not all_names:
+        return None
+    for name in all_names:
+        if name not in exclude:
+            mark_playlist_name_used(name)
+            return name
+    name = all_names[0]
+    mark_playlist_name_used(name)
+    return name
+
 
 def parse_album_list_from_txt(txt_path: Path) -> list[dict]:
     """从生成的 txt 文件中解析专辑列表"""
@@ -1859,8 +1888,8 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
     
     print(f"\n解析到 {len(albums)} 张专辑待添加")
     
-    # 获取播放列表名称
-    playlist_name = get_next_playlist_name()
+    # 获取播放列表名称（选定即标记，避免中断后重跑复用）
+    playlist_name = claim_next_playlist_name()
     if not playlist_name:
         print("✗ 无可用的播放列表名称")
         return False
@@ -1873,9 +1902,6 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
         print(f"✓ 创建播放列表: {playlist.name}")
     else:
         print(f"✓ 找到播放列表: {playlist.name}")
-    
-    # 标记播放列表名称为已使用
-    mark_playlist_name_used(playlist_name)
     
     # 为每张专辑生成一个随机的歌曲数量（在范围内不重复）
     track_counts = list(range(track_count_min, track_count_max + 1))
@@ -2982,6 +3008,8 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
     
     print(f"\n解析到 {len(albums)} 张专辑待添加")
     print(f"将使用播放列表名称: {playlist_name}")
+    # 选定后立即占用，避免进程中断/关浏览器异常导致下次仍复用同名
+    mark_playlist_name_used(playlist_name)
     
     # 初始化浏览器
     print("\n初始化浏览器...")
@@ -3060,15 +3088,15 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                     click_apple_home(driver)
                     apple_human_delay(8, 10)
                     
-                    # 获取下一个可用的播放列表名称
-                    all_names = load_available_playlist_names()
-                    used_names = load_playlist_history()
-                    for name in all_names:
-                        if name not in used_names and name not in used_playlist_names:
-                            current_playlist_name = name
-                            used_playlist_names.append(name)
-                            print(f"  使用新播放列表名称: {current_playlist_name}")
-                            break
+                    # 获取下一个可用的播放列表名称（立即占用）
+                    next_name = claim_next_playlist_name(exclude=set(used_playlist_names))
+                    if next_name:
+                        current_playlist_name = next_name
+                        used_playlist_names.append(next_name)
+                        print(f"  使用新播放列表名称: {current_playlist_name}")
+                    else:
+                        print("  ✗ 无更多可用播放列表名称")
+                        return False
                     
                     playlist_created = False  # 需要重新创建
                     continue  # 重新处理当前专辑
@@ -3213,9 +3241,18 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
     finally:
         if driver:
             print("\n浏览器保持打开状态...")
-            input("按 Enter 关闭浏览器...")
-            stop_browser_keep_alive()
-            driver.quit()
+            try:
+                input("按 Enter 关闭浏览器...")
+            except EOFError:
+                print("  (无交互输入，自动关闭浏览器)")
+            try:
+                stop_browser_keep_alive()
+            except Exception:
+                pass
+            try:
+                driver.quit()
+            except Exception:
+                pass
 
 # ==================== Qobuz 集成功能 ====================
 
@@ -3915,9 +3952,18 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
     finally:
         if driver:
             print("\n浏览器保持打开状态...")
-            input("按 Enter 关闭浏览器...")
-            stop_browser_keep_alive()
-            driver.quit()
+            try:
+                input("按 Enter 关闭浏览器...")
+            except EOFError:
+                print("  (无交互输入，自动关闭浏览器)")
+            try:
+                stop_browser_keep_alive()
+            except Exception:
+                pass
+            try:
+                driver.quit()
+            except Exception:
+                pass
 
 # ==================== 原有功能 ====================
 
@@ -4444,8 +4490,8 @@ def main():
     
     # ===== 9. Apple Music 播放列表添加（如果启用） =====
     if apple_enabled:
-        # 获取播放列表名称
-        playlist_name = get_next_playlist_name()
+        # 获取播放列表名称（选定即标记已用）
+        playlist_name = claim_next_playlist_name()
         if not playlist_name:
             print("✗ 无可用的播放列表名称")
             return
@@ -4454,22 +4500,18 @@ def main():
         print("开始添加歌曲到 Apple Music 播放列表...")
         print(f"{'='*60}")
         
-        success = process_apple_music_playlist(
+        process_apple_music_playlist(
             output_path,
             playlist_name,
             APPLE_TRACK_COUNT_MIN,
             APPLE_TRACK_COUNT_MAX,
             base_dir
         )
-        
-        # 标记播放列表名称为已使用
-        if success:
-            mark_playlist_name_used(playlist_name)
     
     # ===== 10. Qobuz 播放列表添加（如果启用） =====
     if qobuz_enabled:
-        # 获取播放列表名称
-        playlist_name = get_next_playlist_name()
+        # 获取播放列表名称（选定即标记已用）
+        playlist_name = claim_next_playlist_name()
         if not playlist_name:
             print("✗ 无可用的播放列表名称")
             return
@@ -4478,16 +4520,12 @@ def main():
         print("开始添加歌曲到 Qobuz 播放列表...")
         print(f"{'='*60}")
         
-        success = process_qobuz_playlist(
+        process_qobuz_playlist(
             output_path,
             playlist_name,
             QOBUZ_TRACK_COUNT_MIN,
             QOBUZ_TRACK_COUNT_MAX
         )
-        
-        # 标记播放列表名称为已使用
-        if success:
-            mark_playlist_name_used(playlist_name)
     
     # ===== 输出程序总耗时 =====
     elapsed_time = time.time() - start_time
