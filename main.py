@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.42"  # 修复：Apple 播放列表名选定后立即标记已用，避免重跑复用旧名
-# 更新内容：中断/关浏览器时报错不再丢掉已用标记；Dawn's Whisper 类名称选定即写入历史
+APP_VERSION = "0.1.43"  # 优化：Apple 收尾汇总列出失败专辑名称与具体错误原因
+# 更新内容：不再只显示失败张数，便于对照日志排查未找到/加歌失败等
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -3021,10 +3021,21 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
     used_playlist_names = [playlist_name]
     current_playlist_name = playlist_name
     
-    # 记录失败的专辑（用于重试）
-    failed_albums = []  # [(artist_name, album_name, track_count), ...]
+    # 记录失败的专辑（用于重试与收尾汇总）
+    # 每项: {artist, album, track_count, reason, stage}
+    failed_albums = []
     # 记录已处理的专辑（用于补充时排除）
     processed_albums = set()
+    
+    def _record_failed_album(artist, album, track_count, reason, stage="主流程"):
+        failed_albums.append({
+            "artist": artist,
+            "album": album,
+            "track_count": track_count,
+            "reason": reason,
+            "stage": stage,
+        })
+        print(f"  ! 失败已记录 [{stage}]: {artist} - {album} | {reason}")
     
     try:
         # 登录
@@ -3106,12 +3117,17 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                         playlist_created = True
                         total_added += added
                     elif added == 0:
-                        # 记录失败的专辑（用于后续重试）
-                        failed_albums.append((artist_name, album_name, track_count))
-                        print(f"  ! 添加失败，已记录待重试")
+                        _record_failed_album(
+                            artist_name, album_name, track_count,
+                            "进入专辑页后未能添加任何歌曲（菜单/播放列表匹配或点击失败）",
+                            stage="主流程",
+                        )
             else:
-                # 未找到专辑，也记录为失败
-                failed_albums.append((artist_name, album_name, track_count))
+                _record_failed_album(
+                    artist_name, album_name, track_count,
+                    "搜索未找到专辑或未能进入专辑页",
+                    stage="主流程",
+                )
             
             i += 1  # 移动到下一张专辑
             apple_human_delay(1, 2)
@@ -3120,10 +3136,15 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         if failed_albums:
             print(f"\n{'='*60}")
             print(f"⚠ 有 {len(failed_albums)} 张专辑添加失败，尝试重试...")
+            for idx, item in enumerate(failed_albums, 1):
+                print(f"  [{idx}] {item['artist']} - {item['album']} | {item['reason']}")
             print(f"{'='*60}")
             
             retry_failed = []
-            for artist_name, album_name, track_count in failed_albums:
+            for item in failed_albums:
+                artist_name = item["artist"]
+                album_name = item["album"]
+                track_count = item["track_count"]
                 print(f"\n[重试] {artist_name} - {album_name}")
                 
                 # 点击首页重置状态
@@ -3137,10 +3158,18 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                         total_added += added
                         print(f"  ✓ 重试成功，添加了 {added} 首")
                     else:
-                        retry_failed.append((artist_name, album_name, track_count))
+                        retry_failed.append({
+                            **item,
+                            "reason": f"重试后仍未能添加歌曲（原因：{item['reason']}）",
+                            "stage": "重试",
+                        })
                         print(f"  ✗ 重试仍然失败")
                 else:
-                    retry_failed.append((artist_name, album_name, track_count))
+                    retry_failed.append({
+                        **item,
+                        "reason": f"重试仍搜索不到专辑（原因：{item['reason']}）",
+                        "stage": "重试",
+                    })
                     print(f"  ✗ 重试仍然找不到专辑")
                 
                 apple_human_delay(1, 2)
@@ -3226,6 +3255,16 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         print(f"  实际添加: {total_added} 首")
         if failed_albums:
             print(f"  失败专辑: {len(failed_albums)} 张")
+            print(f"  ---------- 失败明细 ----------")
+            for idx, item in enumerate(failed_albums, 1):
+                print(
+                    f"  [{idx}] {item['artist']} - {item['album']}"
+                    f"  | 阶段: {item.get('stage', '?')}"
+                    f"  | 原因: {item.get('reason', '未知')}"
+                )
+            print(f"  ------------------------------")
+        else:
+            print(f"  失败专辑: 无")
         if len(used_playlist_names) > 1:
             print(f"  尝试过的播放列表: {', '.join(used_playlist_names)}")
         print(f"{'='*60}")
