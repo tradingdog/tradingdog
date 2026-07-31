@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.44"  # 优化：Streetlamp After the Last Shift 直链进专辑，绕过搜索点击拦截
-# 更新内容：搜索结果元素被遮挡时改为 driver.get 直达 Apple Music 专辑页
+APP_VERSION = "0.1.45"  # 优化：Apple 收尾汇总专门提示是否因搜索点击被遮挡导致失败
+# 更新内容：记录 element click intercepted 明细，并在总结中给出直链绕过说明
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2462,15 +2462,64 @@ APPLE_DIRECT_ALBUM_URLS = {
 }
 
 
+def _is_apple_click_intercepted_error(msg):
+    """判断是否为搜索结果点击被遮挡（element click intercepted）。"""
+    text = str(msg or "").lower()
+    return (
+        "element click intercepted" in text
+        or "elementclickintercepted" in text
+        or "other element would receive the click" in text
+        or "点击被其他元素遮挡" in text
+        or "搜索结果链接点击被" in text
+    )
+
+
+def _format_apple_search_fail_reason(msg, album_name=""):
+    """将搜索失败信息整理成收尾汇总可读的原因。"""
+    text = str(msg or "").strip()
+    album_key = (album_name or "").strip().lower()
+    has_direct = album_key in APPLE_DIRECT_ALBUM_URLS
+
+    if _is_apple_click_intercepted_error(text):
+        reason = (
+            "【搜索点击被遮挡】搜索结果链接点击被其他页面元素拦截"
+            "（element click intercepted），未能进入专辑页"
+        )
+        if has_direct:
+            reason += "；该专辑已配置 APPLE_DIRECT_ALBUM_URLS 直链，但直链/回退搜索仍失败"
+        else:
+            reason += "；可将该专辑加入 APPLE_DIRECT_ALBUM_URLS 直链绕过"
+        if text and "element click intercepted" in text.lower():
+            # 保留简短原始错误便于对照
+            short = text.replace("\n", " ")
+            if len(short) > 180:
+                short = short[:180] + "..."
+            reason += f"；原始错误: {short}"
+        return reason
+
+    if text:
+        if has_direct:
+            return f"搜索/直链未能进入专辑页（该专辑已配置直链）；详情: {text[:250]}"
+        return f"搜索未能进入专辑页；详情: {text[:250]}"
+    if has_direct:
+        return "搜索/直链未能进入专辑页（该专辑已配置 APPLE_DIRECT_ALBUM_URLS）"
+    return "搜索未找到专辑或未能进入专辑页"
+
+
 def search_album_on_apple(driver, artist_name, album_name):
-    """在 Apple Music 上搜索专辑，返回专辑URL"""
+    """在 Apple Music 上搜索专辑。
+
+    返回 (album_url, fail_reason)：
+    - 成功: (url, None)
+    - 失败: (None, 可读失败原因)，便于收尾汇总判断是否为点击遮挡类错误
+    """
     print(f"搜索专辑: {album_name} (艺人: {artist_name})")
 
     direct_url = APPLE_DIRECT_ALBUM_URLS.get((album_name or "").strip().lower())
     if direct_url:
         print(f"  使用直链绕过搜索（避免点击被拦截）: {direct_url}")
         if navigate_to_album_url_apple(driver, direct_url):
-            return driver.current_url or direct_url
+            return (driver.current_url or direct_url), None
         print("  ✗ 直链导航失败，回退到搜索流程")
     
     try:
@@ -2586,7 +2635,7 @@ def search_album_on_apple(driver, artist_name, album_name):
                             EC.presence_of_element_located((By.CSS_SELECTOR, ".songs-list-row, [data-testid='track-cell']"))
                         )
                         print(f"  ✓ 已成功进入专辑页面: {current_url}")
-                        return current_url
+                        return current_url, None
                     except:
                         if retry < max_retries - 1:
                             print(f"  等待歌曲列表加载... (重试 {retry+1}/{max_retries})")
@@ -2598,18 +2647,19 @@ def search_album_on_apple(driver, artist_name, album_name):
                         apple_human_delay(1, 2)
                     else:
                         print(f"  ✗ 进入的不是专辑页面: {current_url}")
-                        return None
+                        return None, _format_apple_search_fail_reason(
+                            f"点击后未进入专辑页，当前URL: {current_url}", album_name
+                        )
             
             print(f"  ✗ 页面加载超时")
-            return None
+            return None, _format_apple_search_fail_reason("专辑页歌曲列表加载超时", album_name)
         else:
             print(f"  ✗ 未找到专辑链接")
-            return None
+            return None, _format_apple_search_fail_reason("搜索结果中未找到专辑链接", album_name)
             
     except Exception as e:
         print(f"  ✗ 搜索失败: {e}")
-        return None
-
+        return None, _format_apple_search_fail_reason(e, album_name)
 
 def navigate_to_album_url_apple(driver, album_url):
     """直接通过URL导航到专辑页面"""
@@ -3082,7 +3132,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
             print(f"\n[{i+1}/{len(albums)}] 处理: {artist_name} - {album_name}")
             
             # 搜索专辑，获取专辑URL
-            album_url = search_album_on_apple(driver, artist_name, album_name)
+            album_url, search_fail_reason = search_album_on_apple(driver, artist_name, album_name)
             if album_url:
                 # 添加歌曲
                 is_first = not playlist_created
@@ -3093,7 +3143,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                     playlist_created = True
                     # 重要！不要用URL导航，必须通过搜索来访问专辑，否则播放列表会消失
                     print(f"  通过搜索重新访问专辑（避免播放列表消失）...")
-                    album_url_new = search_album_on_apple(driver, artist_name, album_name)
+                    album_url_new, re_search_fail = search_album_on_apple(driver, artist_name, album_name)
                     if album_url_new:
                         remaining_count = track_count - 1
                         if remaining_count > 0:
@@ -3103,6 +3153,8 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                         total_added += 1
                     else:
                         print(f"  ! 重新搜索专辑失败，跳过剩余歌曲")
+                        if re_search_fail:
+                            print(f"  ! 重新搜索失败原因: {re_search_fail}")
                         total_added += 1  # 第一首已添加
                 
                 # 如果返回-2，表示播放列表同步失败，需要重建
@@ -3138,7 +3190,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
             else:
                 _record_failed_album(
                     artist_name, album_name, track_count,
-                    "搜索未找到专辑或未能进入专辑页",
+                    search_fail_reason or "搜索未找到专辑或未能进入专辑页",
                     stage="主流程",
                 )
             
@@ -3164,7 +3216,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                 click_apple_home(driver)
                 apple_human_delay(1, 2)
                 
-                album_url = search_album_on_apple(driver, artist_name, album_name)
+                album_url, search_fail_reason = search_album_on_apple(driver, artist_name, album_name)
                 if album_url:
                     added = add_songs_to_apple_playlist(driver, current_playlist_name, track_count, is_first_album=False)
                     if added > 0:
@@ -3178,12 +3230,17 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                         })
                         print(f"  ✗ 重试仍然失败")
                 else:
+                    retry_reason = search_fail_reason or item.get("reason") or "重试仍搜索不到专辑"
+                    if item.get("reason") and search_fail_reason and item["reason"] not in search_fail_reason:
+                        retry_reason = f"{search_fail_reason}（首次：{item['reason']}）"
                     retry_failed.append({
                         **item,
-                        "reason": f"重试仍搜索不到专辑（原因：{item['reason']}）",
+                        "reason": retry_reason,
                         "stage": "重试",
                     })
                     print(f"  ✗ 重试仍然找不到专辑")
+                    if search_fail_reason:
+                        print(f"  ! 重试失败原因: {search_fail_reason}")
                 
                 apple_human_delay(1, 2)
             
@@ -3234,7 +3291,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                         click_apple_home(driver)
                         apple_human_delay(1, 2)
                         
-                        album_url = search_album_on_apple(driver, artist_name, album_name)
+                        album_url, search_fail_reason = search_album_on_apple(driver, artist_name, album_name)
                         
                         if album_url:
                             # 补充时，取需要的数量或最大值（取较小值）
@@ -3248,6 +3305,8 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                                 print(f"  ✓ 已补充 {added} 首歌曲，还差 {missing_count} 首")
                         else:
                             print(f"  ✗ 未找到专辑")
+                            if search_fail_reason:
+                                print(f"  ! 原因: {search_fail_reason}")
                         
                         apple_human_delay(1, 2)
                     
@@ -3276,6 +3335,21 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                     f"  | 原因: {item.get('reason', '未知')}"
                 )
             print(f"  ------------------------------")
+            click_blocked = [
+                item for item in failed_albums
+                if _is_apple_click_intercepted_error(item.get("reason", ""))
+            ]
+            if click_blocked:
+                print(f"  ⚠ 其中 {len(click_blocked)} 张属于「搜索结果点击被遮挡」类失败"
+                      f"（element click intercepted，不是专辑不存在）：")
+                for idx, item in enumerate(click_blocked, 1):
+                    print(f"    · [{idx}] {item['artist']} - {item['album']}")
+                print("  处理建议：将上述专辑加入 APPLE_DIRECT_ALBUM_URLS，"
+                      "用直链打开专辑页绕过搜索点击"
+                      "（Streetlamp After the Last Shift 已配置）。")
+            else:
+                print("  说明：本次失败专辑未检测到「搜索点击被遮挡」"
+                      "（element click intercepted）类错误。")
         else:
             print(f"  失败专辑: 无")
         if len(used_playlist_names) > 1:
