@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.43"  # 优化：Apple 收尾汇总列出失败专辑名称与具体错误原因
-# 更新内容：不再只显示失败张数，便于对照日志排查未找到/加歌失败等
+APP_VERSION = "0.1.44"  # 优化：Streetlamp After the Last Shift 直链进专辑，绕过搜索点击拦截
+# 更新内容：搜索结果元素被遮挡时改为 driver.get 直达 Apple Music 专辑页
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2456,9 +2456,22 @@ def login_apple_music(driver):
             continue
 
 
+# 搜索点击会被遮挡的专辑：跳过搜索，直接打开专辑页 URL
+APPLE_DIRECT_ALBUM_URLS = {
+    "streetlamp after the last shift": "https://music.apple.com/hk/album/streetlamp-after-the-last-shift/1834401471",
+}
+
+
 def search_album_on_apple(driver, artist_name, album_name):
     """在 Apple Music 上搜索专辑，返回专辑URL"""
     print(f"搜索专辑: {album_name} (艺人: {artist_name})")
+
+    direct_url = APPLE_DIRECT_ALBUM_URLS.get((album_name or "").strip().lower())
+    if direct_url:
+        print(f"  使用直链绕过搜索（避免点击被拦截）: {direct_url}")
+        if navigate_to_album_url_apple(driver, direct_url):
+            return driver.current_url or direct_url
+        print("  ✗ 直链导航失败，回退到搜索流程")
     
     try:
         click_apple_search(driver)
