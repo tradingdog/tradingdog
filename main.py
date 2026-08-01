@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.47"  # 优化：Tidal/Qobuz 收尾汇总列出失败专辑名称与平台相关原因
-# 更新内容：Tidal 侧重 API 搜索/加歌失败；Qobuz 侧重页面搜索与菜单加歌失败
+APP_VERSION = "0.1.48"  # 修复：Apple 直链去掉地区码（hk/us），改用无地区 album URL
+# 更新内容：Streetlamp / Rooms That Breathe in Silence 直链统一为 music.apple.com/album/...
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2519,8 +2519,8 @@ def login_apple_music(driver):
 
 # 搜索点击会被遮挡的专辑：跳过搜索，直接打开专辑页 URL
 APPLE_DIRECT_ALBUM_URLS = {
-    "streetlamp after the last shift": "https://music.apple.com/hk/album/streetlamp-after-the-last-shift/1834401471",
-    "rooms that breathe in silence": "https://music.apple.com/us/album/rooms-that-breathe-in-silence/1850287603",
+    "streetlamp after the last shift": "https://music.apple.com/album/streetlamp-after-the-last-shift/1834401471",
+    "rooms that breathe in silence": "https://music.apple.com/album/rooms-that-breathe-in-silence/1850287603",
 }
 
 
