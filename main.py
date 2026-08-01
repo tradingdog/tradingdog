@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.46"  # 优化：Rooms That Breathe in Silence 加入 Apple 直链绕过搜索点击遮挡
-# 更新内容：Elsin Farrowell 该专辑搜索点击被拦截时直达专辑页
+APP_VERSION = "0.1.47"  # 优化：Tidal/Qobuz 收尾汇总列出失败专辑名称与平台相关原因
+# 更新内容：Tidal 侧重 API 搜索/加歌失败；Qobuz 侧重页面搜索与菜单加歌失败
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -1912,6 +1912,17 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
     
     # 记录已处理的专辑（用于排除重复）
     processed_albums = set()  # 格式: "艺人名 - 专辑名"
+    # 失败专辑明细（Tidal 原因侧重 API 搜索/加歌）
+    failed_albums = []  # [{artist, album, reason, stage}, ...]
+    
+    def _record_tidal_failed(artist, album, reason, stage="主流程"):
+        failed_albums.append({
+            "artist": artist,
+            "album": album,
+            "reason": reason,
+            "stage": stage,
+        })
+        print(f"  ! 失败已记录 [{stage}]: {artist} - {album} | {reason}")
     
     # 处理每张专辑
     total_added = 0
@@ -1927,23 +1938,60 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
         print(f"\n[{i+1}/{len(albums)}] 搜索: {artist_name} - {album_name}")
         random_delay()  # 搜索前延迟
         
-        album = search_album_on_tidal(session, artist_name, album_name)
+        try:
+            album = search_album_on_tidal(session, artist_name, album_name)
+        except Exception as e:
+            _record_tidal_failed(
+                artist_name, album_name,
+                f"Tidal API 搜索异常: {e}",
+                stage="主流程",
+            )
+            random_delay()
+            continue
         
         if album:
             album_display = album.name if hasattr(album, 'name') else str(album)
             artist_display = album.artist.name if hasattr(album, 'artist') and album.artist else 'Unknown'
             print(f"  ✓ 找到: {album_display} - {artist_display}")
             
-            random_delay()  # 获取歌曲前延迟
-            tracks = album.tracks()
-            actual_track_count = min(track_count, len(tracks))
-            print(f"  专辑共 {len(tracks)} 首歌，计划添加 {actual_track_count} 首")
-            
-            added = add_tracks_to_playlist_with_delay(session, playlist, tracks, actual_track_count)
-            total_added += added
-            print(f"  ✓ 已添加 {added} 首歌曲")
+            try:
+                random_delay()  # 获取歌曲前延迟
+                tracks = album.tracks()
+                if not tracks:
+                    _record_tidal_failed(
+                        artist_name, album_name,
+                        "API 找到专辑但曲目列表为空",
+                        stage="主流程",
+                    )
+                else:
+                    actual_track_count = min(track_count, len(tracks))
+                    print(f"  专辑共 {len(tracks)} 首歌，计划添加 {actual_track_count} 首")
+                    
+                    added = add_tracks_to_playlist_with_delay(session, playlist, tracks, actual_track_count)
+                    total_added += added
+                    if added > 0:
+                        print(f"  ✓ 已添加 {added} 首歌曲")
+                        if added < actual_track_count:
+                            print(f"  ! 部分成功：计划 {actual_track_count} 首，实际 {added} 首")
+                    else:
+                        _record_tidal_failed(
+                            artist_name, album_name,
+                            "找到专辑但 API 添加歌曲返回 0（批量/逐首失败，可能 401/412/限流或播放列表异常）",
+                            stage="主流程",
+                        )
+            except Exception as e:
+                _record_tidal_failed(
+                    artist_name, album_name,
+                    f"获取曲目或 API 添加异常: {e}",
+                    stage="主流程",
+                )
         else:
             print(f"  ✗ 未找到专辑")
+            _record_tidal_failed(
+                artist_name, album_name,
+                "Tidal API 搜索未找到匹配专辑（检索词无结果或艺人/专辑名未匹配）",
+                stage="主流程",
+            )
         
         random_delay()  # 处理下一个专辑前延迟
     
@@ -2030,6 +2078,19 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
         print(f"  状态: 已完成 ✓")
     else:
         print(f"  状态: 差 {expected_total - total_added} 首")
+    if failed_albums:
+        print(f"  失败专辑: {len(failed_albums)} 张")
+        print(f"  ---------- 失败明细 ----------")
+        for idx, item in enumerate(failed_albums, 1):
+            print(
+                f"  [{idx}] {item['artist']} - {item['album']}"
+                f"  | 阶段: {item.get('stage', '?')}"
+                f"  | 原因: {item.get('reason', '未知')}"
+            )
+        print(f"  ------------------------------")
+        print("  说明：Tidal 失败多为 API 搜索无匹配、曲目为空，或加歌接口 401/412/限流。")
+    else:
+        print(f"  失败专辑: 无")
     print(f"{'='*60}")
     
     return True
@@ -3462,7 +3523,12 @@ def login_qobuz(driver):
 
 
 def search_album_on_qobuz(driver, artist_name, album_name):
-    """在 Qobuz 上搜索专辑，返回专辑URL"""
+    """在 Qobuz 上搜索专辑。
+
+    返回 (album_url, fail_reason)：
+    - 成功: (url, None)
+    - 失败: (None, 可读原因)，便于收尾汇总
+    """
     print(f"搜索专辑: {album_name} (艺人: {artist_name})")
     
     try:
@@ -3596,23 +3662,28 @@ def search_album_on_qobuz(driver, artist_name, album_name):
                         EC.presence_of_element_located((By.CSS_SELECTOR, ".track-row, .track, [class*='track']"))
                     )
                     print(f"  ✓ 已成功进入专辑页面: {current_url}")
-                    return current_url
+                    return current_url, None
                 except:
                     print(f"  等待歌曲列表加载...")
                     qobuz_human_delay(0.5, 1)
-                    return current_url
+                    return current_url, None
             else:
                 print(f"  ✗ 进入的不是专辑页面: {current_url}")
-                return None
+                return None, f"点击后未进入专辑页，当前URL: {current_url}"
         else:
             print(f"  ✗ 未找到专辑链接")
-            return None
+            return None, "搜索结果中未找到专辑链接"
             
     except Exception as e:
         print(f"  ✗ 搜索失败: {e}")
         import traceback
         traceback.print_exc()
-        return None
+        err = str(e).replace("\n", " ")
+        if len(err) > 220:
+            err = err[:220] + "..."
+        if "intercepted" in err.lower():
+            return None, f"页面元素点击被拦截（可能被弹窗/播放条遮挡）: {err}"
+        return None, f"Qobuz 页面搜索异常: {err}"
 
 
 def create_qobuz_playlist(driver, playlist_name):
@@ -4043,6 +4114,19 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
         # 为每张专辑生成一个随机的歌曲数量
         track_counts = list(range(track_count_min, track_count_max + 1))
         random.shuffle(track_counts)
+        expected_total = sum(track_counts[i % len(track_counts)] for i in range(len(albums)))
+        
+        # 失败专辑明细（Qobuz 原因侧重页面搜索/菜单加歌）
+        failed_albums = []
+        
+        def _record_qobuz_failed(artist, album, reason, stage="主流程"):
+            failed_albums.append({
+                "artist": artist,
+                "album": album,
+                "reason": reason,
+                "stage": stage,
+            })
+            print(f"  ! 失败已记录 [{stage}]: {artist} - {album} | {reason}")
         
         # 处理每张专辑
         total_added = 0
@@ -4054,18 +4138,44 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
             print(f"\n[{i+1}/{len(albums)}] 处理: {artist_name} - {album_name}")
             
             # 搜索专辑
-            album_url = search_album_on_qobuz(driver, artist_name, album_name)
+            album_url, search_fail_reason = search_album_on_qobuz(driver, artist_name, album_name)
             if album_url:
                 # 添加歌曲到已创建的播放列表
                 added = add_songs_to_qobuz_playlist(driver, playlist_name, track_count)
                 total_added += added
+                if added == 0:
+                    _record_qobuz_failed(
+                        artist_name, album_name,
+                        "进入专辑页后未能添加任何歌曲（更多菜单/加入播放列表匹配或点击失败）",
+                        stage="主流程",
+                    )
+            else:
+                _record_qobuz_failed(
+                    artist_name, album_name,
+                    search_fail_reason or "搜索未找到专辑或未能进入专辑页",
+                    stage="主流程",
+                )
             
             qobuz_human_delay(0.5, 1)
         
         print(f"\n{'='*60}")
         print(f"✓ Qobuz 播放列表添加完成！")
         print(f"  播放列表: {playlist_name}")
-        print(f"  总计添加: {total_added} 首歌曲")
+        print(f"  预期添加: {expected_total} 首歌曲")
+        print(f"  实际添加: {total_added} 首歌曲")
+        if failed_albums:
+            print(f"  失败专辑: {len(failed_albums)} 张")
+            print(f"  ---------- 失败明细 ----------")
+            for idx, item in enumerate(failed_albums, 1):
+                print(
+                    f"  [{idx}] {item['artist']} - {item['album']}"
+                    f"  | 阶段: {item.get('stage', '?')}"
+                    f"  | 原因: {item.get('reason', '未知')}"
+                )
+            print(f"  ------------------------------")
+            print("  说明：Qobuz 失败多为页面搜索无结果、点击被遮挡，或专辑页菜单加歌失败。")
+        else:
+            print(f"  失败专辑: 无")
         print(f"{'='*60}")
         
         return True
