@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.48"  # 修复：Apple 直链去掉地区码（hk/us），改用无地区 album URL
-# 更新内容：Streetlamp / Rooms That Breathe in Silence 直链统一为 music.apple.com/album/...
+APP_VERSION = "0.1.49"  # 优化：失败专辑汇总标注来源（我们的艺人 / 其它艺人）
+# 更新内容：对照平台 *_artists.json 与 other_artists.json 标明失败专辑所属库
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -369,6 +369,116 @@ PLATFORM_FILES = {
     "Q": "qobuz_artists.json"
 }
 OTHER_ARTISTS_FILE = "other_artists.json"
+
+
+def _normalize_album_key(artist, album):
+    return f"{(artist or '').strip()} - {(album or '').strip()}".lower()
+
+
+def load_artist_album_source_index(platform_code: str, base_dir: Path = None):
+    """加载「我们的艺人」与「其它艺人」索引，用于失败汇总标注来源。
+
+    返回 dict:
+      our_album_keys / other_album_keys: set('艺人 - 专辑'.lower())
+      our_artists / other_artists: set(艺人名.lower())
+      our_file / other_file: 文件名（展示用）
+    """
+    base = Path(base_dir) if base_dir else Path(__file__).resolve().parent
+    our_file = PLATFORM_FILES.get(platform_code, "apple_artists.json")
+    index = {
+        "our_album_keys": set(),
+        "other_album_keys": set(),
+        "our_artists": set(),
+        "other_artists": set(),
+        "our_file": our_file,
+        "other_file": OTHER_ARTISTS_FILE,
+    }
+
+    def _ingest(path: Path, album_keys: set, artist_names: set):
+        if not path.exists():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        for entry in data or []:
+            artist = (entry.get("artist") or "").strip()
+            if artist:
+                artist_names.add(artist.lower())
+            for album in entry.get("albums") or []:
+                album_keys.add(_normalize_album_key(artist, album))
+
+    _ingest(base / our_file, index["our_album_keys"], index["our_artists"])
+    _ingest(base / OTHER_ARTISTS_FILE, index["other_album_keys"], index["other_artists"])
+    return index
+
+
+def classify_album_source(artist, album, source_index: dict) -> str:
+    """返回失败专辑来源标签：我们的艺人 / 其它艺人 / 未知来源。"""
+    if not source_index:
+        return "未知来源"
+    key = _normalize_album_key(artist, album)
+    artist_l = (artist or "").strip().lower()
+    our_keys = source_index.get("our_album_keys") or set()
+    other_keys = source_index.get("other_album_keys") or set()
+    our_artists = source_index.get("our_artists") or set()
+    other_artists = source_index.get("other_artists") or set()
+
+    # 专辑级精确匹配优先
+    if key in our_keys and key not in other_keys:
+        return "我们的艺人"
+    if key in other_keys and key not in our_keys:
+        return "其它艺人"
+    if key in our_keys and key in other_keys:
+        return "我们的艺人"  # 两边都有时归入主库
+
+    in_our = artist_l in our_artists
+    in_other = artist_l in other_artists
+    if in_our and not in_other:
+        return "我们的艺人"
+    if in_other and not in_our:
+        return "其它艺人"
+    if in_our and in_other:
+        return "我们的艺人"
+    return "未知来源"
+
+
+def print_failed_albums_summary(failed_albums, platform_code: str, base_dir: Path = None, tip: str = None):
+    """打印失败专辑明细，并标注来源（我们的艺人 / 其它艺人）。"""
+    if not failed_albums:
+        print("  失败专辑: 无")
+        return
+
+    source_index = load_artist_album_source_index(platform_code, base_dir)
+    our_file = source_index.get("our_file", "*_artists.json")
+    other_file = source_index.get("other_file", OTHER_ARTISTS_FILE)
+
+    enriched = []
+    for item in failed_albums:
+        source = classify_album_source(item.get("artist"), item.get("album"), source_index)
+        enriched.append({**item, "source": source})
+
+    our_count = sum(1 for x in enriched if x["source"] == "我们的艺人")
+    other_count = sum(1 for x in enriched if x["source"] == "其它艺人")
+    unknown_count = sum(1 for x in enriched if x["source"] == "未知来源")
+
+    parts = [f"我们的艺人 {our_count}", f"其它艺人 {other_count}"]
+    if unknown_count:
+        parts.append(f"未知来源 {unknown_count}")
+    print(f"  失败专辑: {len(enriched)} 张（{' / '.join(parts)}）")
+    print(f"  来源说明: 我们的艺人={our_file}；其它艺人={other_file}")
+    print(f"  ---------- 失败明细 ----------")
+    for idx, item in enumerate(enriched, 1):
+        print(
+            f"  [{idx}] {item.get('artist')} - {item.get('album')}"
+            f"  | 来源: {item.get('source', '未知来源')}"
+            f"  | 阶段: {item.get('stage', '?')}"
+            f"  | 原因: {item.get('reason', '未知')}"
+        )
+    print(f"  ------------------------------")
+    if tip:
+        print(tip)
+
 
 # ==================== Tidal 集成功能 ====================
 
@@ -1914,15 +2024,18 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
     processed_albums = set()  # 格式: "艺人名 - 专辑名"
     # 失败专辑明细（Tidal 原因侧重 API 搜索/加歌）
     failed_albums = []  # [{artist, album, reason, stage}, ...]
+    source_index = load_artist_album_source_index("T", base_dir)
     
     def _record_tidal_failed(artist, album, reason, stage="主流程"):
+        source = classify_album_source(artist, album, source_index)
         failed_albums.append({
             "artist": artist,
             "album": album,
             "reason": reason,
             "stage": stage,
+            "source": source,
         })
-        print(f"  ! 失败已记录 [{stage}]: {artist} - {album} | {reason}")
+        print(f"  ! 失败已记录 [{stage}] [{source}]: {artist} - {album} | {reason}")
     
     # 处理每张专辑
     total_added = 0
@@ -2078,19 +2191,12 @@ def process_tidal_playlist(session, txt_path: Path, track_count_min: int, track_
         print(f"  状态: 已完成 ✓")
     else:
         print(f"  状态: 差 {expected_total - total_added} 首")
-    if failed_albums:
-        print(f"  失败专辑: {len(failed_albums)} 张")
-        print(f"  ---------- 失败明细 ----------")
-        for idx, item in enumerate(failed_albums, 1):
-            print(
-                f"  [{idx}] {item['artist']} - {item['album']}"
-                f"  | 阶段: {item.get('stage', '?')}"
-                f"  | 原因: {item.get('reason', '未知')}"
-            )
-        print(f"  ------------------------------")
-        print("  说明：Tidal 失败多为 API 搜索无匹配、曲目为空，或加歌接口 401/412/限流。")
-    else:
-        print(f"  失败专辑: 无")
+    print_failed_albums_summary(
+        failed_albums,
+        platform_code="T",
+        base_dir=base_dir,
+        tip="  说明：Tidal 失败多为 API 搜索无匹配、曲目为空，或加歌接口 401/412/限流。",
+    )
     print(f"{'='*60}")
     
     return True
@@ -3147,20 +3253,23 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
     current_playlist_name = playlist_name
     
     # 记录失败的专辑（用于重试与收尾汇总）
-    # 每项: {artist, album, track_count, reason, stage}
+    # 每项: {artist, album, track_count, reason, stage, source}
     failed_albums = []
     # 记录已处理的专辑（用于补充时排除）
     processed_albums = set()
+    source_index = load_artist_album_source_index("A", base_dir)
     
     def _record_failed_album(artist, album, track_count, reason, stage="主流程"):
+        source = classify_album_source(artist, album, source_index)
         failed_albums.append({
             "artist": artist,
             "album": album,
             "track_count": track_count,
             "reason": reason,
             "stage": stage,
+            "source": source,
         })
-        print(f"  ! 失败已记录 [{stage}]: {artist} - {album} | {reason}")
+        print(f"  ! 失败已记录 [{stage}] [{source}]: {artist} - {album} | {reason}")
     
     try:
         # 登录
@@ -3264,7 +3373,10 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
             print(f"\n{'='*60}")
             print(f"⚠ 有 {len(failed_albums)} 张专辑添加失败，尝试重试...")
             for idx, item in enumerate(failed_albums, 1):
-                print(f"  [{idx}] {item['artist']} - {item['album']} | {item['reason']}")
+                src = item.get("source") or classify_album_source(
+                    item.get("artist"), item.get("album"), source_index
+                )
+                print(f"  [{idx}] [{src}] {item['artist']} - {item['album']} | {item['reason']}")
             print(f"{'='*60}")
             
             retry_failed = []
@@ -3387,33 +3499,40 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         print(f"  最终播放列表: {current_playlist_name}")
         print(f"  预期添加: {expected_total} 首")
         print(f"  实际添加: {total_added} 首")
+        tip_lines = []
+        click_blocked = [
+            item for item in failed_albums
+            if _is_apple_click_intercepted_error(item.get("reason", ""))
+        ]
         if failed_albums:
-            print(f"  失败专辑: {len(failed_albums)} 张")
-            print(f"  ---------- 失败明细 ----------")
-            for idx, item in enumerate(failed_albums, 1):
-                print(
-                    f"  [{idx}] {item['artist']} - {item['album']}"
-                    f"  | 阶段: {item.get('stage', '?')}"
-                    f"  | 原因: {item.get('reason', '未知')}"
-                )
-            print(f"  ------------------------------")
-            click_blocked = [
-                item for item in failed_albums
-                if _is_apple_click_intercepted_error(item.get("reason", ""))
-            ]
             if click_blocked:
-                print(f"  ⚠ 其中 {len(click_blocked)} 张属于「搜索结果点击被遮挡」类失败"
-                      f"（element click intercepted，不是专辑不存在）：")
+                tip_lines.append(
+                    f"  ⚠ 其中 {len(click_blocked)} 张属于「搜索结果点击被遮挡」类失败"
+                    f"（element click intercepted，不是专辑不存在）："
+                )
                 for idx, item in enumerate(click_blocked, 1):
-                    print(f"    · [{idx}] {item['artist']} - {item['album']}")
-                print("  处理建议：将上述专辑加入 APPLE_DIRECT_ALBUM_URLS，"
-                      "用直链打开专辑页绕过搜索点击"
-                      "（Streetlamp After the Last Shift 已配置）。")
+                    src = item.get("source") or classify_album_source(
+                        item.get("artist"), item.get("album"), source_index
+                    )
+                    tip_lines.append(
+                        f"    · [{idx}] {item['artist']} - {item['album']}（来源: {src}）"
+                    )
+                tip_lines.append(
+                    "  处理建议：将上述专辑加入 APPLE_DIRECT_ALBUM_URLS，"
+                    "用直链打开专辑页绕过搜索点击"
+                    "（Streetlamp / Rooms That Breathe in Silence 已配置）。"
+                )
             else:
-                print("  说明：本次失败专辑未检测到「搜索点击被遮挡」"
-                      "（element click intercepted）类错误。")
-        else:
-            print(f"  失败专辑: 无")
+                tip_lines.append(
+                    "  说明：本次失败专辑未检测到「搜索点击被遮挡」"
+                    "（element click intercepted）类错误。"
+                )
+        print_failed_albums_summary(
+            failed_albums,
+            platform_code="A",
+            base_dir=base_dir,
+            tip="\n".join(tip_lines) if tip_lines else None,
+        )
         if len(used_playlist_names) > 1:
             print(f"  尝试过的播放列表: {', '.join(used_playlist_names)}")
         print(f"{'='*60}")
@@ -4118,15 +4237,19 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
         
         # 失败专辑明细（Qobuz 原因侧重页面搜索/菜单加歌）
         failed_albums = []
+        qobuz_base_dir = Path(txt_path).resolve().parent if txt_path else Path(__file__).resolve().parent
+        source_index = load_artist_album_source_index("Q", qobuz_base_dir)
         
         def _record_qobuz_failed(artist, album, reason, stage="主流程"):
+            source = classify_album_source(artist, album, source_index)
             failed_albums.append({
                 "artist": artist,
                 "album": album,
                 "reason": reason,
                 "stage": stage,
+                "source": source,
             })
-            print(f"  ! 失败已记录 [{stage}]: {artist} - {album} | {reason}")
+            print(f"  ! 失败已记录 [{stage}] [{source}]: {artist} - {album} | {reason}")
         
         # 处理每张专辑
         total_added = 0
@@ -4163,19 +4286,12 @@ def process_qobuz_playlist(txt_path: Path, playlist_name: str, track_count_min: 
         print(f"  播放列表: {playlist_name}")
         print(f"  预期添加: {expected_total} 首歌曲")
         print(f"  实际添加: {total_added} 首歌曲")
-        if failed_albums:
-            print(f"  失败专辑: {len(failed_albums)} 张")
-            print(f"  ---------- 失败明细 ----------")
-            for idx, item in enumerate(failed_albums, 1):
-                print(
-                    f"  [{idx}] {item['artist']} - {item['album']}"
-                    f"  | 阶段: {item.get('stage', '?')}"
-                    f"  | 原因: {item.get('reason', '未知')}"
-                )
-            print(f"  ------------------------------")
-            print("  说明：Qobuz 失败多为页面搜索无结果、点击被遮挡，或专辑页菜单加歌失败。")
-        else:
-            print(f"  失败专辑: 无")
+        print_failed_albums_summary(
+            failed_albums,
+            platform_code="Q",
+            base_dir=qobuz_base_dir,
+            tip="  说明：Qobuz 失败多为页面搜索无结果、点击被遮挡，或专辑页菜单加歌失败。",
+        )
         print(f"{'='*60}")
         
         return True
