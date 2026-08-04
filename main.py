@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.50"  # 调整：暂时清空 Apple 直链表，相关专辑恢复正常搜索
-# 更新内容：Streetlamp / Rooms That Breathe in Silence 不再走直链，便于观察搜索表现
+APP_VERSION = "0.1.51"  # 修复：Apple 搜索结果优先点 product-lockup-link，遮挡时改用 href 导航
+# 更新内容：避免点 product-lockup-title 被 wrapper 拦截（Streetlamp / Rooms 等）
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2672,6 +2672,209 @@ def _format_apple_search_fail_reason(msg, album_name=""):
     return "搜索未找到专辑或未能进入专辑页"
 
 
+def _apple_normalize_store_album_url(url: str) -> str:
+    """去掉地区码，统一为 /album/... 形式（便于导航稳定）。"""
+    if not url:
+        return url
+    try:
+        # https://music.apple.com/hk/album/xxx/123 -> https://music.apple.com/album/xxx/123
+        import re
+        return re.sub(
+            r"(https?://music\.apple\.com)/[a-z]{2}(-[a-z]{2})?/album/",
+            r"\1/album/",
+            url,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    except Exception:
+        return url
+
+
+def _apple_lockup_matches_album(link, artist_name: str, album_name: str) -> bool:
+    """判断搜索结果 lockup 链接是否匹配目标专辑。"""
+    artist_l = (artist_name or "").strip().lower()
+    album_l = (album_name or "").strip().lower()
+    aria = (link.get_attribute("aria-label") or "").lower()
+    href = (link.get_attribute("href") or "").lower()
+    text = (link.text or "").lower()
+    blob = f"{aria} {text} {href}"
+    try:
+        lockup = link.find_element(
+            By.XPATH,
+            "./ancestor::*[contains(@class,'lockup') or contains(@class,'product-lockup') "
+            "or @data-testid='lockup' or contains(@data-testid,'shelf-grid-list-item')][1]",
+        )
+        blob = f"{blob} {(lockup.text or '').lower()}"
+    except Exception:
+        pass
+    if album_l and album_l not in blob:
+        return False
+    if artist_l and artist_l not in blob:
+        return False
+    return bool(album_l)
+
+
+def _find_apple_search_album_link(driver, artist_name, album_name):
+    """在搜索结果中定位专辑封面链接（优先 product-lockup-link，避免点 title 被遮挡）。"""
+    preferred_selectors = [
+        "a[data-testid='product-lockup-link'][href*='/album/']",
+        "a.product-lockup__link[href*='/album/']",
+        "[data-testid='shelf-item-list'] a[href*='/album/']",
+        "li[data-test-id^='shelf-grid-list-item'] a[href*='/album/']",
+        "a[data-testid='product-lockup-title'][href*='/album/']",
+        "a[href*='/album/']",
+    ]
+
+    candidates = []
+    seen = set()
+    for css in preferred_selectors:
+        try:
+            for link in driver.find_elements(By.CSS_SELECTOR, css):
+                try:
+                    if not link.is_displayed():
+                        continue
+                    href = link.get_attribute("href") or ""
+                    if "/album/" not in href or "/library/" in href:
+                        continue
+                    key = (href, link.get_attribute("data-testid") or "")
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    candidates.append(link)
+                except Exception:
+                    continue
+        except Exception:
+            continue
+
+    # 优先匹配艺人+专辑；同 href 时优先 product-lockup-link
+    matched = []
+    for link in candidates:
+        if _apple_lockup_matches_album(link, artist_name, album_name):
+            matched.append(link)
+    pool = matched if matched else []
+
+    def _rank(link):
+        testid = (link.get_attribute("data-testid") or "").lower()
+        cls = (link.get_attribute("class") or "").lower()
+        if testid == "product-lockup-link" or "product-lockup__link" in cls:
+            return 0
+        if testid == "product-lockup-title":
+            return 2
+        return 1
+
+    if pool:
+        pool.sort(key=_rank)
+        best = pool[0]
+        print(f"  找到匹配专辑链接（testid={best.get_attribute('data-testid')}）")
+        return best
+
+    # 回退：专辑区第一个封面链
+    for link in sorted(candidates, key=_rank):
+        href = link.get_attribute("href") or ""
+        if "/album/" in href and "/library/" not in href and "/artist/" not in href:
+            print(f"  使用第一个专辑链接: {href}")
+            return link
+    return None
+
+
+def _open_apple_album_from_search_link(driver, album_link, album_name):
+    """打开搜索结果中的专辑：优先点封面链，被遮挡则 JS 点击 / href 导航。"""
+    href = album_link.get_attribute("href") or ""
+    # 若当前点到的是 title，尝试同 lockup 内的 product-lockup-link
+    testid = (album_link.get_attribute("data-testid") or "").lower()
+    click_target = album_link
+    if testid == "product-lockup-title":
+        try:
+            lockup = album_link.find_element(
+                By.XPATH,
+                "./ancestor::*[contains(@class,'lockup') or contains(@class,'product-lockup')][1]",
+            )
+            better = lockup.find_elements(
+                By.CSS_SELECTOR,
+                "a[data-testid='product-lockup-link'], a.product-lockup__link",
+            )
+            if better:
+                click_target = better[0]
+                href = click_target.get_attribute("href") or href
+                print("  改点封面链接 product-lockup-link（避免 title 被遮挡）")
+        except Exception:
+            pass
+
+    nav_url = _apple_normalize_store_album_url(href)
+    print(f"  打开专辑: {nav_url or href}")
+
+    click_err_text = ""
+    opened = False
+    try:
+        driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+            click_target,
+        )
+        apple_human_delay(0.3, 0.5)
+        apple_move_to_element(driver, click_target)
+        apple_human_delay(0.2, 0.4)
+        click_target.click()
+        opened = True
+    except Exception as click_err:
+        click_err_text = str(click_err)
+        print(f"  ! 普通点击失败，尝试兜底: {click_err_text[:120]}")
+        try:
+            driver.execute_script("arguments[0].click();", click_target)
+            opened = True
+            print("  ✓ 已用 JS 点击专辑链接")
+        except Exception as js_err:
+            click_err_text = str(js_err)
+            print(f"  ! JS 点击也失败: {click_err_text[:100]}")
+
+    # 点击被 wrapper 拦截时，用搜索结果里已拿到的 href 导航（不是白名单直链）
+    need_href_nav = (not opened) or _is_apple_click_intercepted_error(click_err_text)
+    if need_href_nav and nav_url:
+        if (not opened) or ("/album/" not in (driver.current_url or "")):
+            print("  点击可能被遮挡，改用搜索结果 href 导航...")
+            if navigate_to_album_url_apple(driver, nav_url):
+                return driver.current_url or nav_url, None
+            return None, _format_apple_search_fail_reason(
+                f"element click intercepted；href 导航也失败: {nav_url}", album_name
+            )
+
+    apple_human_delay(2, 4)
+
+    max_retries = 5
+    for retry in range(max_retries):
+        current_url = driver.current_url
+        if "/album/" in current_url:
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, ".songs-list-row, [data-testid='track-cell']")
+                    )
+                )
+                print(f"  ✓ 已成功进入专辑页面: {current_url}")
+                return current_url, None
+            except Exception:
+                if retry < max_retries - 1:
+                    print(f"  等待歌曲列表加载... (重试 {retry+1}/{max_retries})")
+                    apple_human_delay(1, 2)
+                continue
+        else:
+            if retry < max_retries - 1:
+                print(f"  页面还在加载，等待中... (重试 {retry+1}/{max_retries})")
+                apple_human_delay(1, 2)
+            else:
+                # 最后再试 href 导航
+                if nav_url and navigate_to_album_url_apple(driver, nav_url):
+                    return driver.current_url or nav_url, None
+                print(f"  ✗ 进入的不是专辑页面: {current_url}")
+                return None, _format_apple_search_fail_reason(
+                    f"点击后未进入专辑页，当前URL: {current_url}", album_name
+                )
+
+    if nav_url and navigate_to_album_url_apple(driver, nav_url):
+        return driver.current_url or nav_url, None
+    print(f"  ✗ 页面加载超时")
+    return None, _format_apple_search_fail_reason("专辑页歌曲列表加载超时", album_name)
+
+
 def search_album_on_apple(driver, artist_name, album_name):
     """在 Apple Music 上搜索专辑。
 
@@ -2708,120 +2911,24 @@ def search_album_on_apple(driver, artist_name, album_name):
         
         apple_human_delay(1, 2)
         
-        # 等待搜索结果加载
+        # 等待搜索结果加载（含新版 shelf-grid 专辑区）
         try:
             WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".top-search-lockup, .shelf-grid, [data-testid='search-results']"))
+                EC.presence_of_element_located((By.CSS_SELECTOR,
+                    ".top-search-lockup, .shelf-grid, [data-testid='search-results'], "
+                    "[data-testid='shelf-item-list'], a[data-testid='product-lockup-link']"
+                ))
             )
-        except:
+        except Exception:
             print("  等待搜索结果加载...")
             apple_human_delay(1, 2)
         
-        # 查找专辑链接
-        album_section_selectors = [
-            "//h2[contains(text(), '專輯') or contains(text(), 'Albums') or contains(text(), '专辑')]/following::div[contains(@class, 'shelf-grid')][1]//a[contains(@href, '/album/')]",
-            "//h3[contains(text(), '專輯') or contains(text(), 'Albums')]/following::div[contains(@class, 'top-search-lockup')][1]//a[contains(@href, '/album/')]",
-            "//section[.//*[contains(text(), '專輯') or contains(text(), 'Albums')]]//a[contains(@href, '/album/')]",
-        ]
-        
-        album_link = None
-        
-        # 先尝试在专辑区域内查找匹配艺人的专辑
-        for selector in album_section_selectors:
-            try:
-                album_links = driver.find_elements(By.XPATH, selector)
-                for link in album_links:
-                    if not link.is_displayed():
-                        continue
-                    parent_text = link.find_element(By.XPATH, "ancestor::div[contains(@class, 'lockup')]").text if link.find_elements(By.XPATH, "ancestor::div[contains(@class, 'lockup')]") else ""
-                    link_text = link.text or ""
-                    
-                    if artist_name.lower() in parent_text.lower() or artist_name.lower() in link_text.lower():
-                        album_link = link
-                        print(f"  找到匹配艺人的专辑链接")
-                        break
-                if album_link:
-                    break
-            except:
-                continue
-        
-        # 如果没找到匹配的，尝试直接找包含专辑名和艺人名的链接
-        if not album_link:
-            try:
-                all_album_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/album/']")
-                for link in all_album_links:
-                    if not link.is_displayed():
-                        continue
-                    href = link.get_attribute("href") or ""
-                    if "/library/" in href:
-                        continue
-                    try:
-                        lockup = link.find_element(By.XPATH, "ancestor::div[contains(@class, 'lockup') or contains(@class, 'top-search-lockup')]")
-                        lockup_text = lockup.text.lower()
-                        if artist_name.lower() in lockup_text and album_name.lower() in lockup_text:
-                            album_link = link
-                            print(f"  找到匹配专辑和艺人的链接")
-                            break
-                    except:
-                        continue
-            except:
-                pass
-        
-        # 如果还是没找到，点击第一个专辑链接
-        if not album_link:
-            try:
-                all_album_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/album/']")
-                for link in all_album_links:
-                    if link.is_displayed():
-                        href = link.get_attribute("href") or ""
-                        if "/album/" in href and "/library/" not in href and "/artist/" not in href:
-                            album_link = link
-                            print(f"  使用第一个专辑链接: {href}")
-                            break
-            except:
-                pass
-        
+        album_link = _find_apple_search_album_link(driver, artist_name, album_name)
         if album_link:
-            href = album_link.get_attribute("href") or ""
-            print(f"  点击专辑链接: {href}")
-            
-            apple_move_to_element(driver, album_link)
-            apple_human_delay(0.3, 0.5)
-            album_link.click()
-            
-            apple_human_delay(2, 4)
-            
-            # 确认机制：等待页面完全加载
-            max_retries = 5
-            for retry in range(max_retries):
-                current_url = driver.current_url
-                if "/album/" in current_url:
-                    try:
-                        WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, ".songs-list-row, [data-testid='track-cell']"))
-                        )
-                        print(f"  ✓ 已成功进入专辑页面: {current_url}")
-                        return current_url, None
-                    except:
-                        if retry < max_retries - 1:
-                            print(f"  等待歌曲列表加载... (重试 {retry+1}/{max_retries})")
-                            apple_human_delay(1, 2)
-                        continue
-                else:
-                    if retry < max_retries - 1:
-                        print(f"  页面还在加载，等待中... (重试 {retry+1}/{max_retries})")
-                        apple_human_delay(1, 2)
-                    else:
-                        print(f"  ✗ 进入的不是专辑页面: {current_url}")
-                        return None, _format_apple_search_fail_reason(
-                            f"点击后未进入专辑页，当前URL: {current_url}", album_name
-                        )
-            
-            print(f"  ✗ 页面加载超时")
-            return None, _format_apple_search_fail_reason("专辑页歌曲列表加载超时", album_name)
-        else:
-            print(f"  ✗ 未找到专辑链接")
-            return None, _format_apple_search_fail_reason("搜索结果中未找到专辑链接", album_name)
+            return _open_apple_album_from_search_link(driver, album_link, album_name)
+
+        print(f"  ✗ 未找到专辑链接")
+        return None, _format_apple_search_fail_reason("搜索结果中未找到专辑链接", album_name)
             
     except Exception as e:
         print(f"  ✗ 搜索失败: {e}")
