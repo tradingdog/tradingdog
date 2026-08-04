@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.49"  # 优化：失败专辑汇总标注来源（我们的艺人 / 其它艺人）
-# 更新内容：对照平台 *_artists.json 与 other_artists.json 标明失败专辑所属库
+APP_VERSION = "0.1.50"  # 调整：暂时清空 Apple 直链表，相关专辑恢复正常搜索
+# 更新内容：Streetlamp / Rooms That Breathe in Silence 不再走直链，便于观察搜索表现
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2624,10 +2624,8 @@ def login_apple_music(driver):
 
 
 # 搜索点击会被遮挡的专辑：跳过搜索，直接打开专辑页 URL
-APPLE_DIRECT_ALBUM_URLS = {
-    "streetlamp after the last shift": "https://music.apple.com/album/streetlamp-after-the-last-shift/1834401471",
-    "rooms that breathe in silence": "https://music.apple.com/album/rooms-that-breathe-in-silence/1850287603",
-}
+# 暂时停用直链，全部走正常搜索；需要时再按专辑名填入 URL
+APPLE_DIRECT_ALBUM_URLS = {}
 
 
 def _is_apple_click_intercepted_error(msg):
@@ -3518,9 +3516,8 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                         f"    · [{idx}] {item['artist']} - {item['album']}（来源: {src}）"
                     )
                 tip_lines.append(
-                    "  处理建议：将上述专辑加入 APPLE_DIRECT_ALBUM_URLS，"
-                    "用直链打开专辑页绕过搜索点击"
-                    "（Streetlamp / Rooms That Breathe in Silence 已配置）。"
+                    "  处理建议：可将上述专辑加入 APPLE_DIRECT_ALBUM_URLS，"
+                    "用直链打开专辑页绕过搜索点击（当前直链表为空，暂未启用）。"
                 )
             else:
                 tip_lines.append(
