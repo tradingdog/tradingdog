@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.51"  # 修复：Apple 搜索结果优先点 product-lockup-link，遮挡时改用 href 导航
-# 更新内容：避免点 product-lockup-title 被 wrapper 拦截（Streetlamp / Rooms 等）
+APP_VERSION = "0.1.52"  # 修复：Apple 搜索结果 href 导航保留地区码（依赖 IP，去掉反而打不开）
+# 更新内容：失败兜底时直接用页面原始 href（含 /hk/ 等），不再去地区码
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2670,24 +2670,6 @@ def _format_apple_search_fail_reason(msg, album_name=""):
     if has_direct:
         return "搜索/直链未能进入专辑页（该专辑已配置 APPLE_DIRECT_ALBUM_URLS）"
     return "搜索未找到专辑或未能进入专辑页"
-
-
-def _apple_normalize_store_album_url(url: str) -> str:
-    """去掉地区码，统一为 /album/... 形式（便于导航稳定）。"""
-    if not url:
-        return url
-    try:
-        # https://music.apple.com/hk/album/xxx/123 -> https://music.apple.com/album/xxx/123
-        import re
-        return re.sub(
-            r"(https?://music\.apple\.com)/[a-z]{2}(-[a-z]{2})?/album/",
-            r"\1/album/",
-            url,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-    except Exception:
-        return url
 
 
 def _apple_lockup_matches_album(link, artist_name: str, album_name: str) -> bool:
