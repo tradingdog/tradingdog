@@ -293,9 +293,9 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # 自定义参数：修改这里即可调整默认行为
-DEFAULT_PLATFORM = "T"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.53"  # 优化：Tidal OAuth 先开 account.profile 预热再进 link.tidal.com，降低被屏蔽
-# 更新内容：直开 oauth 短链易被拦；先访问 profile 等待后再改到 OAuth 链接
+DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
+APP_VERSION = "0.1.52"  # 修复：Apple 搜索结果 href 导航保留地区码（依赖 IP，去掉反而打不开）
+# 更新内容：失败兜底时直接用页面原始 href（含 /hk/ 等），不再去地区码
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -325,8 +325,6 @@ TIDAL_OAUTH_WAIT_TIMEOUT = 120    # 浏览器 OAuth 完成后等待 tidalapi 就
 TIDAL_OAUTH_CHECK_INTERVAL = 3.0  # check_login 轮询间隔（秒）
 TIDAL_OAUTH_API_RETRIES = 3                         # auth.tidal.com 请求失败重试次数
 TIDAL_OAUTH_FAILURE_BROWSER_PAUSE = 20              # 登录失败时保留浏览器秒数，便于查看页面
-TIDAL_OAUTH_WARMUP_URL = "https://account.tidal.com/profile"  # OAuth 前预热页，降低 link.tidal.com 被拦
-TIDAL_OAUTH_WARMUP_WAIT_SECONDS = 15                # 预热页等待秒数，再跳转 OAuth 链接
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
 TIDAL_DELETE_FILE = "tidal_delete_songs.txt"        # Tidal 删除歌曲列表文件
 PLAYLIST_NAMES_FILE = "Playlist_name.txt"           # 播放列表名称文件
@@ -1290,17 +1288,9 @@ def _start_tidal_oauth_session(session):
 
 
 def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
-    """全自动完成 Tidal OAuth：先预热 profile，再打开 OAuth 链接、填邮箱/密码、Continue。"""
+    """全自动完成 Tidal OAuth：打开链接、填邮箱/密码、Continue。"""
     try:
         print(f"  正在自动完成 OAuth 登录: {email}")
-
-        # 直开 link.tidal.com 短链易被屏蔽：先打开账号页预热，再跳转 OAuth
-        print(f"  先打开预热页: {TIDAL_OAUTH_WARMUP_URL}")
-        driver.get(TIDAL_OAUTH_WARMUP_URL)
-        print(f"  等待 {TIDAL_OAUTH_WARMUP_WAIT_SECONDS} 秒以便验证通过...")
-        time.sleep(TIDAL_OAUTH_WARMUP_WAIT_SECONDS)
-
-        print(f"  再打开 OAuth 链接: {auth_url}")
         driver.get(auth_url)
         time.sleep(3)
 
@@ -2792,8 +2782,8 @@ def _open_apple_album_from_search_link(driver, album_link, album_name):
         except Exception:
             pass
 
-    # 保留搜索结果原始 href（含 /hk/ 等地区码，依赖 IP，去掉反而打不开）
-    print(f"  打开专辑: {href}")
+    nav_url = _apple_normalize_store_album_url(href)
+    print(f"  打开专辑: {nav_url or href}")
 
     click_err_text = ""
     opened = False
@@ -2818,15 +2808,15 @@ def _open_apple_album_from_search_link(driver, album_link, album_name):
             click_err_text = str(js_err)
             print(f"  ! JS 点击也失败: {click_err_text[:100]}")
 
-    # 点击被 wrapper 拦截时，用搜索结果原始 href 导航（不是白名单直链）
+    # 点击被 wrapper 拦截时，用搜索结果里已拿到的 href 导航（不是白名单直链）
     need_href_nav = (not opened) or _is_apple_click_intercepted_error(click_err_text)
-    if need_href_nav and href:
+    if need_href_nav and nav_url:
         if (not opened) or ("/album/" not in (driver.current_url or "")):
-            print("  点击可能被遮挡，改用搜索结果原始 href 导航...")
-            if navigate_to_album_url_apple(driver, href):
-                return driver.current_url or href, None
+            print("  点击可能被遮挡，改用搜索结果 href 导航...")
+            if navigate_to_album_url_apple(driver, nav_url):
+                return driver.current_url or nav_url, None
             return None, _format_apple_search_fail_reason(
-                f"element click intercepted；href 导航也失败: {href}", album_name
+                f"element click intercepted；href 导航也失败: {nav_url}", album_name
             )
 
     apple_human_delay(2, 4)
@@ -2853,16 +2843,16 @@ def _open_apple_album_from_search_link(driver, album_link, album_name):
                 print(f"  页面还在加载，等待中... (重试 {retry+1}/{max_retries})")
                 apple_human_delay(1, 2)
             else:
-                # 最后再试原始 href 导航
-                if href and navigate_to_album_url_apple(driver, href):
-                    return driver.current_url or href, None
+                # 最后再试 href 导航
+                if nav_url and navigate_to_album_url_apple(driver, nav_url):
+                    return driver.current_url or nav_url, None
                 print(f"  ✗ 进入的不是专辑页面: {current_url}")
                 return None, _format_apple_search_fail_reason(
                     f"点击后未进入专辑页，当前URL: {current_url}", album_name
                 )
 
-    if href and navigate_to_album_url_apple(driver, href):
-        return driver.current_url or href, None
+    if nav_url and navigate_to_album_url_apple(driver, nav_url):
+        return driver.current_url or nav_url, None
     print(f"  ✗ 页面加载超时")
     return None, _format_apple_search_fail_reason("专辑页歌曲列表加载超时", album_name)
 
