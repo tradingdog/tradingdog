@@ -294,8 +294,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.54"  # 修复：仅两张遮挡专辑点封面链；普通专辑恢复原搜索点击
-# 更新内容：修正 _apple_normalize 未定义报错；Streetlamp/Rooms 专用封面 DOM，其它专辑不走封面优先
+APP_VERSION = "0.1.55"  # 修复：遮挡专辑按 href slug/aria-label 找封面链并 JS 点击
+# 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -2716,74 +2716,148 @@ def _apple_wait_album_page(driver, album_name, href_fallback=""):
     return None, _format_apple_search_fail_reason("专辑页歌曲列表加载超时", album_name)
 
 
+def _apple_album_href_slug(album_name: str) -> str:
+    """专辑名转 Apple Music URL slug，如 Streetlamp After the Last Shift -> streetlamp-after-the-last-shift。"""
+    s = (album_name or "").strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s
+
+
 def _find_apple_cover_lockup_link(driver, artist_name, album_name):
-    """仅为遮挡白名单专辑：定位封面链 a[data-testid=product-lockup-link]。"""
-    selectors = [
+    """遮挡白名单专辑：定位封面链 a[data-testid=product-lockup-link]。
+
+    按最新 DOM：封面链常为 color:transparent 的绝对定位层，文本为空；
+    以 href slug / aria-label 中的专辑名为准，不强制艺人名，也不要求 is_displayed。
+    """
+    slug = _apple_album_href_slug(album_name)
+    album_l = (album_name or "").strip().lower()
+    artist_l = (artist_name or "").strip().lower()
+
+    # 等封面链出现（搜索结果专辑区）
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((
+                By.CSS_SELECTOR,
+                "a[data-testid='product-lockup-link'][href*='/album/'], a.product-lockup__link[href*='/album/']",
+            ))
+        )
+    except Exception:
+        print("  ⚠ 等待 product-lockup-link 超时，继续尝试查找...")
+
+    # 优先用 slug 精确定位（与截图 href 一致）
+    preferred = []
+    if slug:
+        preferred.extend([
+            f"a[data-testid='product-lockup-link'][href*='/{slug}/']",
+            f"a[data-testid='product-lockup-link'][href*='/{slug}?']",
+            f"a.product-lockup__link[href*='/{slug}/']",
+            f"a.product-lockup__link[href*='/{slug}?']",
+        ])
+    preferred.extend([
         "a[data-testid='product-lockup-link'][href*='/album/']",
         "a.product-lockup__link[href*='/album/']",
-    ]
-    artist_l = (artist_name or "").strip().lower()
-    album_l = (album_name or "").strip().lower()
-    for css in selectors:
+    ])
+
+    seen = set()
+    candidates = []
+    for css in preferred:
         try:
             for link in driver.find_elements(By.CSS_SELECTOR, css):
-                if not link.is_displayed():
+                try:
+                    href = link.get_attribute("href") or ""
+                except Exception:
                     continue
-                href = link.get_attribute("href") or ""
                 if "/album/" not in href or "/library/" in href:
                     continue
-                aria = (link.get_attribute("aria-label") or "").lower()
-                text = (link.text or "").lower()
-                blob = f"{aria} {text} {href}"
-                try:
-                    lockup = link.find_element(
-                        By.XPATH,
-                        "./ancestor::*[contains(@class,'lockup') or contains(@class,'product-lockup')][1]",
-                    )
-                    blob = f"{blob} {(lockup.text or '').lower()}"
-                except Exception:
-                    pass
-                if album_l in blob and artist_l in blob:
-                    print(
-                        f"  遮挡专辑：使用封面链 product-lockup-link"
-                        f"（aria={link.get_attribute('aria-label')!r}）"
-                    )
-                    return link
+                key = href.split("?")[0]
+                if key in seen:
+                    continue
+                seen.add(key)
+                candidates.append(link)
         except Exception:
             continue
+
+    def _score(link):
+        href = (link.get_attribute("href") or "").lower()
+        aria = (link.get_attribute("aria-label") or "").lower()
+        text = (link.text or "").lower()
+        blob = f"{aria} {text} {href}"
+        score = 0
+        if slug and f"/{slug}/" in href.replace("?", "/"):
+            score += 100
+        elif slug and slug in href:
+            score += 80
+        if album_l and album_l in aria:
+            score += 50
+        elif album_l and album_l in blob:
+            score += 30
+        if artist_l and artist_l in blob:
+            score += 10
+        return score
+
+    ranked = sorted(candidates, key=_score, reverse=True)
+    for link in ranked:
+        if _score(link) >= 50:  # slug 或 aria 专辑名命中即可
+            print(
+                f"  遮挡专辑：命中封面链 product-lockup-link"
+                f" | href={link.get_attribute('href')}"
+                f" | aria={link.get_attribute('aria-label')!r}"
+            )
+            return link
+
+    # 调试：列出页面上已有的封面链，便于对照
+    if candidates:
+        print(f"  ⚠ 找到 {len(candidates)} 个 product-lockup-link，但无一匹配「{album_name}」:")
+        for link in candidates[:8]:
+            print(
+                f"    - href={link.get_attribute('href')}"
+                f" aria={link.get_attribute('aria-label')!r}"
+            )
+    else:
+        print("  ⚠ 页面上未找到任何 a[data-testid=product-lockup-link]")
     return None
 
 
 def _open_apple_album_via_cover_link(driver, artist_name, album_name):
-    """遮挡白名单专辑专用：点封面链；失败则用原始 href 导航。"""
+    """遮挡白名单专辑专用：JS 点击封面链；失败则用原始 href 导航（保留地区码）。"""
     cover = _find_apple_cover_lockup_link(driver, artist_name, album_name)
     if not cover:
         return None, _format_apple_search_fail_reason(
-            "遮挡专辑未找到匹配的封面链 product-lockup-link", album_name
+            "遮挡专辑未找到匹配的封面链 product-lockup-link"
+            "（请确认搜索结果专辑区已加载，且 href/aria 含专辑名）",
+            album_name,
         )
 
     href = cover.get_attribute("href") or ""
     print(f"  点击封面链打开专辑: {href}")
+
+    # 封面链为绝对定位透明层：优先 JS click，比 Selenium 原生 click 更稳
     try:
         driver.execute_script(
             "arguments[0].scrollIntoView({block: 'center', inline: 'center'});", cover
         )
         apple_human_delay(0.3, 0.5)
-        apple_move_to_element(driver, cover)
-        apple_human_delay(0.2, 0.4)
-        cover.click()
-    except Exception as click_err:
-        print(f"  ! 封面链普通点击失败: {str(click_err)[:120]}")
+        driver.execute_script("arguments[0].click();", cover)
+        print("  ✓ 已用 JS 点击封面链 product-lockup-link")
+    except Exception as js_err:
+        print(f"  ! JS 点击失败，尝试原生点击: {str(js_err)[:100]}")
         try:
-            driver.execute_script("arguments[0].click();", cover)
-            print("  ✓ 已用 JS 点击封面链")
-        except Exception as js_err:
-            print(f"  ! JS 点击失败，改用原始 href 导航: {str(js_err)[:80]}")
+            apple_move_to_element(driver, cover)
+            apple_human_delay(0.2, 0.4)
+            cover.click()
+        except Exception as click_err:
+            print(f"  ! 原生点击也失败，改用原始 href 导航: {str(click_err)[:100]}")
             if href and navigate_to_album_url_apple(driver, href):
                 return driver.current_url or href, None
             return None, _format_apple_search_fail_reason(click_err, album_name)
 
-    return _apple_wait_album_page(driver, album_name, href_fallback=href)
+    result_url, fail = _apple_wait_album_page(driver, album_name, href_fallback=href)
+    if result_url:
+        return result_url, None
+    # 等待失败再强制 href（保留 /us/ /hk/）
+    if href and navigate_to_album_url_apple(driver, href):
+        return driver.current_url or href, None
+    return None, fail
 
 
 def _find_apple_normal_album_link(driver, artist_name, album_name):
