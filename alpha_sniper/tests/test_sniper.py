@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import unittest
+
+from alpha_sniper.coiled import CoiledRegistry
+from alpha_sniper.coincidence import CoincidenceEngine
+from alpha_sniper.config import SniperConfig
+from alpha_sniper.engine import run_paper
+from alpha_sniper.risk import RiskGovernor
+from alpha_sniper.types import Account, Bar, Pulse, SymbolProfile
+from alpha_sniper.universe import PossibilitySurface
+
+
+def _bar(symbol: str, ts: float, close: float, **kw) -> Bar:
+    return Bar(
+        ts=ts,
+        symbol=symbol,
+        open=close,
+        high=close * 1.001,
+        low=close * 0.999,
+        close=close,
+        volume=kw.get("volume", 1000),
+        taker_buy_ratio=kw.get("taker_buy_ratio", 0.5),
+        large_print_share=kw.get("large_print_share", 0.0),
+        book_depth_usd=kw.get("book_depth_usd", 20_000),
+        exchange_inflow=kw.get("exchange_inflow", 0.0),
+        listing_event=kw.get("listing_event", ""),
+        narrative=kw.get("narrative", ""),
+        unlock_pressure=kw.get("unlock_pressure", 0.0),
+        social_heat=kw.get("social_heat", 0.1),
+        is_alpha=kw.get("is_alpha", False),
+        is_weekend=kw.get("is_weekend", False),
+    )
+
+
+class CoincidenceTests(unittest.TestCase):
+    def test_same_family_is_one_vote(self):
+        eng = CoincidenceEngine(SniperConfig())
+        ts = 10_000.0
+        for i, sid in enumerate(["volume_vacuum", "silence_break", "informed_flow_fake"]):
+            p = Pulse(sid, "microstructure", "X", "long", 0.8, ts + i, {})
+            self.assertIsNone(eng.ingest(p, silence_before=0.9))
+
+    def test_three_families_after_silence_fires(self):
+        eng = CoincidenceEngine(SniperConfig())
+        ts = 10_000.0
+        pulses = [
+            Pulse("a", "microstructure", "X", "long", 0.8, ts, {}),
+            Pulse("b", "catalyst", "X", "long", 0.9, ts + 1, {}),
+            Pulse("c", "positioning", "X", "long", 0.7, ts + 2, {}),
+        ]
+        self.assertIsNone(eng.ingest(pulses[0], 0.9))
+        self.assertIsNone(eng.ingest(pulses[1], 0.9))
+        coin = eng.ingest(pulses[2], 0.9)
+        self.assertIsNotNone(coin)
+        self.assertEqual(len(coin.families), 3)
+
+    def test_no_silence_no_trade_on_long(self):
+        eng = CoincidenceEngine(SniperConfig())
+        ts = 10_000.0
+        for fam in ("microstructure", "catalyst", "positioning"):
+            coin = eng.ingest(Pulse(fam, fam, "X", "long", 0.9, ts, {}), silence_before=0.1)
+        self.assertIsNone(coin)
+
+    def test_short_allows_exhaustion_instead_of_silence(self):
+        eng = CoincidenceEngine(SniperConfig())
+        ts = 10_000.0
+        coin = None
+        for fam in ("microstructure", "calendar", "positioning"):
+            coin = eng.ingest(Pulse(fam, fam, "Y", "short", 0.8, ts, {}), silence_before=0.05, exhaustion=0.8)
+        self.assertIsNotNone(coin)
+        self.assertEqual(coin.side, "short")
+
+
+class UniverseTests(unittest.TestCase):
+    def test_btc_is_not_hunting_ground(self):
+        cfg = SniperConfig()
+        u = PossibilitySurface(cfg)
+        u.set_profiles(
+            [
+                SymbolProfile("BTCUSDT", "large", "beta", 1, 1e12, 1e8, False),
+                SymbolProfile("COILUSDT", "alpha", "ai", 1, 5e6, 1e4, True),
+            ]
+        )
+        self.assertFalse(u.in_hunting_ground("BTCUSDT"))
+        self.assertTrue(u.in_hunting_ground("COILUSDT"))
+        self.assertGreater(u.possibility("COILUSDT"), 0.7)
+        self.assertEqual(u.possibility("BTCUSDT"), 0.0)
+        thin = Bar(
+            ts=0, symbol="THIN", open=1, high=1, low=1, close=1, volume=999999,
+            book_depth_usd=15, is_alpha=True,
+        )
+        u.set_profiles(list(u.profiles.values()) + [
+            SymbolProfile("THIN", "alpha", "vapor", 1, 8e5, 20, True)
+        ])
+        self.assertLess(u.exit_liquidity("THIN", thin), 0.28)
+
+
+class CoiledSilenceTests(unittest.TestCase):
+    def test_slow_grind_is_exhaustion_not_silence(self):
+        reg = CoiledRegistry(SniperConfig())
+        px = 1.0
+        for i in range(130):
+            px *= 1.004
+            reg.on_bar(_bar("D", i * 900, px, volume=5000, book_depth_usd=20_000))
+        st = reg.states["D"]
+        self.assertLess(st.silence, 0.4)
+        self.assertGreater(st.exhaustion, 0.5)
+
+
+class RiskTests(unittest.TestCase):
+    def test_rejects_leverage_above_1x(self):
+        g = RiskGovernor(SniperConfig())
+        self.assertTrue(g.leverage_ok("futures_1x", 1.0))
+        self.assertFalse(g.leverage_ok("futures_1x", 2.0))
+
+    def test_btc_stress_blocks_longs(self):
+        g = RiskGovernor(SniperConfig())
+        acc = Account(cash=1000, starting=1000)
+        self.assertEqual(g.allow_new(acc, 0, 0, "btc_stress", "long"), "btc_stress")
+        self.assertIsNone(g.allow_new(acc, 0, 0, "btc_stress", "short"))
+
+    def test_ratchet_locks_on_double(self):
+        g = RiskGovernor(SniperConfig())
+        acc = Account(cash=2200, starting=1000, last_double_lock=1000)
+        locked = g.ratchet(acc, 2200)
+        self.assertGreater(locked, 0)
+        self.assertGreater(acc.vault, 0)
+        self.assertAlmostEqual(acc.cash + acc.vault, 2200)
+
+
+class LiveGuardTests(unittest.TestCase):
+    def test_live_is_off_and_leverage_blocked(self):
+        from alpha_sniper.live_binance import LiveBinanceGuard
+
+        g = LiveBinanceGuard(SniperConfig(live=False), api_key="", api_secret="")
+        self.assertFalse(g.can_live())
+        with self.assertRaises(PermissionError):
+            g.assert_order_legal("futures_1x", 1.0)
+        g2 = LiveBinanceGuard(SniperConfig(live=True), api_key="x", api_secret="y")
+        with self.assertRaises(PermissionError):
+            g2.assert_order_legal("futures_1x", 3.0)
+
+
+class PaperPathTests(unittest.TestCase):
+    def test_paper_catches_fat_tail_and_skips_noise(self):
+        cfg = SniperConfig(paper_days=36, seed=42, paper_bar_seconds=15 * 60)
+        eng = run_paper(cfg)
+        traded = {t.symbol: t for t in eng.book.closed}
+        self.assertIn("COILUSDT", traded, f"should snipe coil, got {list(traded)}")
+        self.assertEqual(traded["COILUSDT"].side, "long")
+        self.assertIn("DUMPUSDT", traded, f"should short dump, got {list(traded)}")
+        self.assertEqual(traded["DUMPUSDT"].side, "short")
+        self.assertIn("LAGUSDT", traded, f"should buy narrative laggard, got {list(traded)}")
+        self.assertEqual(traded["LAGUSDT"].side, "long")
+        self.assertIn("narrative", traded["LAGUSDT"].families)
+        self.assertNotIn("FAKEUSDT", traded)
+        self.assertNotIn("DEADUSDT", traded)
+        self.assertNotIn("THINUSDT", traded)
+        # DUMP 应做成空头；若没吃到也不许做成追高多
+        if "DUMPUSDT" in traded:
+            self.assertEqual(traded["DUMPUSDT"].side, "short")
+        stress_longs = [t for t in eng.book.closed if t.symbol == "STRESSUSDT" and t.side == "long"]
+        self.assertEqual(stress_longs, [])
+        self.assertTrue(any(why == "btc_stress" for _, why in eng.skips) or "STRESSUSDT" not in traded)
+
+
+if __name__ == "__main__":
+    unittest.main()
