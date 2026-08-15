@@ -19,9 +19,13 @@
 ## 跑起来
 
 ```bash
+python -m alpha_sniper ui
+# 浏览器打开 http://127.0.0.1:8765
 python -m alpha_sniper design
 python -m alpha_sniper paper --days 40 --seed 42
 python -m unittest alpha_sniper.tests.test_sniper
 ```
+
+观察台用人话显示：现在在蹲还是在开火、为什么没开、猎场五族灯、命题假说、风控门和权益离 100 倍还有多远。默认纸上，不会下真单。
 
 纸上宇宙里种了缩簧暴涨、单独放量假突破、抛物线解锁大跌、叙事滞后、BTC 压力日假点火。用来打门控，不是用来吹回测。

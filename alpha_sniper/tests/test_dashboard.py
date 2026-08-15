@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+import json
+import threading
+import unittest
+import urllib.request
+from http.server import ThreadingHTTPServer
+
+from alpha_sniper.config import SniperConfig
+from alpha_sniper.session import LiveSession
+from alpha_sniper.web import _make_handler
+
+
+class SnapshotTests(unittest.TestCase):
+    def test_snapshot_is_human_readable(self):
+        session = LiveSession(SniperConfig(paper_days=2, seed=42))
+        session.tick(8)
+        snap = session.snapshot()
+        self.assertIn(snap["state"], {"SQUAT", "ARMED", "IN_THESIS"})
+        self.assertTrue(snap["narration"])
+        self.assertGreaterEqual(snap["account"]["equity"], 1)
+        self.assertTrue(snap["hunt"])
+        self.assertTrue(any(row["family_lamps"] for row in snap["hunt"]))
+        self.assertEqual(len(snap["risk"]["gates"]), 6)
+        self.assertFalse(snap["live"])
+
+    def test_next_shot_lands_on_coil(self):
+        session = LiveSession(SniperConfig(paper_days=36, seed=42))
+        kind = session.skip_to_event()
+        self.assertEqual(kind, "event")
+        snap = session.snapshot()
+        self.assertTrue(
+            any(t["symbol"] == "COILUSDT" and t["side"] == "long" for t in snap["theses"]),
+            snap["theses"],
+        )
+        self.assertIn("命题", snap["narration"])
+
+
+class HttpTests(unittest.TestCase):
+    def test_pages_and_state(self):
+        session = LiveSession(SniperConfig(paper_days=2, seed=42))
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), _make_handler(session))
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            html = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5).read().decode()
+            self.assertIn("观察台", html)
+            css = urllib.request.urlopen(f"http://127.0.0.1:{port}/app.css", timeout=5).read().decode()
+            self.assertIn("--amber", css)
+            raw = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state", timeout=5).read()
+            state = json.loads(raw.decode())
+            self.assertIn("narration", state)
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/control",
+                data=json.dumps({"action": "start"}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            opened = json.loads(urllib.request.urlopen(req, timeout=5).read().decode())
+            self.assertTrue(opened["running"])
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
+
+if __name__ == "__main__":
+    unittest.main()

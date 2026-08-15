@@ -15,7 +15,18 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("paper", help="跑纸上宇宙（种有大涨大跌事件）")
     p.add_argument("--days", type=int, default=40)
     p.add_argument("--seed", type=int, default=42)
+    ui = sub.add_parser("ui", help="打开人类观察台（纸上演练，实时看板）")
+    ui.add_argument("--host", default="0.0.0.0")
+    ui.add_argument("--port", type=int, default=8765)
+    ui.add_argument("--days", type=int, default=36)
+    ui.add_argument("--seed", type=int, default=42)
     args = parser.parse_args(argv)
+
+    if args.cmd == "ui":
+        from .web import run_ui
+
+        run_ui(host=args.host, port=args.port, days=args.days, seed=args.seed)
+        return 0
 
     if args.cmd == "design":
         from pathlib import Path

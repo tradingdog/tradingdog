@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>观察台 · Alpha Sniper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="top">
+    <div class="brand">
+      <div class="mark">◎</div>
+      <div>
+        <h1>观察台</h1>
+        <p class="sub">Alpha Sniper · 只做币安现货 / 1x / Alpha</p>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <span id="statePill" class="pill squat">蹲点</span>
+      <span id="modePill" class="pill quiet">纸上演练 · 不下真单</span>
+      <span id="clock" class="clock">第 0 天</span>
+    </div>
+    <div class="controls" id="controls">
+      <button type="button" data-act="start">开始</button>
+      <button type="button" data-act="pause">暂停</button>
+      <button type="button" data-act="next" class="accent">下一枪</button>
+      <button type="button" data-act="reset">重来</button>
+      <div class="speeds" id="speeds">
+        <button type="button" data-speed="1">1×</button>
+        <button type="button" data-speed="8" class="on">8×</button>
+        <button type="button" data-speed="32">32×</button>
+        <button type="button" data-speed="128">128×</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="narration" id="narration">空仓是主状态。还没有开始演练。</section>
+
+  <section class="metrics" id="metrics"></section>
+  <section class="stones" id="stones"></section>
+
+  <main class="grid">
+    <section class="panel theses">
+      <header>
+        <h2>当前命题</h2>
+        <p>仓位不是方向，是一张会过期的假说。</p>
+      </header>
+      <div id="theses"></div>
+    </section>
+
+    <section class="panel risk">
+      <header>
+        <h2>风控门</h2>
+        <p>活着比猜对比更重要。</p>
+      </header>
+      <div id="gates"></div>
+      <div id="skips" class="skips"></div>
+    </section>
+
+    <section class="panel hunt span-2">
+      <header>
+        <h2>猎场埋伏表</h2>
+        <p>五盏灯是五个独立证据族。同族再亮三次也只算一票。</p>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>标的</th>
+              <th>叙事</th>
+              <th>缩簧</th>
+              <th>沉寂</th>
+              <th>证据族</th>
+              <th>可能 / 拥挤 / 退出</th>
+              <th>人话</th>
+            </tr>
+          </thead>
+          <tbody id="hunt"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel chart">
+      <header>
+        <h2>权益</h2>
+        <p>对数进度看离 100 倍还有多远，不看每天几百分。</p>
+      </header>
+      <canvas id="equity" width="720" height="220"></canvas>
+    </section>
+
+    <section class="panel script">
+      <header>
+        <h2>纸上剧本</h2>
+        <p>上帝视角只在演练里有。实盘不会提前告诉你哪天爆炸。</p>
+      </header>
+      <ol id="script"></ol>
+    </section>
+
+    <section class="panel log">
+      <header>
+        <h2>作战日志</h2>
+        <p>开火、离场、拒绝。空仓时这里应该很安静。</p>
+      </header>
+      <ul id="journal"></ul>
+    </section>
+
+    <section class="panel miss">
+      <header>
+        <h2>差点开火</h2>
+        <p>三族亮了但没过门，这是纪律，不是错过。</p>
+      </header>
+      <ul id="misses"></ul>
+    </section>
+
+    <section class="panel closed span-2">
+      <header>
+        <h2>已经结束的命题</h2>
+        <p>看它为什么死，比看赚了多少有用。</p>
+      </header>
+      <div id="closed"></div>
+    </section>
+  </main>
+
+  <footer>
+    空仓不是故障。100x 是肥尾，不是按钮。观察台只让你看清它在想什么。
+  </footer>
+  <script src="/app.js"></script>
+</body>
+</html>

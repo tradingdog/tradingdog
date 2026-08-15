@@ -47,6 +47,9 @@ class AlphaSniperEngine:
         self.journal: list[JournalEvent] = []
         self.now: float = 0.0
         self.skips: list[tuple[str, str]] = []
+        self.recent_pulses: list[Pulse] = []
+        self.recent_coincidences: list = []
+        self.near_misses: list[dict] = []
 
     def attach_profiles(self, profiles) -> None:
         self.universe.set_profiles(profiles)
@@ -85,6 +88,11 @@ class AlphaSniperEngine:
         if dump_frac >= 0.6:
             pulses.append(Pulse("narrative_dump", "narrative", bar.symbol, "short", dump_frac, bar.ts, {}))
 
+        if pulses:
+            self.recent_pulses.extend(pulses)
+            if len(self.recent_pulses) > 240:
+                self.recent_pulses = self.recent_pulses[-240:]
+
         seen: set[tuple[str, str]] = set()
         for pulse in pulses:
             coin = self.coincidence.ingest(pulse, coiled.silence, coiled.exhaustion)
@@ -94,8 +102,22 @@ class AlphaSniperEngine:
             if key in seen or self.book.has_symbol(coin.symbol):
                 continue
             seen.add(key)
+            self.recent_coincidences.append(coin)
+            if len(self.recent_coincidences) > 80:
+                self.recent_coincidences = self.recent_coincidences[-80:]
             opp = self._opportunity(bar, coiled, coin, lag_why)
             if opp is None:
+                self.near_misses.append(
+                    {
+                        "ts": bar.ts,
+                        "symbol": bar.symbol,
+                        "side": coin.side,
+                        "families": list(coin.families),
+                        "reason": "三族亮了，但可能性/拥挤/退出/信念没过门，继续蹲",
+                    }
+                )
+                if len(self.near_misses) > 40:
+                    self.near_misses = self.near_misses[-40:]
                 continue
             deny = self.risk.allow_new(
                 self.account, self.book.open_count(), bar.ts, self.universe.regime(), opp.side

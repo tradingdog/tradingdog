@@ -56,3 +56,24 @@ class CoincidenceEngine:
 
     def forget(self, symbol: str) -> None:
         self._buf.pop(symbol, None)
+
+    def votes(self, symbol: str, now: float) -> list[dict]:
+        cutoff = now - self.config.coincidence_window_sec
+        best: dict[tuple[str, str], Pulse] = {}
+        for p in self._buf.get(symbol, []):
+            if p.ts < cutoff:
+                continue
+            key = (p.family, p.side)
+            prev = best.get(key)
+            if prev is None or p.strength > prev.strength:
+                best[key] = p
+        return [
+            {
+                "family": p.family,
+                "side": p.side,
+                "strength": round(p.strength, 3),
+                "sensor": p.sensor_id,
+                "ts": p.ts,
+            }
+            for p in best.values()
+        ]
