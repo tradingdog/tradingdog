@@ -22,7 +22,7 @@ class ThesisBook:
         for t in self.open.values():
             if t.status != "open":
                 continue
-            # 已经按计划兑现过的剩余仓不占新埋伏名额，把子弹留给下一只猎物
+            # 已按计划减过仓的剩余仓不占新开仓名额
             if t.scaled_40 and t.remaining_qty <= t.qty * 0.55 + 1e-12:
                 continue
             n += 1
@@ -131,9 +131,9 @@ class ThesisBook:
 def _hypothesis(opp: Opportunity) -> str:
     fams = ",".join(opp.coincidence.families)
     return (
-        f"因 [{fams}] 在沉寂后共振（silence={opp.coincidence.silence_before:.2f}），"
-        f"赌 {opp.symbol} 非对称{('上涨' if opp.side == 'long' else '下跌')}；"
-        f"点火={opp.ignition_kind} crowding={opp.scores.crowding:.2f}。{opp.reason}"
+        f"{'做多' if opp.side == 'long' else '做空'} {opp.symbol}："
+        f"{fams} 同时出现（横盘安静度 {opp.coincidence.silence_before:.2f}），"
+        f"拥挤度 {opp.scores.crowding:.2f}。{opp.reason}"
     )
 
 

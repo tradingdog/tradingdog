@@ -6,48 +6,48 @@ from .types import Thesis
 
 
 FAMILY_ZH = {
-    "microstructure": "微观",
-    "catalyst": "催化剂",
-    "positioning": "持仓",
-    "narrative": "叙事",
-    "calendar": "日历",
+    "microstructure": "成交",
+    "catalyst": "消息",
+    "positioning": "大单",
+    "narrative": "板块",
+    "calendar": "时间点",
 }
 
 SENSOR_ZH = {
-    "volume_vacuum": "量能真空",
-    "silence_break": "沉寂打破",
-    "listing_catalyst": "上币",
-    "informed_flow": "知情流",
-    "exchange_inflow": "兑所充币",
+    "volume_vacuum": "放量且盘口薄",
+    "silence_break": "横盘后放量",
+    "listing_catalyst": "上币/公告",
+    "informed_flow": "大单方向",
+    "exchange_inflow": "充币到交易所",
     "unlock_calendar": "解锁",
-    "weekend_vacuum": "周末真空",
-    "alpha_new_listing": "Alpha 上币",
-    "narrative_lag": "叙事滞后",
-    "narrative_dump": "板块同崩",
-    "aggressive_tape": "单边磁带",
+    "weekend_vacuum": "周末流动性差",
+    "alpha_new_listing": "Alpha 上新",
+    "narrative_lag": "同板块还没涨的",
+    "narrative_dump": "同板块一起跌",
+    "aggressive_tape": "一边倒的成交",
 }
 
 SKIP_ZH = {
-    "halted": "日亏熔断，今日只许平仓",
-    "cooldown": "刚亏过，冷却中，禁止报复",
-    "max_concurrent": "命题名额已满，先管好手里的",
-    "btc_stress": "BTC 大跌，禁止新开山寨多",
-    "no_cash": "可交易现金不够",
+    "halted": "今天亏超限，只许平仓",
+    "cooldown": "刚亏过，冷却中不开新仓",
+    "max_concurrent": "同时持仓已满（最多 2 个）",
+    "btc_stress": "BTC 大跌，不开山寨多单",
+    "no_cash": "可用资金不足",
     "dust": "算出来的仓位太小，放弃",
 }
 
 VENUE_ZH = {"spot": "现货", "futures_1x": "1x 合约", "alpha": "Alpha"}
 SIDE_ZH = {"long": "做多", "short": "做空"}
-REGIME_ZH = {"risk_on": "风险开", "chop": "震荡", "btc_stress": "BTC 承压"}
-STATE_ZH = {"SQUAT": "蹲点", "ARMED": "埋伏就绪", "IN_THESIS": "命题中"}
+REGIME_ZH = {"risk_on": "偏多", "chop": "震荡", "btc_stress": "BTC 大跌"}
+STATE_ZH = {"SQUAT": "空仓", "ARMED": "已盯上", "IN_THESIS": "持仓中"}
 
 PAPER_SCRIPT = [
-    {"day": 5.0, "symbol": "COILUSDT", "title": "缩簧后上币", "hint": "应预先埋伏，点火做多 Alpha"},
-    {"day": 8.0, "symbol": "FAKEUSDT", "title": "单独放量", "hint": "不足三族，应忽略"},
-    {"day": 12.0, "symbol": "DUMPUSDT", "title": "抛物线出货", "hint": "解锁+充币+卖盘，1x 空"},
-    {"day": 18.4, "symbol": "LAGUSDT", "title": "叙事滞后", "hint": "不追龙头，买还没动的"},
-    {"day": 20.0, "symbol": "THINUSDT", "title": "薄盘幻象", "hint": "没退出通道，应拒绝"},
-    {"day": 24.2, "symbol": "STRESSUSDT", "title": "BTC 压力日", "hint": "禁止新开多"},
+    {"day": 5.0, "symbol": "COILUSDT", "title": "横盘后上币", "hint": "应提前盯住，放量后做多 Alpha"},
+    {"day": 8.0, "symbol": "FAKEUSDT", "title": "单独放量", "hint": "只有一类信号，应忽略"},
+    {"day": 12.0, "symbol": "DUMPUSDT", "title": "冲高后出货", "hint": "解锁+充币+卖盘，1x 空"},
+    {"day": 18.4, "symbol": "LAGUSDT", "title": "同板块还没涨", "hint": "不追龙头，买还没动的"},
+    {"day": 20.0, "symbol": "THINUSDT", "title": "盘口太薄", "hint": "退出流动性不够，应拒绝"},
+    {"day": 24.2, "symbol": "STRESSUSDT", "title": "BTC 大跌日", "hint": "禁止新开山寨多单"},
 ]
 
 FAMILIES = ("microstructure", "catalyst", "positioning", "narrative", "calendar")
@@ -79,8 +79,13 @@ def build_snapshot(session) -> dict:
         skip_counts[why] = skip_counts.get(why, 0) + 1
 
     return {
-        "mode": "paper",
+        "mode": getattr(session, "mode", "paper"),
         "live": False,
+        "clock_mode": "unix" if getattr(session, "mode", "") == "binance_sim" else "sim",
+        "allow_new": getattr(session, "allow_new", True),
+        "blocked": sorted(getattr(session, "blocked", set()) or []),
+        "ready": getattr(session, "ready", True),
+        "boot_error": getattr(session, "boot_error", ""),
         "running": session.running,
         "finished": session.finished,
         "speed": session.speed,
@@ -126,7 +131,7 @@ def build_snapshot(session) -> dict:
                 "ts": e.ts,
                 "day": round(e.ts / 86400.0, 3),
                 "kind": e.kind,
-                "kind_zh": {"open": "开火", "close": "离场", "skip": "拒绝"}.get(e.kind, e.kind),
+                "kind_zh": {"open": "开仓", "close": "平仓", "skip": "过滤"}.get(e.kind, e.kind),
                 "symbol": e.symbol,
                 "detail": e.detail,
             }
@@ -198,9 +203,9 @@ def _plain_thesis(t: Thesis) -> str:
     way = "大涨" if t.side == "long" else "大跌"
     ch = VENUE_ZH.get(t.venue, t.venue)
     return (
-        f"赌 {t.symbol} 走出非对称{way}（{ch}）。"
-        f"依据：{fams} 在沉寂后同时亮起。"
-        f"若价格回到 {t.invalidation:.6g}，或时间耗尽仍无推进，假说死亡，立刻走。"
+        f"{ch}{SIDE_ZH[t.side]} {t.symbol}，看{way}。"
+        f"开仓理由：{fams} 同时出现。"
+        f"跌破/升破 {t.invalidation:.6g} 或超时没走出幅度，就平掉。"
     )
 
 
@@ -218,13 +223,13 @@ def _hunt_rows(engine, now: float) -> list[dict]:
         if st is None:
             continue
         if gap == 0 and st.armed:
-            wait = "三族已齐，看门控"
+            wait = "三类信号已齐，等风控放行"
         elif st.armed:
-            wait = f"弹簧已压紧，还差 {gap} 族"
+            wait = f"横盘缩量，还差 {gap} 类信号"
         elif st.coiled_score >= 0.28:
-            wait = "正在压缩，继续蹲"
+            wait = "波动在收窄，继续看"
         else:
-            wait = "还没进入埋伏表"
+            wait = "还没形成可交易结构"
         rows.append(
             {
                 "symbol": profile.symbol,
@@ -286,38 +291,38 @@ def _gates(engine, now: float, regime: str) -> list[dict]:
         {
             "id": "leverage",
             "ok": True,
-            "label": "杠杆硬顶 1x",
-            "detail": "不会用 5x 去赌倍数",
+            "label": "杠杆上限 1x",
+            "detail": "不用 5x/10x，爆一次就没了",
         },
         {
             "id": "btc",
             "ok": regime != "btc_stress",
-            "label": "BTC 体制",
-            "detail": "大跌时关掉山寨新多" if regime == "btc_stress" else "允许打猎",
+            "label": "BTC 环境",
+            "detail": "BTC 大跌，暂停山寨多单" if regime == "btc_stress" else "可以找山寨机会",
         },
         {
             "id": "halt",
             "ok": now >= acc.halted_until,
-            "label": "日亏熔断",
-            "detail": "已触发，停机" if now < acc.halted_until else "未触发",
+            "label": "当日亏损限制",
+            "detail": "已触发，停止开新仓" if now < acc.halted_until else "未触发",
         },
         {
             "id": "cool",
             "ok": now >= acc.cooldown_until,
-            "label": "亏损冷却",
-            "detail": "冷却中" if now < acc.cooldown_until else "可开火",
+            "label": "亏损后冷却",
+            "detail": "冷却中" if now < acc.cooldown_until else "可以开新仓",
         },
         {
             "id": "slots",
             "ok": engine.book.open_count() < engine.config.max_concurrent,
-            "label": f"命题名额 {engine.book.open_count()}/{engine.config.max_concurrent}",
-            "detail": "空出来才开下一枪",
+            "label": f"持仓数 {engine.book.open_count()}/{engine.config.max_concurrent}",
+            "detail": "有空位才开下一笔",
         },
         {
             "id": "moon",
             "ok": now >= acc.moonshot_ban_until,
-            "label": "月亮仓",
-            "detail": "大赢后 48h 禁止放大" if now < acc.moonshot_ban_until else "极强共振才允许放大",
+            "label": "加大仓位",
+            "detail": "刚大赚过，48 小时内不加仓" if now < acc.moonshot_ban_until else "只有信号特别强才加仓",
         },
     ]
 
@@ -325,7 +330,7 @@ def _gates(engine, now: float, regime: str) -> list[dict]:
 def _narrate(state, open_theses, armed, regime, engine, now, marks) -> str:
     day = now / 86400.0
     if regime == "btc_stress":
-        head = "BTC 正在深跌，新的山寨多单被锁死。"
+        head = "BTC 跌得急，系统暂停新的山寨多单。"
     else:
         head = ""
     if state == "IN_THESIS":
@@ -335,14 +340,18 @@ def _narrate(state, open_theses, armed, regime, engine, now, marks) -> str:
             raw = (px / t.entry - 1.0) if t.entry else 0.0
             ret = raw if t.side == "long" else -raw
             bits.append(f"{t.symbol} {SIDE_ZH[t.side]} {ret:+.0%}")
-        return head + "命题进行中：" + "；".join(bits) + "。假说没死就让它跑，死了立刻走。"
+        return head + "当前持仓：" + "；".join(bits) + "。止损没打就拿着，打了就平。"
     if state == "ARMED":
         names = "、".join(armed[:4])
-        return head + f"埋伏已锁定 {names}。预计算单写好了，点火后不会现场改主意。"
+        return head + f"正在盯 {names}。结构已经压缩，再出现两类以上信号才会开仓。"
     last_close = engine.book.closed[-1].exit_ts if engine.book.closed else 0.0
-    quiet_h = max(0.0, (now - last_close) / 3600.0) if last_close else day * 24.0
+    quiet_h = max(0.0, (now - last_close) / 3600.0) if last_close else 0.0
     n_coil = sum(1 for s in engine.coiled.states.values() if s.armed)
-    return head + f"空仓蹲点约 {quiet_h:.0f} 小时。猎场里 {n_coil} 只缩簧在表上。没有三族共振，就什么都不做。"
+    if quiet_h >= 1:
+        wait = f"空仓已等 {quiet_h:.0f} 小时。"
+    else:
+        wait = "现在空仓。"
+    return head + f"{wait}监控里有 {n_coil} 个横盘缩量的币。没有三类独立信号同时出现，就不开仓。"
 
 
 def _stones(equity: float, starting: float) -> list[dict]:

@@ -50,6 +50,7 @@ class AlphaSniperEngine:
         self.recent_pulses: list[Pulse] = []
         self.recent_coincidences: list = []
         self.near_misses: list[dict] = []
+        self.allow_new_entries: bool = True
 
     def attach_profiles(self, profiles) -> None:
         self.universe.set_profiles(profiles)
@@ -113,7 +114,7 @@ class AlphaSniperEngine:
                         "symbol": bar.symbol,
                         "side": coin.side,
                         "families": list(coin.families),
-                        "reason": "三族亮了，但可能性/拥挤/退出/信念没过门，继续蹲",
+                        "reason": "三类信号齐了，但空间/拥挤度/退出流动性没过线，所以没开",
                     }
                 )
                 if len(self.near_misses) > 40:
@@ -125,6 +126,8 @@ class AlphaSniperEngine:
             if deny:
                 self.skips.append((bar.symbol, deny))
                 self.journal.append(JournalEvent(bar.ts, "skip", bar.symbol, deny))
+                continue
+            if not self.allow_new_entries:
                 continue
             self._open(opp, bar)
         return closed
@@ -219,10 +222,28 @@ class AlphaSniperEngine:
             return thesis
         return None
 
-    def flatten_all(self, now: float) -> None:
+    def flatten_all(self, now: float, reason: str = "手动全部平仓") -> None:
         for thesis in list(self.book.open.values()):
-            px = self.venue.marks.get(thesis.symbol, thesis.entry)
-            self._reduce(thesis, "flatten", thesis.remaining_qty, px, now)
+            self.flatten_one(thesis.id, now, reason)
+
+    def flatten_one(self, thesis_id: str, now: float, reason: str = "手动平仓") -> None:
+        thesis = self.book.open.get(thesis_id)
+        if thesis is None or thesis.status != "open":
+            return
+        px = self.venue.marks.get(thesis.symbol, thesis.entry)
+        self._reduce(thesis, reason, thesis.remaining_qty, px, now)
+
+    def pulse_price(self, symbol: str, price: float, ts: float) -> list[Thesis]:
+        """K 线之间用最新成交价盯市、止损、减仓。"""
+        self.now = ts
+        self.venue.on_price(symbol, price)
+        closed: list[Thesis] = []
+        for thesis, reason, qty in self.book.manage(symbol, price, ts):
+            t = self._reduce(thesis, reason, qty, price, ts)
+            if t is not None:
+                closed.append(t)
+        self.risk.ratchet(self.account, self.equity())
+        return closed
 
 
 def run_paper(config: SniperConfig | None = None) -> AlphaSniperEngine:

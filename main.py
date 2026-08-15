@@ -294,7 +294,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.59"  # 修复：观察台改为单文件预览，避免 jsDelivr 显示源码
+APP_VERSION = "0.1.60"  # 新增：币安真实行情模拟盘 + 交易员用语监控台
 # 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"

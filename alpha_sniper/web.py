@@ -9,6 +9,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from .config import SniperConfig
+from .env import load_env
+from .live_sim import RealSimSession
 from .session import LiveSession
 
 WEBUI = Path(__file__).resolve().parent / "webui"
@@ -30,9 +32,9 @@ class Watchtower:
                 with session.lock:
                     running = session.running and not session.finished
                     n = session.speed
-                if running:
+                if running or getattr(session, "mode", "") == "binance_sim":
                     session.tick(n)
-                time.sleep(0.28)
+                time.sleep(2.4 if getattr(session, "mode", "") == "binance_sim" else 0.28)
 
         threading.Thread(target=loop, daemon=True).start()
         handler = _make_handler(session)
@@ -82,6 +84,18 @@ def _make_handler(session: LiveSession):
                 session.set_speed(int(body.get("speed", 8)))
             elif action == "next":
                 session.skip_to_event()
+            elif action == "flatten" and hasattr(session, "flatten"):
+                session.flatten()
+            elif action == "close" and hasattr(session, "flatten_one"):
+                session.flatten_one(str(body.get("thesis_id", "")))
+            elif action == "allow" and hasattr(session, "set_allow_new"):
+                session.set_allow_new(bool(body.get("allow", True)))
+            elif action == "refresh" and hasattr(session, "poll"):
+                session.poll()
+            elif action == "block" and hasattr(session, "block"):
+                session.block(str(body.get("symbol", "")))
+            elif action == "unblock" and hasattr(session, "unblock"):
+                session.unblock(str(body.get("symbol", "")))
             else:
                 self.send_error(400)
                 return
@@ -138,7 +152,14 @@ def _make_handler(session: LiveSession):
     return Handler
 
 
-def run_ui(host: str = "0.0.0.0", port: int = 8765, days: int = 36, seed: int = 42) -> None:
-    session = LiveSession(SniperConfig(paper_days=days, seed=seed))
-    print(f"观察台已打开  http://127.0.0.1:{port}  （纸上演练，不会下真单）")
+def run_ui(host: str = "0.0.0.0", port: int = 8765, days: int = 36, seed: int = 42, paper: bool = False) -> None:
+    load_env()
+    if paper:
+        session = LiveSession(SniperConfig(paper_days=days, seed=seed))
+        print(f"监控台  http://127.0.0.1:{port}  （本地回放，不是币安行情）")
+    else:
+        session = RealSimSession(SniperConfig())
+        print("正在后台从币安拉行情（资金仍是模拟，不会下真单）…")
+        threading.Thread(target=session.bootstrap, daemon=True).start()
+        print(f"监控台  http://127.0.0.1:{port}  （真实行情 + 模拟资金）")
     Watchtower(session, host=host, port=port).serve_forever()

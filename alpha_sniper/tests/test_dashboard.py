@@ -20,6 +20,7 @@ class SnapshotTests(unittest.TestCase):
         snap = session.snapshot()
         self.assertIn(snap["state"], {"SQUAT", "ARMED", "IN_THESIS"})
         self.assertTrue(snap["narration"])
+        self.assertTrue(any(w in snap["narration"] + snap["state_zh"] for w in ("空仓", "持仓", "盯")))
         self.assertGreaterEqual(snap["account"]["equity"], 1)
         self.assertTrue(snap["hunt"])
         self.assertTrue(any(row["family_lamps"] for row in snap["hunt"]))
@@ -35,7 +36,15 @@ class SnapshotTests(unittest.TestCase):
             any(t["symbol"] == "COILUSDT" and t["side"] == "long" for t in snap["theses"]),
             snap["theses"],
         )
-        self.assertIn("命题", snap["narration"])
+        self.assertTrue(any("COIL" in snap["narration"] or t["symbol"] == "COILUSDT" for t in snap["theses"]))
+
+    def test_manual_flatten_closes_open_position(self):
+        session = LiveSession(SniperConfig(paper_days=36, seed=42))
+        session.skip_to_event()
+        self.assertTrue(session.snapshot()["theses"])
+        session.flatten()
+        self.assertFalse(session.snapshot()["theses"])
+        self.assertTrue(any(t["exit_reason"] == "手动全部平仓" for t in session.snapshot()["closed"]))
 
 
 class ReplayFileTests(unittest.TestCase):
@@ -54,7 +63,7 @@ class ReplayFileTests(unittest.TestCase):
         text = stand.read_text(encoding="utf-8")
         self.assertIn("<!DOCTYPE html>", text)
         self.assertIn('id="replay-data"', text)
-        self.assertIn("观察台", text)
+        self.assertIn("交易监控", text)
         self.assertGreater(stand.stat().st_size, 50_000)
 
 
@@ -67,7 +76,14 @@ class HttpTests(unittest.TestCase):
         thread.start()
         try:
             html = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5).read().decode()
-            self.assertIn("观察台", html)
+            self.assertIn("交易监控", html)
+            self.assertIn("当前持仓", html)
+            self.assertIn("继续开仓", html)
+            self.assertNotIn("下一枪", html)
+            self.assertNotIn("当前命题", html)
+            js = urllib.request.urlopen(f"http://127.0.0.1:{port}/app.js", timeout=5).read().decode()
+            self.assertIn("可用资金", js)
+            self.assertIn("锁定利润", js)
             css = urllib.request.urlopen(f"http://127.0.0.1:{port}/app.css", timeout=5).read().decode()
             self.assertIn("--amber", css)
             raw = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state", timeout=5).read()

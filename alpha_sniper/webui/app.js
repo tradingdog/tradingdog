@@ -18,13 +18,58 @@ function clsRet(n) {
   return "";
 }
 
+function when(s, day, ts) {
+  if (s && s.clock_mode === "unix" && ts && ts > 1e9) {
+    return new Date(ts * 1000).toLocaleString("zh-CN", {
+      hour12: false,
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  if (day == null) return "—";
+  return `D${Number(day).toFixed(2)}`;
+}
+
 function render(s) {
+  window.__SNAP = s;
   const pill = $("statePill");
   pill.textContent = s.state_zh;
   pill.className = "pill " + ({ SQUAT: "squat", ARMED: "armed", IN_THESIS: "fire" }[s.state] || "squat");
-  $("clock").textContent = `第 ${s.day.toFixed(2)} 天 / ${s.horizon_days} 天`;
-  $("narration").textContent = s.narration;
-  $("modePill").textContent = s.finished ? "纸上演练 · 已跑完" : s.running ? "纸上演练 · 进行中" : "纸上演练 · 已暂停";
+  if (s.clock_mode === "unix" && s.now > 1e9) {
+    $("clock").textContent = new Date(s.now * 1000).toLocaleString("zh-CN", { hour12: false });
+  } else {
+    $("clock").textContent = `回放第 ${s.day.toFixed(2)} 天 / ${s.horizon_days} 天`;
+  }
+  $("narration").textContent = s.boot_error || s.narration || "等待行情";
+  if (s.mode === "binance_sim") {
+    $("modePill").textContent = s.allow_new ? "真实行情 · 模拟资金 · 允许开仓" : "真实行情 · 模拟资金 · 已暂停开仓";
+  } else {
+    $("modePill").textContent = s.finished ? "本地回放 · 已结束" : s.running ? "本地回放 · 进行中" : "本地回放 · 已暂停";
+  }
+  const feed = s.feed || {};
+  const fp = $("feedPill");
+  if (fp) {
+    fp.textContent = feed.ok ? `币安已连接 ${feed.latency_ms || 0}ms` : (s.ready === false ? "正在拉行情" : "行情断开");
+    fp.className = "pill " + (feed.ok ? "squat" : "quiet");
+  }
+  const fl = $("feedline");
+  if (fl) {
+    const pollAt = (s.last_poll || feed.last_poll)
+      ? ` · 上次刷新 ${new Date((s.last_poll || feed.last_poll) * 1000).toLocaleTimeString("zh-CN", { hour12: false })}`
+      : "";
+    fl.innerHTML = s.mode === "binance_sim"
+      ? `监控 ${feed.symbols || 0} 个 USDT 交易对 · Alpha ${feed.alpha || 0} 个 · ${feed.key_note || ""}${pollAt}${feed.last_error ? " · " + feed.last_error : ""}`
+      : "当前是本地回放数据，不是币安实时行情。";
+  }
+  const mv = $("movers");
+  if (mv) {
+    const quotes = (s.quotes || []).slice(0, 8);
+    mv.innerHTML = quotes.length
+      ? quotes.map((q) => `<div class="mover"><div class="sym">${q.symbol}${q.is_alpha ? " · Alpha" : ""}</div><div class="chg ret ${clsRet(q.change24h)}">${pct(q.change24h)}</div></div>`).join("")
+      : "";
+  }
 
   document.querySelectorAll("#speeds button").forEach((b) => {
     b.classList.toggle("on", Number(b.dataset.speed) === s.speed);
@@ -33,10 +78,10 @@ function render(s) {
   const a = s.account;
   $("metrics").innerHTML = [
     metric("权益", money(a.equity), `起始 ${money(a.starting)} · ${a.multiple.toFixed(2)}x`, clsRet(a.equity - a.starting)),
-    metric("现金", money(a.cash), "还能用来埋伏的子弹"),
-    metric("金库", money(a.vault), "翻倍后锁住的，不再拿去冒险"),
-    metric("浮动", money(a.unrealized), "未兑现的命题盈亏", clsRet(a.unrealized)),
-    metric("对数进度", pct(a.progress_log), `线性进度 ${pct(a.progress_linear)} · 目标 ${money(a.target)}`),
+    metric("可用资金", money(a.cash), "模拟账户里还能开仓的钱"),
+    metric("锁定利润", money(a.vault), "翻倍后锁住，不再拿去开新仓"),
+    metric("浮动盈亏", money(a.unrealized), "未平仓的模拟盈亏", clsRet(a.unrealized)),
+    metric("距 100 倍", pct(a.progress_log), `线性 ${pct(a.progress_linear)} · 目标 ${money(a.target)}`),
   ].join("");
 
   $("stones").innerHTML = a.stepping_stones
@@ -45,7 +90,7 @@ function render(s) {
 
   $("theses").innerHTML = s.theses.length
     ? s.theses.map(thesisCard).join("")
-    : `<div class="empty"><strong>◎ 蹲点中</strong>空仓是主状态，不是故障。<br/>猎场里的缩簧会在下面亮起来。</div>`;
+    : `<div class="empty"><strong>◎ 空仓</strong>现在没有模拟持仓，这是正常的。<br/>下面列表里出现横盘缩量、再凑齐三类信号，才会开仓。</div>`;
 
   $("gates").innerHTML = s.risk.gates
     .map(
@@ -53,18 +98,21 @@ function render(s) {
     )
     .join("");
   $("skips").innerHTML = s.skips.length
-    ? "<div>最近拒绝</div>" + s.skips.map((x) => `<div>${x.why_zh} · ${x.count} 次</div>`).join("")
-    : "<div>还没有拒绝记录。安静是好事。</div>";
+    ? "<div>最近没开仓的原因</div>" + s.skips.map((x) => `<div>${x.why_zh} · ${x.count} 次</div>`).join("")
+    : "<div>还没有过滤记录。安静说明没乱开仓。</div>";
 
   $("hunt").innerHTML = s.hunt
     .map((r) => {
       const lamps = r.family_lamps
         .map((l) => `<span class="lamp ${l.on ? "on" : ""}" title="${l.zh}">${l.zh.slice(0, 1)}</span>`)
         .join("");
+      const q = (s.quotes || []).find((x) => x.symbol === r.symbol);
+      const chg = q ? q.change24h : r.moved;
       return `<tr>
         <td><strong>${r.symbol}</strong><div class="mute">${r.is_alpha ? "Alpha" : r.tier} · ${r.venue_zh}</div></td>
-        <td>${r.narrative}</td>
-        <td class="mono">${r.coiled.toFixed(2)}${r.armed ? " · 锁" : ""}</td>
+        <td class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</td>
+        <td class="mono">${r.mark == null ? "—" : Number(r.mark).toPrecision(6)}</td>
+        <td class="mono">${r.coiled.toFixed(2)}${r.armed ? " · 已盯" : ""}</td>
         <td class="mono">${r.silence.toFixed(2)}</td>
         <td><div class="lamps">${lamps}</div></td>
         <td>
@@ -75,29 +123,30 @@ function render(s) {
           </div>
         </td>
         <td>${r.wait}</td>
+        <td><button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button></td>
       </tr>`;
     })
     .join("");
 
   $("script").innerHTML = s.script
     .map(
-      (ev) => `<li class="${ev.status}"><span class="d">D${ev.day}</span><div><strong>${ev.title}</strong> · ${ev.symbol}<div class="mute">${ev.hint}</div></div></li>`
+      (ev) => `<li class="${ev.status}"><span class="d">${ev.symbol || "公告"}</span><div><strong>${ev.title}</strong><div class="mute">${ev.hint || ""}</div></div></li>`
     )
     .join("");
 
   const journal = [...s.journal].reverse();
   $("journal").innerHTML = journal.length
     ? journal
-        .map((e) => `<li><span class="kind">${e.kind_zh}</span><span class="mono">D${e.day}</span> ${e.symbol}<div class="mute">${e.detail}</div></li>`)
+        .map((e) => `<li><span class="kind">${e.kind_zh}</span><span class="mono">${when(s, e.day, e.ts)}</span> ${e.symbol}<div class="mute">${e.detail}</div></li>`)
         .join("")
-    : "<li class='mute'>还没有枪声。</li>";
+    : "<li class='mute'>还没有开平仓。空仓时这里本来就该安静。</li>";
 
   const misses = [...s.near_misses].reverse();
   $("misses").innerHTML = misses.length
     ? misses
-        .map((m) => `<li><span class="mono">D${m.day}</span> ${m.symbol} ${m.side_zh}<div class="mute">${(m.families_zh || []).join(" · ")} — ${m.reason}</div></li>`)
+        .map((m) => `<li><span class="mono">${when(s, m.day, m.ts)}</span> ${m.symbol} ${m.side_zh}<div class="mute">${(m.families_zh || []).join(" · ")} — ${m.reason}</div></li>`)
         .join("")
-    : "<li class='mute'>还没有「差点」。说明共振本身就很稀少。</li>";
+    : "<li class='mute'>还没有被挡下的信号。说明真正齐套的机会很少。</li>";
 
   $("closed").innerHTML = s.closed.length
     ? s.closed
@@ -113,7 +162,7 @@ function render(s) {
           </div>`
         )
         .join("")
-    : `<div class="empty">还没有结束的命题。</div>`;
+    : `<div class="empty">还没有平过仓。</div>`;
 
   drawEquity(s.equity_curve, a.starting, a.target);
 }
@@ -130,11 +179,14 @@ function thesisCard(t) {
     </div>
     <p class="plain">${t.plain}</p>
     <div class="mute" style="margin-top:10px">
-      入场 ${t.entry.toPrecision(4)} · 现价 ${Number(t.mark).toPrecision(4)} · 失效 ${t.invalidation.toPrecision(4)}
+      入场 ${t.entry.toPrecision(4)} · 现价 ${Number(t.mark).toPrecision(4)} · 止损 ${t.invalidation.toPrecision(4)}
       · 剩余仓 ${(t.remaining_frac * 100).toFixed(0)}%
       · 还剩 ${t.hours_left.toFixed(1)} 小时
       ${t.scaled_40 ? " · 已减 40%" : ""}
       ${t.scaled_100 ? " · 已减 100% 档" : ""}
+    </div>
+    <div class="actions">
+      <button type="button" class="tiny danger" data-close="${t.id}">平掉这一笔</button>
     </div>
   </article>`;
 }
@@ -256,6 +308,9 @@ function replayControl(action, extra) {
 }
 
 async function send(action, extra) {
+  if (action === "flatten" && !window.confirm("确认把所有模拟持仓按现价平掉？资金仍是模拟的。")) return;
+  if (action === "reset" && !window.confirm("确认把模拟资金重置回 1000，并重新拉币安行情？")) return;
+  if (action === "close" && !window.confirm("确认平掉这一笔模拟持仓？")) return;
   if (replay.frames.length) {
     replayControl(action, extra || {});
     return;
@@ -274,6 +329,18 @@ $("controls").addEventListener("click", (ev) => {
   if (!btn) return;
   if (btn.dataset.act) send(btn.dataset.act);
   if (btn.dataset.speed) send("speed", { speed: Number(btn.dataset.speed) });
+});
+document.body.addEventListener("click", (ev) => {
+  const closeBtn = ev.target.closest("button[data-close]");
+  if (closeBtn) {
+    send("close", { thesis_id: closeBtn.dataset.close });
+    return;
+  }
+  const btn = ev.target.closest("button[data-block]");
+  if (!btn) return;
+  const symbol = btn.dataset.block;
+  const blocked = (window.__SNAP && window.__SNAP.blocked) || [];
+  send(blocked.includes(symbol) ? "unblock" : "block", { symbol });
 });
 
 function connectLive() {

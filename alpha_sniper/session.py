@@ -12,7 +12,9 @@ WATCH = ("BTCUSDT", "COILUSDT", "DUMPUSDT", "LAGUSDT", "LEADUSDT", "FAKEUSDT", "
 
 
 class LiveSession:
-    """可暂停、加速、跳到下一枪的纸上演练。给观察台用，不替代 run_paper。"""
+    """本地回放。给测试和离线演示用，不替代币安真实行情。"""
+
+    mode = "paper"
 
     def __init__(self, config: SniperConfig | None = None):
         self.config = config or SniperConfig(paper_days=36, seed=42)
@@ -25,6 +27,9 @@ class LiveSession:
         self.ts = 0.0
         self.equity_curve: list[dict] = []
         self.price_tails: dict[str, list[list[float]]] = {s: [] for s in WATCH}
+        self.ready = True
+        self.boot_error = ""
+        self.allow_new = True
         self._rebuild()
 
     def _rebuild(self) -> None:
@@ -46,14 +51,42 @@ class LiveSession:
         with self.lock:
             if not self.finished:
                 self.running = True
+                self.allow_new = True
+                self.engine.allow_new_entries = True
 
     def pause(self) -> None:
         with self.lock:
             self.running = False
+            self.allow_new = False
+            self.engine.allow_new_entries = False
 
     def set_speed(self, speed: int) -> None:
         with self.lock:
             self.speed = max(1, min(256, int(speed)))
+
+    def set_allow_new(self, allow: bool) -> None:
+        with self.lock:
+            self.allow_new = bool(allow)
+            self.engine.allow_new_entries = self.allow_new and self.running
+
+    def flatten(self) -> None:
+        with self.lock:
+            self.engine.flatten_all(self.engine.now or self.ts, "手动全部平仓")
+            self._record()
+
+    def flatten_one(self, thesis_id: str) -> None:
+        with self.lock:
+            self.engine.flatten_one(thesis_id, self.engine.now or self.ts, "手动平仓")
+            self._record()
+
+    def block(self, symbol: str) -> None:
+        return
+
+    def unblock(self, symbol: str) -> None:
+        return
+
+    def poll(self) -> None:
+        self.tick(1)
 
     def tick(self, n_bars: int = 1) -> None:
         with self.lock:
@@ -78,7 +111,7 @@ class LiveSession:
             self.ts += step
 
     def skip_to_event(self) -> str:
-        """快进到下一笔开火/离场，方便人眼跟上「一枪」。"""
+        """快进到下一笔开仓或平仓，方便回放核对。"""
         with self.lock:
             start = len(self.engine.journal)
             for _ in range(4000):

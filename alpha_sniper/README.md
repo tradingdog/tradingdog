@@ -1,39 +1,46 @@
 # Alpha Sniper
 
-币安非对称机会猎手。只做 **现货 / 1x 合约 / Alpha**。默认姿态是空仓蹲点，只在「沉寂之后多路独立证据同时点火」时开火。
+币安非对称机会猎手。只做 **现货 / 1x 合约 / Alpha**。默认空仓等待，只在「横盘缩量之后，至少三类独立信号同时出现」时开仓。
 
-完整框架与为什么不走技术指标，见 [`DESIGN.md`](DESIGN.md)。
+完整框架见 [`DESIGN.md`](DESIGN.md)。
 
 ## 这不是 100x 按钮
 
 `1000 → 100000` 在半年内是肥尾结果，不是计划任务。本仓库实现的是：
 
-- 负空间猎场（大盘币直接剔除）
-- 缩簧表 + 预计算单（点火后不许现场想策略）
-- 跨证据族共振（三个成交量指标 = 一票）
-- 命题生命周期（失效价、时间止损、分批、跟踪）
-- 1x 硬顶、棘轮金库、BTC 大跌禁止新多
+- 先剔除大盘币，只看还有暴涨暴跌空间的标的
+- 横盘缩量时先算好止损和方向，放量后只执行、不改主意
+- 跨信号共振（三个成交量指标 = 一票）
+- 持仓有失效价、时间止损、分批减仓
+- 1x 硬顶、翻倍后锁定一部分利润、BTC 大跌禁止新开山寨多单
 
-默认 **纸上**。没有密钥、没有 `live: true` 不会碰真金。
+默认 **真实行情 + 模拟资金**。没有 `live: true` 不会下真单。
 
 ## 跑起来
 
-Cloud / 别人的电脑不要打开 `127.0.0.1`，那是本机地址，打不到远程进程。
+密钥放环境变量，不要写进代码：
 
-任意浏览器打开这个预览链接（jsDelivr 会把 HTML 当文本，不要再用）：
+```
+BINANCE_API_KEY=...
+BINANCE_API_SECRET=...
+```
 
-https://html-preview.github.io/?url=https://raw.githubusercontent.com/tradingdog/tradingdog/cursor/alpha-sniper-framework-6310/alpha_sniper/webui/watchtower.html
+复制 `.env.example` 为 `.env`（已加入 gitignore）。
 
-本机自己跑引擎时才用：
+默认是 **币安真实行情 + 模拟资金**，不会下真单：
 
 ```bash
 python -m alpha_sniper ui
+```
+
+本地回放、导出静态页、跑测试：
+
+```bash
+python -m alpha_sniper ui --paper
 python -m alpha_sniper export
 python -m alpha_sniper design
 python -m alpha_sniper paper --days 40 --seed 42
-python -m unittest alpha_sniper.tests.test_sniper alpha_sniper.tests.test_dashboard
+python -m unittest alpha_sniper.tests.test_sniper alpha_sniper.tests.test_dashboard alpha_sniper.tests.test_feed alpha_sniper.tests.test_env
 ```
 
-观察台用人话显示：现在在蹲还是在开火、为什么没开、猎场五族灯、命题假说、风控门和权益离 100 倍还有多远。默认纸上，不会下真单。
-
-纸上宇宙里种了缩簧暴涨、单独放量假突破、抛物线解锁大跌、叙事滞后、BTC 压力日假点火。用来打门控，不是用来吹回测。
+监控台给交易员看：空仓 / 已盯上 / 持仓中、可用资金、锁定利润、浮动盈亏、监控列表、开仓/平仓/过滤原因。可以暂停开仓、全部平仓、单笔平仓、拉黑币对、刷新行情、重置模拟资金。

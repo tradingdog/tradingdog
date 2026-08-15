@@ -16,3 +16,5 @@ __pycache__/
 # Alpha Sniper 运行时（密钥与纸上成交，不得入库）
 alpha_sniper/data/
 alpha_sniper/.secrets
+.env
+.env.local

@@ -33,7 +33,7 @@ body {
   z-index: 0;
 }
 
-.top, .narration, .metrics, .stones, .grid, footer { position: relative; z-index: 1; }
+.top, .narration, .feedline, .movers, .metrics, .stones, .grid, footer { position: relative; z-index: 1; }
 
 .top {
   display: grid;
@@ -82,8 +82,33 @@ button {
 button:hover { border-color: var(--amber); }
 button.accent { background: #2a2216; color: var(--amber); border-color: #6a5330; }
 button.on { background: #2a2216; color: var(--amber); }
+button.tiny { padding: 3px 8px; font-size: 12px; }
 .speeds { display: flex; gap: 0; }
 .speeds button { border-radius: 0; }
+
+.feedline {
+  margin: 0 28px 12px;
+  color: var(--mute);
+  font-size: 13px;
+}
+.feedline strong { color: var(--ink); font-weight: 500; }
+button.danger { color: var(--clay); border-color: #6a3d36; }
+.movers {
+  margin: 0 28px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mover {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 6px 10px;
+  font-size: 12px;
+  min-width: 118px;
+}
+.mover .sym { font-family: "IBM Plex Mono", monospace; color: var(--ink); }
+.mover .chg { font-family: "IBM Plex Mono", monospace; }
+.card .actions { margin-top: 12px; }
 
 .narration {
   margin: 8px 28px 18px;

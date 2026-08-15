@@ -9,17 +9,18 @@ from .engine import run_paper
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Alpha Sniper：币安非对称机会猎手（默认纸上）")
+    parser = argparse.ArgumentParser(description="Alpha Sniper：币安真实行情模拟盘（资金模拟，不下真单）")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("design", help="打印框架要点")
-    p = sub.add_parser("paper", help="跑纸上宇宙（种有大涨大跌事件）")
+    p = sub.add_parser("paper", help="跑本地回放（种有大涨大跌事件）")
     p.add_argument("--days", type=int, default=40)
     p.add_argument("--seed", type=int, default=42)
-    ui = sub.add_parser("ui", help="打开人类观察台（纸上演练，实时看板）")
+    ui = sub.add_parser("ui", help="打开交易监控台（默认币安真实行情 + 模拟资金）")
     ui.add_argument("--host", default="0.0.0.0")
     ui.add_argument("--port", type=int, default=8765)
     ui.add_argument("--days", type=int, default=36)
     ui.add_argument("--seed", type=int, default=42)
+    ui.add_argument("--paper", action="store_true", help="用本地回放，不拉币安")
     sub.add_parser("export", help="导出纸上重放，供任意浏览器打开观察台")
     args = parser.parse_args(argv)
 
@@ -35,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "ui":
         from .web import run_ui
 
-        run_ui(host=args.host, port=args.port, days=args.days, seed=args.seed)
+        run_ui(host=args.host, port=args.port, days=args.days, seed=args.seed, paper=args.paper)
         return 0
 
     if args.cmd == "design":
