@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 
 from .config import SniperConfig
 from .engine import AlphaSniperEngine
@@ -31,6 +32,9 @@ class LiveSession:
         self.ready = True
         self.boot_error = ""
         self.allow_new = True
+        self.process_started_at = time.time()
+        self.boot_started_at = self.process_started_at
+        self.ready_at = self.process_started_at
         self._rebuild()
 
     def _rebuild(self) -> None:

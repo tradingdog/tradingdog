@@ -34,7 +34,7 @@ body {
   z-index: 0;
 }
 
-.top, .narration, .feedline, .metrics, .grid, footer { position: relative; z-index: 1; }
+.top, .narration, .feedline, .runtime, .metrics, .grid, footer { position: relative; z-index: 1; }
 
 .top {
   display: grid;
@@ -99,6 +99,26 @@ button.tiny { padding: 3px 8px; font-size: 12px; }
   font-size: 13px;
 }
 .feedline strong { color: var(--ink); font-weight: 500; }
+.runtime {
+  margin: 0 28px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 12px;
+}
+.runtime .rt {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+}
+.runtime .k { color: var(--mute); font-size: 11px; }
+.runtime .v {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--ink);
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+.runtime .hint { color: var(--mute); font-size: 11px; margin-top: 4px; }
 button.danger { color: var(--clay); border-color: #6a3d36; }
 .movers {
   margin: 0 28px 14px;
@@ -353,11 +373,12 @@ footer {
   .score { grid-template-columns: 1fr 1fr; }
   .nums { grid-template-columns: 1fr 1fr; }
   .top { padding: 10px 12px; gap: 10px; }
-  .narration, .feedline, .grid, footer { margin-left: 12px; margin-right: 12px; }
+  .narration, .feedline, .runtime, .grid, footer { margin-left: 12px; margin-right: 12px; }
   .metrics { padding: 0 12px; }
   .grid { padding: 12px 12px 28px; }
   .closed-row { grid-template-columns: 1fr; gap: 4px; }
   .disc-wrap { max-height: min(420px, 56vh); }
+  .runtime { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 720px) {
@@ -379,6 +400,7 @@ footer {
   }
   .narration { font-size: 15px; padding: 12px; margin: 8px 12px 10px; }
   .feedline { font-size: 12px; margin: 0 12px 10px; }
+  .runtime { grid-template-columns: 1fr; margin: 0 12px 10px; }
   .metric { padding: 10px; }
   .metric .v { font-size: 20px; }
   .panel { padding: 12px; }

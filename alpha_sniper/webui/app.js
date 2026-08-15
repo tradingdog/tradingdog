@@ -1,11 +1,27 @@
 const $ = (id) => document.getElementById(id);
 
+function feedErrorText(feed) {
+  const raw = (feed && feed.last_error) || "";
+  if (!raw) return "";
+  if (String(raw).includes("451") && feed.ok) return "";
+  if (String(raw).includes("451")) {
+    return "币安主站 451（地区限制）。公开行情应走 data-api.binance.vision，不影响模拟盘";
+  }
+  return raw;
+}
+
+function hostShort(host) {
+  if (!host) return "";
+  return String(host).replace(/^https?:\/\//, "");
+}
+
 function feedLine(s, feed, pollAt) {
   const h = s.health || {};
   const scan = h.scan || {};
   const watch = h.watch || feed.watch || 0;
   const bits = [
     `盯盘 ${watch} 个币（横盘缩量为主）`,
+    feed.host ? `公开行情 ${hostShort(feed.host)}` : "",
     `Alpha ${feed.alpha || 0}`,
     feed.key_note || "",
     scan.opens != null ? `开仓 ${scan.opens}` : "",
@@ -14,10 +30,67 @@ function feedLine(s, feed, pollAt) {
     h.restored ? "已从上次接着跑" : "",
     h.note || "",
     pollAt,
-    feed.last_error ? feed.last_error : "",
+    feedErrorText(feed),
     s.loop_error || h.loop_error || "",
   ].filter(Boolean);
   return bits.join(" · ");
+}
+
+function fmtWall(ts, withSec) {
+  if (ts == null || Number(ts) < 1e9) return "—";
+  const opt = {
+    hour12: false,
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  if (withSec) opt.second = "2-digit";
+  return new Date(Number(ts) * 1000).toLocaleString("zh-CN", opt);
+}
+
+function fmtDur(sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return "—";
+  const n = Math.max(0, Math.floor(Number(sec)));
+  const d = Math.floor(n / 86400);
+  const h = Math.floor((n % 86400) / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = n % 60;
+  if (d) return `${d} 天 ${h} 小时 ${m} 分`;
+  if (h) return `${h} 小时 ${m} 分`;
+  if (m) return `${m} 分 ${s} 秒`;
+  return `${s} 秒`;
+}
+
+function rtCard(k, v, hint) {
+  return `<article class="rt"><div class="k">${k}</div><div class="v">${v}</div>${hint ? `<div class="hint">${hint}</div>` : ""}</article>`;
+}
+
+function renderRuntime(s) {
+  const el = $("runtime");
+  if (!el) return;
+  const rt = s.runtime || {};
+  if (s.mode !== "binance_sim") {
+    el.innerHTML = [
+      rtCard("本进程启动", fmtWall(rt.process_started_at, true), `已运行 ${fmtDur(rt.uptime_sec)}`),
+      rtCard("模式", "本地纸上回放", "不是币安真实行情"),
+    ].join("");
+    return;
+  }
+  const barSec = rt.bar_seconds || 3600;
+  const barOpen = rt.last_closed_bar_at;
+  const barClose = barOpen ? barOpen + barSec : 0;
+  const nextHint = rt.next_bar_eta_sec != null
+    ? `下一根约 ${fmtDur(rt.next_bar_eta_sec)} 后收盘`
+    : "还没吃到已收盘的 1 小时 K";
+  el.innerHTML = [
+    rtCard("本进程启动", fmtWall(rt.process_started_at, true), `已运行 ${fmtDur(rt.uptime_sec)}`),
+    rtCard("行情就绪", fmtWall(rt.ready_at, true), rt.ready_at ? `就绪后已盯 ${fmtDur(rt.ready_sec)}` : "仍在拉 K 线"),
+    rtCard("上次刷新公开行情", fmtWall(rt.last_poll_at, true), rt.last_poll_ago_sec != null ? `${fmtDur(rt.last_poll_ago_sec)} 前` : "尚未刷新"),
+    rtCard("最近 1 小时 K", barOpen ? `${fmtWall(barOpen)} → ${fmtWall(barClose)}` : "—", nextHint),
+    rtCard("盯盘池上次重选", fmtWall(rt.universe_at, true), "大约每 6 小时按横盘缩量重挑一次"),
+    rtCard("模拟账户落盘", fmtWall(rt.saved_at, true), rt.restored ? "本进程从上次状态接着跑" : (rt.saved_at ? "已写入本机状态文件" : "尚未落盘")),
+  ].join("");
 }
 
 function money(n) {
@@ -54,10 +127,16 @@ function when(s, day, ts) {
 
 function render(s) {
   window.__SNAP = s;
+  const rt = s.runtime || {};
   const pill = $("statePill");
   pill.textContent = s.state_zh;
   pill.className = "pill " + ({ SQUAT: "squat", ARMED: "armed", IN_THESIS: "fire" }[s.state] || "squat");
-  if (s.clock_mode === "unix" && s.now > 1e9) {
+  if (s.mode === "binance_sim") {
+    const wall = rt.wall_now || Date.now() / 1000;
+    $("clock").textContent = fmtWall(wall, true);
+    const up = $("uptimePill");
+    if (up) up.textContent = `已运行 ${fmtDur(rt.uptime_sec)}`;
+  } else if (s.clock_mode === "unix" && s.now > 1e9) {
     $("clock").textContent = new Date(s.now * 1000).toLocaleString("zh-CN", { hour12: false });
   } else {
     $("clock").textContent = `回放第 ${s.day.toFixed(2)} 天 / ${s.horizon_days} 天`;
@@ -77,12 +156,13 @@ function render(s) {
   const fl = $("feedline");
   if (fl) {
     const pollAt = (s.last_poll || feed.last_poll)
-      ? `上次刷新 ${new Date((s.last_poll || feed.last_poll) * 1000).toLocaleTimeString("zh-CN", { hour12: false })}`
+      ? `上次刷新 ${fmtWall(s.last_poll || feed.last_poll, true)}`
       : "";
     fl.innerHTML = s.mode === "binance_sim"
       ? feedLine(s, feed, pollAt)
       : "当前是本地回放数据，不是币安实时行情。";
   }
+  renderRuntime(s);
   document.querySelectorAll("#controls [data-act]").forEach((b) => {
     const act = b.dataset.act;
     if (act === "start") b.classList.toggle("on", !!s.allow_new);
@@ -146,7 +226,7 @@ function render(s) {
   const misses = [...s.near_misses].reverse();
   $("misses").innerHTML = misses.length
     ? misses
-        .map((m) => `<li><span class="mono">${when(s, m.day, m.ts)}</span> ${m.symbol} ${m.side_zh}<div class="mute">${(m.families_zh || []).join(" · ")} — ${m.reason}</div></li>`)
+        .map((m) => `<li><span class="kind">${m.origin_zh || "记下"}</span><span class="mono">${when(s, m.day, m.ts)}</span> ${m.symbol} ${m.side_zh}<div class="mute">${(m.families_zh || []).join(" · ")} — ${m.reason}</div></li>`)
         .join("")
     : "<li class='mute'>还没有被挡下的信号。说明真正齐套的机会很少。</li>";
 

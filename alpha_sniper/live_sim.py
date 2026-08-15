@@ -28,6 +28,9 @@ class RealSimSession:
         self.config = config or SniperConfig()
         self.lock = threading.RLock()
         self.feed = BinanceFeed()
+        self.process_started_at = time.time()
+        self.boot_started_at = 0.0
+        self.ready_at = 0.0
         self._rebuild()
 
     def _rebuild(self) -> None:
@@ -54,6 +57,8 @@ class RealSimSession:
         self.health: dict = {}
         self._last_save = 0.0
         self._journal_n = 0
+        self.boot_started_at = 0.0
+        self.ready_at = 0.0
         self.feed = BinanceFeed()
 
     def bootstrap(self) -> None:
@@ -64,6 +69,7 @@ class RealSimSession:
             self.ready = False
 
     def _bootstrap_inner(self) -> None:
+        self.boot_started_at = time.time()
         if not self.feed.ping():
             raise RuntimeError(self.feed.status.last_error or "币安行情连不上")
         self.feed.check_key()
@@ -136,12 +142,16 @@ class RealSimSession:
                 apply_state(self, saved)
                 self.engine.allow_new_entries = self.allow_new and self.running
                 self.engine.record_events = True
+                self.engine.event_origin = "live"
         else:
             with self.lock:
                 self.engine.allow_new_entries = self.allow_new and self.running
                 self.engine.record_events = True
+                self.engine.event_origin = "startup_replay"
             for ts in hunt_stamps:
                 self._replay_stamp(by_ts[ts], listing_ts=last_closed, allow_open=True)
+            with self.lock:
+                self.engine.event_origin = "live"
         if stamps and stamps[-1] not in closed:
             self._replay_stamp(by_ts[stamps[-1]], listing_ts=0, allow_open=False)
 
@@ -150,6 +160,7 @@ class RealSimSession:
             self.ready = True
             self.last_poll = time.time()
             self.universe_ts = time.time()
+            self.ready_at = time.time()
             wall = time.time()
             for sym in self.watch:
                 q = self.feed.quotes.get(sym)
@@ -164,10 +175,13 @@ class RealSimSession:
                 "closed": len(self.engine.book.closed),
                 "restored": bool(saved),
                 "watch": len(self.watch),
+                "process_started_at": self.process_started_at,
+                "boot_started_at": self.boot_started_at,
+                "ready_at": self.ready_at,
                 "note": (
-                    "从上次状态恢复"
+                    "从上次状态恢复。列表里早于本进程启动的「没开」来自启动回放的历史 1 小时 K 线，不是程序那天就在跑。"
                     if saved
-                    else "启动时用最近约 4 天已收盘的 1 小时 K 线，按抓妖纪律回放"
+                    else "启动时用最近约 4 天已收盘的 1 小时 K 线，按抓妖纪律回放。近失日期是 K 线时间，不是进程启动日。"
                 ),
             }
             self._record(force=True)

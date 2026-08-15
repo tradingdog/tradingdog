@@ -23,6 +23,7 @@
       <span id="modePill" class="pill quiet">模拟资金，不会下真单</span>
       <span id="feedPill" class="pill quiet">行情未连接</span>
       <span id="clock" class="clock">—</span>
+      <span id="uptimePill" class="pill quiet">已运行 —</span>
     </div>
     <div class="controls" id="controls">
       <button type="button" data-act="start">继续开仓</button>
@@ -35,6 +36,7 @@
 
   <section class="narration" id="narration">正在连接币安行情…</section>
   <section class="feedline" id="feedline"></section>
+  <section class="runtime" id="runtime"></section>
   <section class="metrics" id="metrics"></section>
 
   <main class="grid">
@@ -85,7 +87,7 @@
     <section class="panel miss">
       <header>
         <h2>信号够了但没开</h2>
-        <p>三类独立信号齐了，但 K 线还不是箱体突破，或没有消息/板块导火线，或已经走完一大截。这是过滤，不是漏单。</p>
+        <p>三类独立信号齐了，但 K 线还不是箱体突破，或没有消息/板块导火线，或已经走完一大截。这是过滤，不是漏单。标了「启动回放」的日期是那根 1 小时 K 线的时间：启动时会回放最近约 4 天已收盘 K 线，并不是程序那天就已经在跑。</p>
       </header>
       <ul id="misses"></ul>
     </section>

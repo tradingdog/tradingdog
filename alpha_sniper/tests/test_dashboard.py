@@ -26,9 +26,22 @@ class SnapshotTests(unittest.TestCase):
         self.assertTrue(snap["discoveries"])
         self.assertIn("trades", snap["performance"])
         self.assertTrue(snap["rules"])
+        self.assertIn("runtime", snap)
+        self.assertGreater(snap["runtime"]["process_started_at"], 0)
         self.assertTrue(any(row["family_lamps"] for row in snap["hunt"]))
         self.assertEqual(len(snap["risk"]["gates"]), 6)
         self.assertFalse(snap["live"])
+
+    def test_historical_kline_miss_is_labeled_replay(self):
+        from alpha_sniper.snapshot import ORIGIN_ZH, _miss_origin
+
+        class Sess:
+            mode = "binance_sim"
+            process_started_at = 1_786_770_000.0
+
+        self.assertEqual(_miss_origin({"ts": 1_786_550_400.0}, Sess()), "startup_replay")
+        self.assertEqual(_miss_origin({"ts": 1_786_770_000.0, "origin": "live"}, Sess()), "live")
+        self.assertIn("K线", ORIGIN_ZH["startup_replay"])
 
     def test_next_shot_lands_on_coil(self):
         session = LiveSession(SniperConfig(paper_days=36, seed=42))
@@ -105,7 +118,11 @@ class HttpTests(unittest.TestCase):
             self.assertIn("锁定利润", js)
             self.assertIn("restoreDiscScroll", js)
             self.assertIn("patchDiscoveryLive", js)
+            self.assertIn("renderRuntime", js)
+            self.assertIn("fmtDur", js)
             self.assertNotIn("__OPEN_INIT", js)
+            self.assertIn('id="runtime"', html)
+            self.assertIn("启动回放", html)
             raw = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state", timeout=5).read()
             state = json.loads(raw.decode())
             self.assertIn("narration", state)

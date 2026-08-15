@@ -21,7 +21,23 @@ TOKENIZED_STOCK = {
     "METAB", "NFLXB", "INTCB", "PLTRB", "COINB", "HOODB", "CRCLB",
 }
 LEVERAGE_MARK = ("UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT", "3LUSDT", "3SUSDT")
-HOSTS = ("https://api.binance.com", "https://data-api.binance.vision")
+# 本环境 api.binance.com 会 451；公开行情优先走 vision，主站只作后备。
+PUBLIC_HOSTS = ("https://data-api.binance.vision", "https://api.binance.com")
+SIGNED_HOSTS = ("https://api.binance.com",)
+HOSTS = PUBLIC_HOSTS
+
+
+def human_http_error(exc: BaseException) -> str:
+    if isinstance(exc, urllib.error.HTTPError):
+        if exc.code == 451:
+            return "币安主站 451（地区限制）。公开行情走 data-api.binance.vision，不影响模拟盘"
+        if exc.code in (418, 429):
+            return f"币安限流 HTTP {exc.code}，稍后重试"
+        return f"币安 HTTP {exc.code}"
+    msg = str(exc)[:180]
+    if "451" in msg:
+        return "币安主站 451（地区限制）。公开行情走 data-api.binance.vision，不影响模拟盘"
+    return msg
 
 
 LIST_WORDS = ("上线", "上币", "Will List", "will list", "Will list", "Lists ", "Listing", "Alpha")
@@ -89,12 +105,19 @@ class BinanceFeed:
         self.quotes: dict[str, Quote] = {}
         self.alpha: set[str] = set()
         self.announcements: list[dict] = []
-        self._host = HOSTS[0]
+        self._host = PUBLIC_HOSTS[0]
 
-    def get_json(self, path: str, params: dict | None = None, signed: bool = False, timeout: float = 8.0):
+    def get_json(
+        self,
+        path: str,
+        params: dict | None = None,
+        signed: bool = False,
+        timeout: float = 8.0,
+        record_error: bool = True,
+    ):
         params = dict(params or {})
         key, secret = binance_keys()
-        hosts = (HOSTS[0],) if signed else HOSTS
+        hosts = SIGNED_HOSTS if signed else PUBLIC_HOSTS
         last_exc: Exception | None = None
         for host in hosts:
             self._host = host
@@ -122,19 +145,22 @@ class BinanceFeed:
                     self.status.ok = True
                     self.status.host = host
                     self.status.last_ts = time.time()
-                    self.status.last_error = ""
+                    if record_error:
+                        self.status.last_error = ""
                     return json.loads(raw.decode("utf-8"))
                 except urllib.error.HTTPError as exc:
                     last_exc = exc
-                    self.status.last_error = str(exc)[:180]
                     if exc.code in (418, 429) and attempt < 2:
                         time.sleep(0.45 * (attempt + 1))
                         continue
                     break
                 except Exception as exc:
                     last_exc = exc
-                    self.status.last_error = str(exc)[:180]
                     break
+        if record_error:
+            self.status.last_error = human_http_error(last_exc) if last_exc else "币安请求失败"
+            if not signed:
+                self.status.ok = False
         if last_exc is not None:
             raise last_exc
         raise RuntimeError("币安请求失败")
@@ -153,20 +179,18 @@ class BinanceFeed:
             self.status.key_note = "未配置密钥，只用公开行情"
             return
         try:
-            self.get_json("/api/v3/account", signed=True, timeout=8.0)
+            self.get_json("/api/v3/account", signed=True, timeout=8.0, record_error=False)
             self.status.key_ok = True
             self.status.key_note = "密钥可用。本系统仍只模拟下单，不会动真钱"
         except Exception as exc:
             self.status.key_ok = False
             msg = str(exc)
             if "451" in msg:
-                self.status.key_note = "账户接口被地区限制。公开行情仍可用，系统本来也不下真单"
+                self.status.key_note = "账户接口 451 被地区限制。公开行情正常，系统本来也不下真单，可忽略"
             elif "418" in msg or "403" in msg:
                 self.status.key_note = "密钥被拒（常见是 IP 未加白名单）。公开行情仍可用"
             else:
                 self.status.key_note = "密钥校验失败，公开行情仍可用"
-            if self.status.ok:
-                self.status.last_error = ""
 
     def load_alpha_symbols(self) -> set[str]:
         urls = (

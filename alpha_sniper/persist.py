@@ -104,6 +104,15 @@ def apply_state(session, payload: dict) -> None:
     session.equity_curve = [p for p in (payload.get("equity_curve") or []) if isinstance(p, dict)]
     session.blocked = {str(s).upper() for s in (payload.get("blocked") or []) if s}
     session.saved_at = float(payload.get("saved_at") or time.time())
+    raw_bars = payload.get("last_bar_ts") or {}
+    if isinstance(raw_bars, dict):
+        restored_bars = {}
+        for key, val in raw_bars.items():
+            try:
+                restored_bars[str(key)] = float(val)
+            except (TypeError, ValueError):
+                continue
+        session._last_bar_ts = restored_bars
     if "allow_new" in payload:
         session.allow_new = bool(payload.get("allow_new"))
     if "running" in payload:

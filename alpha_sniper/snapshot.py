@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from math import log
 
 from .types import Thesis
@@ -54,6 +55,10 @@ VENUE_ZH = {"spot": "现货", "futures_1x": "1x 合约", "alpha": "Alpha"}
 SIDE_ZH = {"long": "做多", "short": "做空"}
 REGIME_ZH = {"risk_on": "偏多", "chop": "震荡", "btc_stress": "BTC 大跌"}
 STATE_ZH = {"SQUAT": "空仓", "ARMED": "已盯上", "IN_THESIS": "持仓中"}
+ORIGIN_ZH = {
+    "startup_replay": "启动回放（K线当时的时间，不是程序那天在跑）",
+    "live": "盯盘中记下",
+}
 
 PAPER_SCRIPT = [
     {"day": 5.0, "symbol": "COILUSDT", "title": "横盘后上币", "hint": "应提前盯住，放量后做多 Alpha"},
@@ -160,6 +165,8 @@ def build_snapshot(session) -> dict:
                 "day": round(m["ts"] / 86400.0, 3),
                 "side_zh": SIDE_ZH.get(m.get("side", ""), ""),
                 "families_zh": [FAMILY_ZH.get(f, f) for f in m.get("families", [])],
+                "origin": _miss_origin(m, session),
+                "origin_zh": ORIGIN_ZH.get(_miss_origin(m, session), ORIGIN_ZH["live"]),
             }
             for m in engine.near_misses[-16:]
         ],
@@ -172,6 +179,8 @@ def build_snapshot(session) -> dict:
         "prices": session.price_tails,
         "health": getattr(session, "health", {}) or {},
         "loop_error": getattr(session, "loop_error", "") or "",
+        "runtime": _runtime(session),
+        "wall_now": time.time(),
     }
 
 
@@ -608,6 +617,51 @@ def _money(x: float) -> str:
     if x >= 1000:
         return f"{x/1000:.0f}k" if x >= 10000 or x % 1000 == 0 else f"{x/1000:.1f}k"
     return f"{x:.0f}"
+
+
+def _miss_origin(m: dict, session) -> str:
+    origin = str(m.get("origin") or "")
+    if origin in ORIGIN_ZH:
+        return origin
+    ts = float(m.get("ts") or 0)
+    started = float(getattr(session, "process_started_at", 0) or 0)
+    if getattr(session, "mode", "") == "binance_sim" and ts and started and ts < started - 7200:
+        return "startup_replay"
+    return "live"
+
+
+def _runtime(session) -> dict:
+    wall = time.time()
+    started = float(getattr(session, "process_started_at", 0) or 0)
+    boot = float(getattr(session, "boot_started_at", 0) or 0)
+    ready = float(getattr(session, "ready_at", 0) or 0)
+    last_poll = float(getattr(session, "last_poll", 0) or 0)
+    last_bars = getattr(session, "_last_bar_ts", {}) or {}
+    last_bar = max(last_bars.values()) if last_bars else 0.0
+    mode = getattr(session, "mode", "")
+    bar_sec = 3600.0 if mode == "binance_sim" else float(getattr(getattr(session, "config", None), "bar_seconds", 3600) or 3600)
+    next_eta = None
+    if mode == "binance_sim" and last_bar:
+        next_eta = max(0.0, float(last_bar) + bar_sec - wall)
+    saved_at = float(getattr(session, "saved_at", 0) or 0)
+    health = getattr(session, "health", {}) or {}
+    return {
+        "process_started_at": started,
+        "boot_started_at": boot,
+        "ready_at": ready,
+        "uptime_sec": max(0.0, wall - started) if started else 0.0,
+        "ready_sec": max(0.0, wall - ready) if ready else 0.0,
+        "last_poll_at": last_poll,
+        "last_poll_ago_sec": max(0.0, wall - last_poll) if last_poll else None,
+        "last_closed_bar_at": float(last_bar or 0),
+        "next_bar_eta_sec": next_eta,
+        "universe_at": float(getattr(session, "universe_ts", 0) or 0),
+        "saved_at": saved_at,
+        "restored": bool(health.get("restored")),
+        "wall_now": wall,
+        "bar_seconds": bar_sec,
+        "mode": mode,
+    }
 
 
 def _clamp(x: float) -> float:

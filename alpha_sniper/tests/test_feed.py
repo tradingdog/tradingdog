@@ -108,7 +108,11 @@ class FeedParseTests(unittest.TestCase):
         self.assertEqual(quiet.bucket, "coil")
         pepe = next(q for q in picked if q.symbol == "PEPEUSDT")
         self.assertEqual(pepe.bucket, "parabolic")
-        from alpha_sniper.binance_feed import profile_from_quote
+        from alpha_sniper.binance_feed import PUBLIC_HOSTS, human_http_error, profile_from_quote
+
+        self.assertTrue(PUBLIC_HOSTS[0].endswith("binance.vision"))
+        self.assertIn("451", human_http_error(Exception("HTTP Error 451: ")))
+        self.assertNotIn("HTTP Error 451:", human_http_error(Exception("HTTP Error 451: ")))
 
         self.assertEqual(profile_from_quote(quiet).narrative, "solo:QUIETUSDT")
         self.assertEqual(profile_from_quote(pepe).narrative, "solo:PEPEUSDT")

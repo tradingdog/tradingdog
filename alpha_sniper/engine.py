@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
 from .coiled import CoiledRegistry
@@ -52,6 +53,7 @@ class AlphaSniperEngine:
         self.near_misses: list[dict] = []
         self.allow_new_entries: bool = True
         self.record_events: bool = True
+        self.event_origin: str = "live"
         self.scan: dict[str, int | str] = {
             "bars": 0,
             "pulses": 0,
@@ -236,6 +238,8 @@ class AlphaSniperEngine:
         self.near_misses.append(
             {
                 "ts": bar.ts,
+                "seen_at": time.time(),
+                "origin": self.event_origin or "live",
                 "symbol": bar.symbol,
                 "side": coin.side,
                 "families": list(coin.families),
@@ -352,6 +356,8 @@ class AlphaSniperEngine:
             self.near_misses.append(
                 {
                     "ts": bar.ts,
+                    "seen_at": time.time(),
+                    "origin": self.event_origin or "live",
                     "symbol": bar.symbol,
                     "side": side,
                     "families": fams,

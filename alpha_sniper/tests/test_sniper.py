@@ -180,6 +180,8 @@ class ChaseMissTests(unittest.TestCase):
         eng._log_blocked_coincidence(bar, coiled, set())
         self.assertTrue(eng.near_misses)
         self.assertIn("追涨", eng.near_misses[-1]["reason"])
+        self.assertEqual(eng.near_misses[-1]["origin"], "live")
+        self.assertGreater(eng.near_misses[-1]["seen_at"], 0)
         self.assertEqual(eng.scan["blocked_chase"], 1)
 
 
@@ -215,6 +217,7 @@ class PersistTests(unittest.TestCase):
         session.engine.book.open[thesis.id] = thesis
         session.engine.journal.append(JournalEvent(thesis.opened_ts, "open", thesis.symbol, "测"))
         session.engine.venue.on_price("FOOUSDT", 1.01)
+        session._last_bar_ts = {"FOOUSDT": 1_700_000_000.0}
         old = persist_mod.STATE_PATH
         try:
             with tempfile.TemporaryDirectory() as tmp:
@@ -230,6 +233,7 @@ class PersistTests(unittest.TestCase):
                 self.assertIn("T9", fresh.engine.book.open)
                 self.assertEqual(fresh.engine.book.open["T9"].symbol, "FOOUSDT")
                 self.assertTrue(any(e.kind == "open" for e in fresh.engine.journal))
+                self.assertAlmostEqual(fresh._last_bar_ts["FOOUSDT"], 1_700_000_000.0)
         finally:
             persist_mod.STATE_PATH = old
 
