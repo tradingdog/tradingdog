@@ -20,11 +20,9 @@
 
 Cloud / 别人的电脑不要打开 `127.0.0.1`，那是本机地址，打不到远程进程。
 
-任意浏览器打开仓库里的静态观察台（推到 GitHub 之后）：
+任意浏览器打开（不要用 127.0.0.1）：
 
-```
-https://cdn.jsdelivr.net/gh/tradingdog/tradingdog@<commit>/alpha_sniper/webui/index.html
-```
+https://cdn.jsdelivr.net/gh/tradingdog/tradingdog@d367c2b/alpha_sniper/webui/index.html
 
 本机自己跑引擎时才用：
 
