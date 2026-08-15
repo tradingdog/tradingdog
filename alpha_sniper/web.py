@@ -47,6 +47,7 @@ class Watchtower:
         threading.Thread(target=loop, daemon=True).start()
         handler = _make_handler(session)
         httpd = ThreadingHTTPServer((self.host, self.port), handler)
+        httpd.handle_error = lambda *args, **kwargs: None
         try:
             httpd.serve_forever()
         finally:
@@ -127,7 +128,10 @@ def _make_handler(session: LiveSession):
             self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                return
 
         def _sse(self) -> None:
             self.send_response(200)
