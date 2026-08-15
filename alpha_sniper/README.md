@@ -18,12 +18,22 @@
 
 ## 跑起来
 
+Cloud / 别人的电脑不要打开 `127.0.0.1`，那是本机地址，打不到远程进程。
+
+任意浏览器打开仓库里的静态观察台（推到 GitHub 之后）：
+
+```
+https://cdn.jsdelivr.net/gh/tradingdog/tradingdog@<commit>/alpha_sniper/webui/index.html
+```
+
+本机自己跑引擎时才用：
+
 ```bash
 python -m alpha_sniper ui
-# 浏览器打开 http://127.0.0.1:8765
+python -m alpha_sniper export
 python -m alpha_sniper design
 python -m alpha_sniper paper --days 40 --seed 42
-python -m unittest alpha_sniper.tests.test_sniper
+python -m unittest alpha_sniper.tests.test_sniper alpha_sniper.tests.test_dashboard
 ```
 
 观察台用人话显示：现在在蹲还是在开火、为什么没开、猎场五族灯、命题假说、风控门和权益离 100 倍还有多远。默认纸上，不会下真单。

@@ -20,7 +20,15 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--port", type=int, default=8765)
     ui.add_argument("--days", type=int, default=36)
     ui.add_argument("--seed", type=int, default=42)
+    sub.add_parser("export", help="导出纸上重放，供任意浏览器打开观察台")
     args = parser.parse_args(argv)
+
+    if args.cmd == "export":
+        from .export_replay import export_replay
+
+        path = export_replay()
+        print(f"已写入 {path} ({path.stat().st_size} bytes)")
+        return 0
 
     if args.cmd == "ui":
         from .web import run_ui

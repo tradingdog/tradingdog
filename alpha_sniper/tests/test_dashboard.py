@@ -6,6 +6,8 @@ import unittest
 import urllib.request
 from http.server import ThreadingHTTPServer
 
+from pathlib import Path
+
 from alpha_sniper.config import SniperConfig
 from alpha_sniper.session import LiveSession
 from alpha_sniper.web import _make_handler
@@ -34,6 +36,18 @@ class SnapshotTests(unittest.TestCase):
             snap["theses"],
         )
         self.assertIn("命题", snap["narration"])
+
+
+class ReplayFileTests(unittest.TestCase):
+    def test_replay_json_ready_for_browser(self):
+        path = Path(__file__).resolve().parents[1] / "webui" / "replay.json"
+        self.assertTrue(path.is_file(), "先运行 python -m alpha_sniper export")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(data["frames"]), 20)
+        first = data["frames"][0]
+        self.assertIn("narration", first)
+        self.assertIn("hunt", first)
+        self.assertIn("account", first)
 
 
 class HttpTests(unittest.TestCase):

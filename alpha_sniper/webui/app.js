@@ -178,7 +178,88 @@ function drawEquity(curve, start, target) {
   ctx.fillText(`起始 ${start}`, 14, y(start) - 6);
 }
 
+const replay = {
+  frames: [],
+  i: 0,
+  running: false,
+  speed: 8,
+  timer: null,
+};
+
+function hydrate(frame, i) {
+  const curve = replay.frames.slice(0, i + 1).map((f) => f.eq || { t: f.day, e: f.account.equity });
+  return {
+    ...frame,
+    running: replay.running,
+    finished: i >= replay.frames.length - 1,
+    speed: replay.speed,
+    equity_curve: curve,
+    pulses: frame.pulses || [],
+  };
+}
+
+function showReplay(i) {
+  replay.i = Math.max(0, Math.min(replay.frames.length - 1, i));
+  const frame = replay.frames[replay.i];
+  if (!frame) return;
+  render(hydrate(frame, replay.i));
+  $("modePill").textContent = replay.running
+    ? "浏览器重放 · 进行中（无需本机服务）"
+    : replay.i >= replay.frames.length - 1
+      ? "浏览器重放 · 已跑完"
+      : "浏览器重放 · 任意浏览器可打开";
+}
+
+function replayTick() {
+  if (!replay.running) return;
+  const step = replay.speed >= 32 ? 2 : 1;
+  if (replay.i >= replay.frames.length - 1) {
+    replay.running = false;
+    showReplay(replay.i);
+    return;
+  }
+  showReplay(replay.i + step);
+}
+
+function replayNextShot() {
+  for (let i = replay.i + 1; i < replay.frames.length; i += 1) {
+    const prev = replay.frames[i - 1];
+    const cur = replay.frames[i];
+    const prevN = (prev.journal || []).length;
+    const curN = (cur.journal || []).length;
+    const fired = (cur.theses || []).length > (prev.theses || []).length;
+    const closed = (cur.closed || []).length > (prev.closed || []).length;
+    if (fired || closed || curN > prevN) {
+      replay.running = false;
+      showReplay(i);
+      return;
+    }
+  }
+  replay.running = false;
+  showReplay(replay.frames.length - 1);
+}
+
+function replayControl(action, extra) {
+  if (action === "start") replay.running = true;
+  if (action === "pause") replay.running = false;
+  if (action === "reset") {
+    replay.running = false;
+    showReplay(0);
+    return;
+  }
+  if (action === "next") {
+    replayNextShot();
+    return;
+  }
+  if (action === "speed") replay.speed = extra.speed;
+  showReplay(replay.i);
+}
+
 async function send(action, extra) {
+  if (replay.frames.length) {
+    replayControl(action, extra || {});
+    return;
+  }
   const res = await fetch("/api/control", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -195,7 +276,7 @@ $("controls").addEventListener("click", (ev) => {
   if (btn.dataset.speed) send("speed", { speed: Number(btn.dataset.speed) });
 });
 
-function connect() {
+function connectLive() {
   if (window.EventSource) {
     const es = new EventSource("/api/stream");
     es.onmessage = (ev) => {
@@ -220,4 +301,30 @@ async function poll() {
   setTimeout(poll, 700);
 }
 
-connect();
+async function startReplay() {
+  const res = await fetch("replay.json", { cache: "no-store" });
+  if (!res.ok) {
+    $("narration").textContent = "打不开观察台数据。请用文里的公网链接，不要打开 127.0.0.1。";
+    return;
+  }
+  const data = await res.json();
+  replay.frames = data.frames || [];
+  showReplay(0);
+  if (replay.timer) clearInterval(replay.timer);
+  replay.timer = setInterval(replayTick, 420);
+}
+
+async function boot() {
+  try {
+    const res = await fetch("/api/state", { cache: "no-store" });
+    const type = res.headers.get("content-type") || "";
+    if (res.ok && type.includes("json")) {
+      render(await res.json());
+      connectLive();
+      return;
+    }
+  } catch (_) {}
+  await startReplay();
+}
+
+boot();
