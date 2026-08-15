@@ -92,11 +92,15 @@ class HttpTests(unittest.TestCase):
             self.assertIn("继续开仓", html)
             self.assertNotIn("下一枪", html)
             self.assertNotIn("当前命题", html)
-            js = urllib.request.urlopen(f"http://127.0.0.1:{port}/app.js", timeout=5).read().decode()
-            self.assertIn("可用资金", js)
-            self.assertIn("锁定利润", js)
             css = urllib.request.urlopen(f"http://127.0.0.1:{port}/app.css", timeout=5).read().decode()
             self.assertIn("--amber", css)
+            self.assertIn("disc-wrap", css)
+            self.assertIn("max-width: 720px", css)
+            self.assertIn("position: sticky", css)
+            js = urllib.request.urlopen(f"http://127.0.0.1:{port}/app.js", timeout=5).read().decode()
+            self.assertIn("disc-head", js)
+            self.assertIn("可用资金", js)
+            self.assertIn("锁定利润", js)
             raw = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state", timeout=5).read()
             state = json.loads(raw.decode())
             self.assertIn("narration", state)
@@ -108,6 +112,22 @@ class HttpTests(unittest.TestCase):
             )
             opened = json.loads(urllib.request.urlopen(req, timeout=5).read().decode())
             self.assertTrue(opened["running"])
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/control",
+                data=json.dumps({"action": "pause"}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            paused = json.loads(urllib.request.urlopen(req, timeout=5).read().decode())
+            self.assertFalse(paused["running"])
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/control",
+                data=json.dumps({"action": "start"}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            resumed = json.loads(urllib.request.urlopen(req, timeout=5).read().decode())
+            self.assertTrue(resumed["running"])
         finally:
             httpd.shutdown()
             httpd.server_close()

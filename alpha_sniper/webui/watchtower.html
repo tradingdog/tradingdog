@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>交易监控 · Alpha Sniper</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -24,7 +24,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
 body {
   background:
     radial-gradient(1200px 500px at 10% -10%, rgba(212, 160, 90, 0.08), transparent 50%),
@@ -32,6 +32,7 @@ body {
   color: var(--ink);
   font-family: "IBM Plex Sans", "Noto Sans SC", sans-serif;
   letter-spacing: 0.01em;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .grain {
@@ -50,7 +51,13 @@ body {
   grid-template-columns: 1.1fr 1fr auto;
   gap: 20px;
   align-items: center;
-  padding: 22px 28px 8px;
+  padding: 14px 28px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(18, 17, 14, 0.96);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
 }
 
 .brand { display: flex; gap: 14px; align-items: center; }
@@ -84,9 +91,10 @@ button {
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--line);
-  padding: 7px 12px;
+  padding: 8px 12px;
   font: 500 13px "IBM Plex Sans", sans-serif;
   cursor: pointer;
+  min-height: 36px;
 }
 button:hover { border-color: var(--amber); }
 button.accent { background: #2a2216; color: var(--amber); border-color: #6a5330; }
@@ -128,16 +136,36 @@ button.danger { color: var(--clay); border-color: #6a3d36; }
   line-height: 1.55;
 }
 .ext { color: var(--amber); font-size: 12px; }
-.find {
-  background: var(--paper-2);
+.disc-wrap {
+  max-height: min(420px, 52vh);
+  overflow: auto;
   border: 1px solid var(--line);
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  background: var(--paper-2);
+  -webkit-overflow-scrolling: touch;
 }
-.find.hot { border-color: #6a5330; }
-.find .how { margin: 6px 0 10px 18px; color: #ddd6c4; }
-.find .plan, .rule { color: var(--mute); font-size: 13px; line-height: 1.5; margin-top: 8px; }
-.rule { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.disc-item { border-bottom: 1px solid var(--line); }
+.disc-item:last-child { border-bottom: 0; }
+.disc-item.hot { background: #221c14; }
+.disc-head {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 10px 12px;
+  min-height: 52px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.disc-top, .disc-sub { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.disc-sub { margin-top: 4px; color: var(--mute); font-size: 12px; gap: 12px; }
+.disc-sub b { color: var(--ink); font-weight: 500; }
+.disc-status { flex: 1 1 140px; }
+.disc-body { padding: 0 12px 12px; font-size: 13px; line-height: 1.5; color: #ddd6c4; }
+.disc-body .how { margin: 6px 0 8px 18px; }
+.disc-item.open .disc-head { border-bottom: 1px dashed var(--line); }
+.rule { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--mute); font-size: 13px; line-height: 1.5; }
 .rule strong { color: var(--ink); display: block; margin-bottom: 4px; }
 .nums {
   display: grid;
@@ -325,11 +353,43 @@ footer {
 }
 
 @media (max-width: 980px) {
-  .top, .metrics, .grid { grid-template-columns: 1fr; }
+  .top, .metrics, .grid, .score { grid-template-columns: 1fr; }
   .metrics { grid-template-columns: 1fr 1fr; }
-  .top { padding: 16px; }
-  .narration, .stones, .grid, footer { margin-left: 16px; margin-right: 16px; padding-left: 16px; padding-right: 16px; }
-  .closed-row { grid-template-columns: 1fr 1fr; }
+  .score { grid-template-columns: 1fr 1fr; }
+  .nums { grid-template-columns: 1fr 1fr; }
+  .top { padding: 10px 12px; gap: 10px; }
+  .narration, .feedline, .grid, footer { margin-left: 12px; margin-right: 12px; }
+  .metrics { padding: 0 12px; }
+  .grid { padding: 12px 12px 28px; }
+  .closed-row { grid-template-columns: 1fr; gap: 4px; }
+  .disc-wrap { max-height: min(360px, 48vh); }
+}
+
+@media (max-width: 720px) {
+  .top { grid-template-columns: 1fr; }
+  .brand { gap: 10px; }
+  .mark { width: 34px; height: 34px; font-size: 18px; }
+  h1 { font-size: 20px; }
+  .sub { font-size: 12px; }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    justify-content: stretch;
+  }
+  .controls button {
+    width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .narration { font-size: 15px; padding: 12px; margin: 8px 12px 10px; }
+  .feedline { font-size: 12px; margin: 0 12px 10px; }
+  .metric { padding: 10px; }
+  .metric .v { font-size: 20px; }
+  .panel { padding: 12px; }
+  canvas { height: 160px; }
+  .status-cluster { gap: 6px; }
+  .clock { font-size: 12px; width: 100%; }
 }
 
 </style>
@@ -366,7 +426,7 @@ footer {
     <section class="panel span-2">
       <header>
         <h2>发现了什么</h2>
-        <p>系统从币安现货 24h 行情里挑出来的币。现价可点链接去币安核对。这里写清楚：发现了谁、怎么发现的、为什么做多/做空、计划用多少钱、止损止盈怎么算。</p>
+        <p>一行一个币：现价、方向、计划仓位、止损、卡在哪。点开才看发现原因和止盈。列表在框里滚，下面持仓和成绩单不用翻很久。</p>
       </header>
       <div id="discoveries"></div>
     </section>
@@ -486,8 +546,10 @@ function render(s) {
       ? `监控 ${feed.symbols || 0} 个 USDT 交易对 · Alpha ${feed.alpha || 0} 个 · ${feed.key_note || ""}${pollAt}${feed.last_error ? " · " + feed.last_error : ""}`
       : "当前是本地回放数据，不是币安实时行情。";
   }
-  document.querySelectorAll("#speeds button").forEach((b) => {
-    b.classList.toggle("on", Number(b.dataset.speed) === s.speed);
+  document.querySelectorAll("#controls [data-act]").forEach((b) => {
+    const act = b.dataset.act;
+    if (act === "start") b.classList.toggle("on", !!s.allow_new);
+    if (act === "pause") b.classList.toggle("on", !s.allow_new);
   });
 
   const a = s.account;
@@ -565,57 +627,50 @@ function metric(k, v, hint, extra) {
 
 function renderDiscoveries(s) {
   const rows = s.discoveries || s.hunt || [];
-  const focus = rows.filter((r) => r.interesting || r.armed).slice(0, 8);
-  const rest = rows.filter((r) => !focus.includes(r));
-  const cards = focus.length
-    ? focus.map((r) => discoveryCard(r, s)).join("")
-    : `<div class="empty">还没有盯上任何币。系统在扫币安现货里波动还能走大的 USDT 交易对。</div>`;
-  const table = rest.length
-    ? `<table class="rest"><thead><tr><th>币对</th><th>现价</th><th>24h</th><th>方向预案</th><th>系统判断</th><th></th></tr></thead><tbody>${rest
-        .map((r) => {
-          const chg = r.change24h != null ? r.change24h : r.moved;
-          return `<tr>
-            <td><strong>${r.symbol}</strong> <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">币安</a></td>
-            <td class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</td>
-            <td class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</td>
-            <td>${r.side_zh || ""}</td>
-            <td>${r.status || r.wait || ""}</td>
-            <td><button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button></td>
-          </tr>`;
-        })
-        .join("")}</tbody></table>`
-    : "";
-  return cards + table;
+  if (!rows.length) {
+    return `<div class="empty">还没有盯上任何币。系统在扫币安现货里波动还能走大的 USDT 交易对。</div>`;
+  }
+  window.__OPEN = window.__OPEN || new Set();
+  if (!window.__OPEN_INIT) {
+    const first = rows.find((r) => r.armed);
+    if (first) window.__OPEN.add(first.symbol);
+    window.__OPEN_INIT = true;
+  }
+  return `<div class="disc-wrap">${rows.map((r) => discoveryRow(r, s)).join("")}</div>`;
 }
 
-function discoveryCard(r, s) {
+function discoveryRow(r, s) {
   const chg = r.change24h != null ? r.change24h : r.moved;
+  const open = window.__OPEN.has(r.symbol);
   const how = (r.how_found || []).map((x) => `<li>${x}</li>`).join("");
   const vol = r.quote_volume != null ? `${money(r.quote_volume)} USDT` : "—";
-  return `<article class="find ${r.armed ? "hot" : ""}">
-    <div class="row">
-      <h3>${r.symbol} <span class="tag ${r.side}">${r.side_zh}</span> ${r.armed ? '<span class="tag">已盯上</span>' : ""}</h3>
-      <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
-    </div>
-    <div class="nums">
-      <div><span class="k">现价</span><span class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</span></div>
-      <div><span class="k">24h</span><span class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</span></div>
-      <div><span class="k">24h成交额</span><span class="mono">${vol}</span></div>
-      <div><span class="k">计划仓位</span><span class="mono">${money(r.planned_usdt)} U</span></div>
-    </div>
-    <p class="plain">${r.why_side || ""}</p>
-    <p class="plain"><strong>怎么发现的：</strong></p>
-    <ul class="how">${how || "<li>还在扫描</li>"}</ul>
-    <p class="plain"><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
-    <div class="plan">
-      预案止损 ${r.stop ? Number(r.stop).toPrecision(6) : "—"}（约 ${pct(r.stop_pct || 0)}）
-      · 第一档止盈 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（${r.side === "short" ? "跌" : "涨"} 40% 减 25%）
-      · 第二档 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%）
-      · ${r.time_stop_hours || 12} 小时没走出 8% 就平
-    </div>
-    <div class="actions">
-      <button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑这个币"}</button>
-    </div>
+  return `<article class="disc-item ${r.armed ? "hot" : ""} ${open ? "open" : ""}">
+    <button type="button" class="disc-head" data-toggle="${r.symbol}" aria-expanded="${open ? "true" : "false"}">
+      <div class="disc-top">
+        <span class="disc-name"><strong>${r.symbol}</strong>
+          <span class="tag ${r.side}">${r.side_zh || ""}</span>
+          ${r.armed ? '<span class="tag">已盯上</span>' : ""}
+        </span>
+        <span class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</span>
+      </div>
+      <div class="disc-sub">
+        <span>现价 <b class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</b></span>
+        <span>计划 <b class="mono">${money(r.planned_usdt)} U</b></span>
+        <span>止损 <b class="mono">${r.stop ? Number(r.stop).toPrecision(6) : "—"}</b></span>
+        <span class="disc-status">${r.status || r.wait || ""}</span>
+      </div>
+    </button>
+    ${open ? `<div class="disc-body">
+      <p>${r.why_side || ""}</p>
+      <p><strong>怎么发现的</strong></p>
+      <ul class="how">${how || "<li>还在扫描</li>"}</ul>
+      <p><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
+      <p class="plan">24h成交额 ${vol} · 止盈1 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（40% 减 25%） · 止盈2 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%） · ${r.time_stop_hours || 12} 小时没走出 8% 就平</p>
+      <div class="actions">
+        <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
+        <button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button>
+      </div>
+    </div>` : ""}
   </article>`;
 }
 
@@ -771,7 +826,11 @@ function replayControl(action, extra) {
 }
 
 async function send(action, extra) {
-  if (action === "flatten" && !window.confirm("确认把所有模拟持仓按现价平掉？资金仍是模拟的。")) return;
+  if (action === "flatten") {
+    const n = ((window.__SNAP && window.__SNAP.theses) || []).length;
+    if (!n) return;
+    if (!window.confirm("确认把所有模拟持仓按现价平掉？资金仍是模拟的。")) return;
+  }
   if (action === "reset" && !window.confirm("确认把模拟资金重置回 1000，并重新拉币安行情？")) return;
   if (action === "close" && !window.confirm("确认平掉这一笔模拟持仓？")) return;
   if (replay.frames.length) {
@@ -797,6 +856,16 @@ document.body.addEventListener("click", (ev) => {
   const closeBtn = ev.target.closest("button[data-close]");
   if (closeBtn) {
     send("close", { thesis_id: closeBtn.dataset.close });
+    return;
+  }
+  const toggle = ev.target.closest("[data-toggle]");
+  if (toggle && !ev.target.closest("a, button[data-block], button[data-close]")) {
+    ev.preventDefault();
+    window.__OPEN = window.__OPEN || new Set();
+    const symbol = toggle.dataset.toggle;
+    if (window.__OPEN.has(symbol)) window.__OPEN.delete(symbol);
+    else window.__OPEN.add(symbol);
+    if (window.__SNAP) render(window.__SNAP);
     return;
   }
   const btn = ev.target.closest("button[data-block]");

@@ -106,18 +106,19 @@ class RealSimSession:
             with self.lock:
                 self.engine.venue.on_price(symbol, quote.price)
 
-    def poll(self) -> None:
+    def poll(self, bars: bool = True) -> None:
+        if not self.ready:
+            return
+        try:
+            tickers = self.feed.ticker_24h()
+            self.feed.refresh_quotes(tickers)
+        except Exception as exc:
+            self.feed.status.last_error = str(exc)[:180]
+            self.feed.status.ok = False
+            return
+        now = time.time()
+        pending: list[tuple[str, object]] = []
         with self.lock:
-            if not self.ready:
-                return
-            try:
-                tickers = self.feed.ticker_24h()
-                self.feed.refresh_quotes(tickers)
-            except Exception as exc:
-                self.feed.status.last_error = str(exc)[:180]
-                self.feed.status.ok = False
-                return
-            now = time.time()
             self.last_poll = now
             self.engine.allow_new_entries = self.allow_new and self.running
             for sym in list(self.watch):
@@ -127,16 +128,22 @@ class RealSimSession:
                 self.quotes[sym] = q
                 self.engine.pulse_price(sym, q.price, now)
                 last = self._last_bar_ts.get(sym, 0)
-                if now - last < 15 * 60:
-                    continue
-                try:
-                    ks = self.feed.klines(sym, "15m", 2)
-                except Exception:
-                    continue
-                if not ks:
-                    continue
-                k = ks[-1]
-                bar = self.feed.kline_to_bar(sym, k, q, self._depths.get(sym, 0.0), self._listing_flag(sym))
+                if bars and now - last >= 15 * 60:
+                    pending.append((sym, q))
+            if not pending:
+                self._record()
+                return
+        for sym, q in pending:
+            try:
+                ks = self.feed.klines(sym, "15m", 2)
+            except Exception:
+                continue
+            if not ks:
+                continue
+            k = ks[-1]
+            bar = self.feed.kline_to_bar(sym, k, q, self._depths.get(sym, 0.0), self._listing_flag(sym))
+            with self.lock:
+                last = self._last_bar_ts.get(sym, 0)
                 if bar.ts <= last:
                     continue
                 prev = self.engine.allow_new_entries
@@ -145,6 +152,7 @@ class RealSimSession:
                 self.engine.step(bar)
                 self.engine.allow_new_entries = prev
                 self._last_bar_ts[sym] = bar.ts
+        with self.lock:
             self._record()
 
     def start(self) -> None:

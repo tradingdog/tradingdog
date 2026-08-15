@@ -102,7 +102,7 @@ def _make_handler(session: LiveSession):
             elif action == "allow" and hasattr(session, "set_allow_new"):
                 session.set_allow_new(bool(body.get("allow", True)))
             elif action == "refresh" and hasattr(session, "poll"):
-                session.poll()
+                session.poll(bars=False)
             elif action == "block" and hasattr(session, "block"):
                 session.block(str(body.get("symbol", "")))
             elif action == "unblock" and hasattr(session, "unblock"):
@@ -157,6 +157,7 @@ def _make_handler(session: LiveSession):
             self.send_response(200)
             self.send_header("Content-Type", mime)
             self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(data)
 

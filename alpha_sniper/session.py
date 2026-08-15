@@ -85,7 +85,7 @@ class LiveSession:
     def unblock(self, symbol: str) -> None:
         return
 
-    def poll(self) -> None:
+    def poll(self, bars: bool = True) -> None:
         self.tick(1)
 
     def tick(self, n_bars: int = 1) -> None:

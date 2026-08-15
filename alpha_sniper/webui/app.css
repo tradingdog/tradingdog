@@ -14,7 +14,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
 body {
   background:
     radial-gradient(1200px 500px at 10% -10%, rgba(212, 160, 90, 0.08), transparent 50%),
@@ -22,6 +22,7 @@ body {
   color: var(--ink);
   font-family: "IBM Plex Sans", "Noto Sans SC", sans-serif;
   letter-spacing: 0.01em;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .grain {
@@ -40,7 +41,13 @@ body {
   grid-template-columns: 1.1fr 1fr auto;
   gap: 20px;
   align-items: center;
-  padding: 22px 28px 8px;
+  padding: 14px 28px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(18, 17, 14, 0.96);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
 }
 
 .brand { display: flex; gap: 14px; align-items: center; }
@@ -74,9 +81,10 @@ button {
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--line);
-  padding: 7px 12px;
+  padding: 8px 12px;
   font: 500 13px "IBM Plex Sans", sans-serif;
   cursor: pointer;
+  min-height: 36px;
 }
 button:hover { border-color: var(--amber); }
 button.accent { background: #2a2216; color: var(--amber); border-color: #6a5330; }
@@ -118,16 +126,36 @@ button.danger { color: var(--clay); border-color: #6a3d36; }
   line-height: 1.55;
 }
 .ext { color: var(--amber); font-size: 12px; }
-.find {
-  background: var(--paper-2);
+.disc-wrap {
+  max-height: min(420px, 52vh);
+  overflow: auto;
   border: 1px solid var(--line);
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  background: var(--paper-2);
+  -webkit-overflow-scrolling: touch;
 }
-.find.hot { border-color: #6a5330; }
-.find .how { margin: 6px 0 10px 18px; color: #ddd6c4; }
-.find .plan, .rule { color: var(--mute); font-size: 13px; line-height: 1.5; margin-top: 8px; }
-.rule { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.disc-item { border-bottom: 1px solid var(--line); }
+.disc-item:last-child { border-bottom: 0; }
+.disc-item.hot { background: #221c14; }
+.disc-head {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 10px 12px;
+  min-height: 52px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.disc-top, .disc-sub { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.disc-sub { margin-top: 4px; color: var(--mute); font-size: 12px; gap: 12px; }
+.disc-sub b { color: var(--ink); font-weight: 500; }
+.disc-status { flex: 1 1 140px; }
+.disc-body { padding: 0 12px 12px; font-size: 13px; line-height: 1.5; color: #ddd6c4; }
+.disc-body .how { margin: 6px 0 8px 18px; }
+.disc-item.open .disc-head { border-bottom: 1px dashed var(--line); }
+.rule { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--mute); font-size: 13px; line-height: 1.5; }
 .rule strong { color: var(--ink); display: block; margin-bottom: 4px; }
 .nums {
   display: grid;
@@ -315,9 +343,41 @@ footer {
 }
 
 @media (max-width: 980px) {
-  .top, .metrics, .grid { grid-template-columns: 1fr; }
+  .top, .metrics, .grid, .score { grid-template-columns: 1fr; }
   .metrics { grid-template-columns: 1fr 1fr; }
-  .top { padding: 16px; }
-  .narration, .stones, .grid, footer { margin-left: 16px; margin-right: 16px; padding-left: 16px; padding-right: 16px; }
-  .closed-row { grid-template-columns: 1fr 1fr; }
+  .score { grid-template-columns: 1fr 1fr; }
+  .nums { grid-template-columns: 1fr 1fr; }
+  .top { padding: 10px 12px; gap: 10px; }
+  .narration, .feedline, .grid, footer { margin-left: 12px; margin-right: 12px; }
+  .metrics { padding: 0 12px; }
+  .grid { padding: 12px 12px 28px; }
+  .closed-row { grid-template-columns: 1fr; gap: 4px; }
+  .disc-wrap { max-height: min(360px, 48vh); }
+}
+
+@media (max-width: 720px) {
+  .top { grid-template-columns: 1fr; }
+  .brand { gap: 10px; }
+  .mark { width: 34px; height: 34px; font-size: 18px; }
+  h1 { font-size: 20px; }
+  .sub { font-size: 12px; }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    justify-content: stretch;
+  }
+  .controls button {
+    width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .narration { font-size: 15px; padding: 12px; margin: 8px 12px 10px; }
+  .feedline { font-size: 12px; margin: 0 12px 10px; }
+  .metric { padding: 10px; }
+  .metric .v { font-size: 20px; }
+  .panel { padding: 12px; }
+  canvas { height: 160px; }
+  .status-cluster { gap: 6px; }
+  .clock { font-size: 12px; width: 100%; }
 }

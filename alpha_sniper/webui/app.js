@@ -63,8 +63,10 @@ function render(s) {
       ? `监控 ${feed.symbols || 0} 个 USDT 交易对 · Alpha ${feed.alpha || 0} 个 · ${feed.key_note || ""}${pollAt}${feed.last_error ? " · " + feed.last_error : ""}`
       : "当前是本地回放数据，不是币安实时行情。";
   }
-  document.querySelectorAll("#speeds button").forEach((b) => {
-    b.classList.toggle("on", Number(b.dataset.speed) === s.speed);
+  document.querySelectorAll("#controls [data-act]").forEach((b) => {
+    const act = b.dataset.act;
+    if (act === "start") b.classList.toggle("on", !!s.allow_new);
+    if (act === "pause") b.classList.toggle("on", !s.allow_new);
   });
 
   const a = s.account;
@@ -142,57 +144,50 @@ function metric(k, v, hint, extra) {
 
 function renderDiscoveries(s) {
   const rows = s.discoveries || s.hunt || [];
-  const focus = rows.filter((r) => r.interesting || r.armed).slice(0, 8);
-  const rest = rows.filter((r) => !focus.includes(r));
-  const cards = focus.length
-    ? focus.map((r) => discoveryCard(r, s)).join("")
-    : `<div class="empty">还没有盯上任何币。系统在扫币安现货里波动还能走大的 USDT 交易对。</div>`;
-  const table = rest.length
-    ? `<table class="rest"><thead><tr><th>币对</th><th>现价</th><th>24h</th><th>方向预案</th><th>系统判断</th><th></th></tr></thead><tbody>${rest
-        .map((r) => {
-          const chg = r.change24h != null ? r.change24h : r.moved;
-          return `<tr>
-            <td><strong>${r.symbol}</strong> <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">币安</a></td>
-            <td class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</td>
-            <td class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</td>
-            <td>${r.side_zh || ""}</td>
-            <td>${r.status || r.wait || ""}</td>
-            <td><button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button></td>
-          </tr>`;
-        })
-        .join("")}</tbody></table>`
-    : "";
-  return cards + table;
+  if (!rows.length) {
+    return `<div class="empty">还没有盯上任何币。系统在扫币安现货里波动还能走大的 USDT 交易对。</div>`;
+  }
+  window.__OPEN = window.__OPEN || new Set();
+  if (!window.__OPEN_INIT) {
+    const first = rows.find((r) => r.armed);
+    if (first) window.__OPEN.add(first.symbol);
+    window.__OPEN_INIT = true;
+  }
+  return `<div class="disc-wrap">${rows.map((r) => discoveryRow(r, s)).join("")}</div>`;
 }
 
-function discoveryCard(r, s) {
+function discoveryRow(r, s) {
   const chg = r.change24h != null ? r.change24h : r.moved;
+  const open = window.__OPEN.has(r.symbol);
   const how = (r.how_found || []).map((x) => `<li>${x}</li>`).join("");
   const vol = r.quote_volume != null ? `${money(r.quote_volume)} USDT` : "—";
-  return `<article class="find ${r.armed ? "hot" : ""}">
-    <div class="row">
-      <h3>${r.symbol} <span class="tag ${r.side}">${r.side_zh}</span> ${r.armed ? '<span class="tag">已盯上</span>' : ""}</h3>
-      <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
-    </div>
-    <div class="nums">
-      <div><span class="k">现价</span><span class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</span></div>
-      <div><span class="k">24h</span><span class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</span></div>
-      <div><span class="k">24h成交额</span><span class="mono">${vol}</span></div>
-      <div><span class="k">计划仓位</span><span class="mono">${money(r.planned_usdt)} U</span></div>
-    </div>
-    <p class="plain">${r.why_side || ""}</p>
-    <p class="plain"><strong>怎么发现的：</strong></p>
-    <ul class="how">${how || "<li>还在扫描</li>"}</ul>
-    <p class="plain"><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
-    <div class="plan">
-      预案止损 ${r.stop ? Number(r.stop).toPrecision(6) : "—"}（约 ${pct(r.stop_pct || 0)}）
-      · 第一档止盈 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（${r.side === "short" ? "跌" : "涨"} 40% 减 25%）
-      · 第二档 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%）
-      · ${r.time_stop_hours || 12} 小时没走出 8% 就平
-    </div>
-    <div class="actions">
-      <button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑这个币"}</button>
-    </div>
+  return `<article class="disc-item ${r.armed ? "hot" : ""} ${open ? "open" : ""}">
+    <button type="button" class="disc-head" data-toggle="${r.symbol}" aria-expanded="${open ? "true" : "false"}">
+      <div class="disc-top">
+        <span class="disc-name"><strong>${r.symbol}</strong>
+          <span class="tag ${r.side}">${r.side_zh || ""}</span>
+          ${r.armed ? '<span class="tag">已盯上</span>' : ""}
+        </span>
+        <span class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</span>
+      </div>
+      <div class="disc-sub">
+        <span>现价 <b class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</b></span>
+        <span>计划 <b class="mono">${money(r.planned_usdt)} U</b></span>
+        <span>止损 <b class="mono">${r.stop ? Number(r.stop).toPrecision(6) : "—"}</b></span>
+        <span class="disc-status">${r.status || r.wait || ""}</span>
+      </div>
+    </button>
+    ${open ? `<div class="disc-body">
+      <p>${r.why_side || ""}</p>
+      <p><strong>怎么发现的</strong></p>
+      <ul class="how">${how || "<li>还在扫描</li>"}</ul>
+      <p><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
+      <p class="plan">24h成交额 ${vol} · 止盈1 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（40% 减 25%） · 止盈2 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%） · ${r.time_stop_hours || 12} 小时没走出 8% 就平</p>
+      <div class="actions">
+        <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
+        <button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button>
+      </div>
+    </div>` : ""}
   </article>`;
 }
 
@@ -348,7 +343,11 @@ function replayControl(action, extra) {
 }
 
 async function send(action, extra) {
-  if (action === "flatten" && !window.confirm("确认把所有模拟持仓按现价平掉？资金仍是模拟的。")) return;
+  if (action === "flatten") {
+    const n = ((window.__SNAP && window.__SNAP.theses) || []).length;
+    if (!n) return;
+    if (!window.confirm("确认把所有模拟持仓按现价平掉？资金仍是模拟的。")) return;
+  }
   if (action === "reset" && !window.confirm("确认把模拟资金重置回 1000，并重新拉币安行情？")) return;
   if (action === "close" && !window.confirm("确认平掉这一笔模拟持仓？")) return;
   if (replay.frames.length) {
@@ -374,6 +373,16 @@ document.body.addEventListener("click", (ev) => {
   const closeBtn = ev.target.closest("button[data-close]");
   if (closeBtn) {
     send("close", { thesis_id: closeBtn.dataset.close });
+    return;
+  }
+  const toggle = ev.target.closest("[data-toggle]");
+  if (toggle && !ev.target.closest("a, button[data-block], button[data-close]")) {
+    ev.preventDefault();
+    window.__OPEN = window.__OPEN || new Set();
+    const symbol = toggle.dataset.toggle;
+    if (window.__OPEN.has(symbol)) window.__OPEN.delete(symbol);
+    else window.__OPEN.add(symbol);
+    if (window.__SNAP) render(window.__SNAP);
     return;
   }
   const btn = ev.target.closest("button[data-block]");
