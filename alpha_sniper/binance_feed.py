@@ -14,9 +14,27 @@ from .types import Bar, SymbolProfile
 
 STABLE = {
     "USDT", "USDC", "BUSD", "FDUSD", "TUSD", "DAI", "EUR", "AEUR", "USD1",
+    "BFUSD", "XUSD", "EURI", "USDP", "USDD", "PYUSD", "USD", "USDE", "RLUSD",
+}
+TOKENIZED_STOCK = {
+    "QQQB", "SPYB", "NVDAB", "AAPLB", "TSLAB", "AMZNB", "GOOGLB", "MSFTB",
+    "METAB", "NFLXB", "INTCB", "PLTRB", "COINB", "HOODB", "CRCLB",
 }
 LEVERAGE_MARK = ("UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT", "3LUSDT", "3SUSDT")
 HOSTS = ("https://api.binance.com", "https://data-api.binance.vision")
+
+
+def _is_non_crypto(base: str, price: float) -> bool:
+    if base in STABLE or base in TOKENIZED_STOCK:
+        return True
+    if base.endswith("USD") or base.endswith("EUR"):
+        return True
+    # 币安代币化美股常见形态：股票代码 + B，价格像正股
+    if base.endswith("B") and len(base) >= 4 and price >= 5:
+        return True
+    if base.endswith("B") and len(base) == 3 and price >= 50:
+        return True
+    return False
 
 
 @dataclass
@@ -207,7 +225,7 @@ class BinanceFeed:
             if any(sym.endswith(m) for m in LEVERAGE_MARK):
                 continue
             base = sym[:-4]
-            if base in STABLE:
+            if _is_non_crypto(base, float(row.get("lastPrice") or 0)):
                 continue
             try:
                 prev = self.quotes.get(sym)
@@ -240,12 +258,21 @@ class BinanceFeed:
                 return (q.high24h - q.low24h) / q.price
             return abs(q.change24h)
 
+        def peggy(q: Quote) -> bool:
+            r = rng(q)
+            if r < 0.025:
+                return True
+            if abs(q.price - 1.0) < 0.03 and r < 0.04:
+                return True
+            return False
+
         coiled = [
             q
             for q in quotes
             if 1_000_000 <= q.quote_volume <= 45_000_000
             and abs(q.change24h) <= 0.12
-            and rng(q) <= 0.22
+            and 0.025 <= rng(q) <= 0.22
+            and not peggy(q)
         ]
         coiled.sort(key=lambda q: (abs(q.change24h), -q.quote_volume))
         if len(coiled) < 10:
@@ -254,6 +281,8 @@ class BinanceFeed:
                 for q in quotes
                 if 1_000_000 <= q.quote_volume <= 45_000_000
                 and abs(q.change24h) <= 0.12
+                and rng(q) >= 0.025
+                and not peggy(q)
                 and q not in coiled
             ]
             extra.sort(key=lambda q: abs(q.change24h))

@@ -162,7 +162,12 @@ class AlphaSniperEngine:
                 self.scan["last_why"] = deny
                 if self.record_events:
                     self.skips.append((bar.symbol, deny))
-                    self.journal.append(JournalEvent(bar.ts, "skip", bar.symbol, deny))
+                    recent_same = any(
+                        e.kind == "skip" and e.symbol == bar.symbol and bar.ts - e.ts < 3600
+                        for e in self.journal[-40:]
+                    )
+                    if not recent_same:
+                        self.journal.append(JournalEvent(bar.ts, "skip", bar.symbol, deny))
                 continue
             if not self.allow_new_entries:
                 continue

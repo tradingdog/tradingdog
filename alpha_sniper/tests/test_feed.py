@@ -64,11 +64,31 @@ class FeedParseTests(unittest.TestCase):
                     "highPrice": "10.1",
                     "lowPrice": "9.9",
                 },
+                {
+                    "symbol": "NVDABUSDT",
+                    "lastPrice": "225",
+                    "priceChangePercent": "0.2",
+                    "quoteVolume": "2000000",
+                    "count": 10,
+                    "highPrice": "228",
+                    "lowPrice": "220",
+                },
+                {
+                    "symbol": "TRBUSDT",
+                    "lastPrice": "13.3",
+                    "priceChangePercent": "1.0",
+                    "quoteVolume": "3000000",
+                    "count": 10,
+                    "highPrice": "13.6",
+                    "lowPrice": "13.0",
+                },
             ]
         )
         self.assertIn("BTCUSDT", feed.quotes)
         self.assertNotIn("USDCUSDT", feed.quotes)
         self.assertNotIn("ABCUPUSDT", feed.quotes)
+        self.assertNotIn("NVDABUSDT", feed.quotes)
+        self.assertIn("TRBUSDT", feed.quotes)
         picked = feed.pick_universe(8)
         names = [q.symbol for q in picked]
         self.assertIn("QUIETUSDT", names)
