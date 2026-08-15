@@ -411,12 +411,14 @@ def kline_is_closed(k: list, now: float | None = None) -> bool:
 
 
 def _narrative(quote: Quote | None) -> str:
-    # 板块标签必须稳定。用 24h 涨跌给龙头改名，滞后币就永远对不上龙头。
+    # 板块必须稳定且不能全市场共用。否则任意一只山寨大涨，所有横盘币都会被当成滞后币。
     if quote is None:
-        return "alt"
+        return "other"
     if quote.is_alpha:
         return "alpha"
-    return "alt"
+    if quote.change24h <= -0.18:
+        return "dump-wave"
+    return f"solo:{quote.symbol}"
 
 
 def _extract_alpha_symbols(data) -> set[str]:

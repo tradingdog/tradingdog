@@ -108,3 +108,7 @@ class FeedParseTests(unittest.TestCase):
         self.assertEqual(quiet.bucket, "coil")
         pepe = next(q for q in picked if q.symbol == "PEPEUSDT")
         self.assertEqual(pepe.bucket, "parabolic")
+        from alpha_sniper.binance_feed import profile_from_quote
+
+        self.assertEqual(profile_from_quote(quiet).narrative, "solo:QUIETUSDT")
+        self.assertEqual(profile_from_quote(pepe).narrative, "solo:PEPEUSDT")
