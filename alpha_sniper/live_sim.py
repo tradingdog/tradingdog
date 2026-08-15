@@ -69,6 +69,10 @@ class RealSimSession:
                 self._warm_done = True
                 self.ready = True
                 self.last_poll = time.time()
+                for sym in self.watch:
+                    q = self.feed.quotes.get(sym)
+                    if q:
+                        self.quotes[sym] = q
                 self._record()
         except Exception as exc:
             self.boot_error = str(exc)[:240]

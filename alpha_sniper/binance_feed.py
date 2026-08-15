@@ -127,6 +127,8 @@ class BinanceFeed:
                 self.status.key_note = "密钥被拒（常见是 IP 未加白名单）。公开行情仍可用"
             else:
                 self.status.key_note = "密钥校验失败，公开行情仍可用"
+            if self.status.ok:
+                self.status.last_error = ""
 
     def load_alpha_symbols(self) -> set[str]:
         urls = (

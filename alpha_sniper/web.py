@@ -51,6 +51,17 @@ def _make_handler(session: LiveSession):
         def log_message(self, fmt: str, *args) -> None:
             return
 
+        def do_HEAD(self) -> None:
+            path = urlparse(self.path).path
+            if path.startswith("/api/"):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+
         def do_GET(self) -> None:
             path = urlparse(self.path).path
             if path == "/api/state":
