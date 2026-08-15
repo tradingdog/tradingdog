@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>交易监控 · Alpha Sniper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="mark">◎</div>
+      <div>
+        <h1>交易监控</h1>
+        <p class="sub">币安现货真实价格 · 模拟资金 · 1 小时抓妖 · 1x · 不会下真单</p>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <span id="statePill" class="pill squat">空仓</span>
+      <span id="modePill" class="pill quiet">模拟资金，不会下真单</span>
+      <span id="feedPill" class="pill quiet">行情未连接</span>
+      <span id="clock" class="clock">—</span>
+      <span id="uptimePill" class="pill quiet">已运行 —</span>
+    </div>
+    <div class="controls" id="controls">
+      <button type="button" data-act="start">继续开仓</button>
+      <button type="button" data-act="pause">暂停开仓</button>
+      <button type="button" data-act="flatten">全部平仓</button>
+      <button type="button" data-act="refresh" class="accent">刷新行情</button>
+      <button type="button" data-act="reset">重置模拟资金</button>
+    </div>
+  </header>
+
+  <section class="narration" id="narration">正在连接币安行情…</section>
+  <section class="feedline" id="feedline"></section>
+  <section class="runtime" id="runtime"></section>
+  <section class="metrics" id="metrics"></section>
+
+  <main class="grid">
+    <section class="panel span-2">
+      <header>
+        <h2>发现了什么</h2>
+        <p>一行一个币：现价、方向、计划仓位、止损、卡在哪。点开才看发现原因和止盈。列表在框里滚，下面持仓和成绩单不用翻很久。</p>
+      </header>
+      <div id="discoveries" class="disc-wrap"></div>
+    </section>
+
+    <section class="panel theses">
+      <header>
+        <h2>当前持仓</h2>
+        <p>模拟仓位。止损到了会自动平。每一笔都写明入场理由、仓位、止损、止盈。</p>
+      </header>
+      <div id="theses"></div>
+    </section>
+
+    <section class="panel risk">
+      <header>
+        <h2>风控规则</h2>
+        <p>这些数字就是代码里的硬限制，接入真金前先看模拟盘能不能守住。</p>
+      </header>
+      <div id="rules"></div>
+      <div id="gates"></div>
+      <div id="skips" class="skips"></div>
+    </section>
+
+    <section class="panel span-2">
+      <header>
+        <h2>成绩单</h2>
+        <p>模拟账户从 1000 出发的结果。先看这里，再决定要不要接真金。</p>
+      </header>
+      <div id="scorecard"></div>
+      <canvas id="equity" width="720" height="180"></canvas>
+      <div id="closed"></div>
+    </section>
+
+    <section class="panel log">
+      <header>
+        <h2>开平仓记录</h2>
+        <p>每一笔为什么开、用了多少钱、为什么平、收益率。</p>
+      </header>
+      <ul id="journal"></ul>
+    </section>
+
+    <section class="panel miss">
+      <header>
+        <h2>信号够了但没开</h2>
+        <p>三类独立信号齐了，但 K 线还不是箱体突破，或没有消息/板块导火线，或已经走完一大截。这是过滤，不是漏单。标了「启动回放」的日期是那根 1 小时 K 线的时间：启动时会回放最近约 4 天已收盘 K 线，并不是程序那天就已经在跑。</p>
+      </header>
+      <ul id="misses"></ul>
+    </section>
+  </main>
+
+  <footer>
+    价格来自币安公开行情，资金是模拟的。密钥不在页面上。空仓是正常状态。核对现价请点每个币的「去币安」。
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

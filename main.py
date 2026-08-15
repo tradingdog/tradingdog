@@ -294,7 +294,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.55"  # 修复：遮挡专辑按 href slug/aria-label 找封面链并 JS 点击
+APP_VERSION = "0.1.74"  # 修复：监控台时间统一按北京时间显示
 # 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
