@@ -165,5 +165,72 @@ class PaperPathTests(unittest.TestCase):
         self.assertTrue(any(why == "btc_stress" for _, why in eng.skips) or "STRESSUSDT" not in traded)
 
 
+class ChaseMissTests(unittest.TestCase):
+    def test_three_families_without_silence_is_logged(self):
+        from alpha_sniper.coiled import CoiledState
+        from alpha_sniper.engine import AlphaSniperEngine
+
+        eng = AlphaSniperEngine()
+        eng.record_events = True
+        ts = 1_700_000_000.0
+        for fam in ("microstructure", "catalyst", "positioning"):
+            eng.coincidence.ingest(Pulse(fam, fam, "XUSDT", "long", 0.9, ts, {}), silence_before=0.05)
+        bar = _bar("XUSDT", ts, 1.0)
+        coiled = CoiledState("XUSDT", 0.1, 0.1, 0.05, 0.1, 0.1, 0.12, "long", "spot", 0.97, False)
+        eng._log_blocked_coincidence(bar, coiled, set())
+        self.assertTrue(eng.near_misses)
+        self.assertIn("追涨", eng.near_misses[-1]["reason"])
+        self.assertEqual(eng.scan["blocked_chase"], 1)
+
+
+class PersistTests(unittest.TestCase):
+    def test_saves_and_restores_open_thesis(self):
+        import tempfile
+        from pathlib import Path
+
+        from alpha_sniper import persist as persist_mod
+        from alpha_sniper.engine import JournalEvent
+        from alpha_sniper.live_sim import RealSimSession
+        from alpha_sniper.types import FourScores, Thesis
+
+        session = RealSimSession()
+        session.engine.account.cash = 880
+        thesis = Thesis(
+            id="T9",
+            symbol="FOOUSDT",
+            side="long",
+            venue="spot",
+            hypothesis="test",
+            opened_ts=1_700_000_000,
+            entry=1.0,
+            qty=100,
+            notional=100,
+            invalidation=0.9,
+            time_stop_ts=1_700_000_000 + 12 * 3600,
+            peak=1.02,
+            families=("microstructure", "catalyst", "positioning"),
+            scores=FourScores(0.7, 0.6, 0.2, 0.5),
+            remaining_qty=100,
+        )
+        session.engine.book.open[thesis.id] = thesis
+        session.engine.journal.append(JournalEvent(thesis.opened_ts, "open", thesis.symbol, "测"))
+        session.engine.venue.on_price("FOOUSDT", 1.01)
+        old = persist_mod.STATE_PATH
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                persist_mod.STATE_PATH = Path(tmp) / "live_state.json"
+                persist_mod.save_state(session)
+                payload = persist_mod.load_state()
+                self.assertIsNotNone(payload)
+                fresh = RealSimSession()
+                persist_mod.apply_state(fresh, payload)
+                self.assertAlmostEqual(fresh.engine.account.cash, 880)
+                self.assertIn("T9", fresh.engine.book.open)
+                self.assertEqual(fresh.engine.book.open["T9"].symbol, "FOOUSDT")
+                self.assertTrue(any(e.kind == "open" for e in fresh.engine.journal))
+        finally:
+            persist_mod.STATE_PATH = old
+
+
 if __name__ == "__main__":
     unittest.main()

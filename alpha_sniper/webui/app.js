@@ -1,5 +1,25 @@
 const $ = (id) => document.getElementById(id);
 
+function feedLine(s, feed, pollAt) {
+  const h = s.health || {};
+  const scan = h.scan || {};
+  const watch = h.watch || feed.watch || 0;
+  const bits = [
+    `盯盘 ${watch} 个币（横盘缩量为主）`,
+    `Alpha ${feed.alpha || 0}`,
+    feed.key_note || "",
+    scan.opens != null ? `开仓 ${scan.opens}` : "",
+    scan.blocked_chase ? `追涨拦截 ${scan.blocked_chase}` : "",
+    h.persist || h.saved_at ? "状态已落盘" : "",
+    h.restored ? "已从上次接着跑" : "",
+    h.note || "",
+    pollAt,
+    feed.last_error ? feed.last_error : "",
+    s.loop_error || h.loop_error || "",
+  ].filter(Boolean);
+  return bits.join(" · ");
+}
+
 function money(n) {
   if (n == null || Number.isNaN(n)) return "—";
   const abs = Math.abs(n);
@@ -57,10 +77,10 @@ function render(s) {
   const fl = $("feedline");
   if (fl) {
     const pollAt = (s.last_poll || feed.last_poll)
-      ? ` · 上次刷新 ${new Date((s.last_poll || feed.last_poll) * 1000).toLocaleTimeString("zh-CN", { hour12: false })}`
+      ? `上次刷新 ${new Date((s.last_poll || feed.last_poll) * 1000).toLocaleTimeString("zh-CN", { hour12: false })}`
       : "";
     fl.innerHTML = s.mode === "binance_sim"
-      ? `监控 ${feed.symbols || 0} 个 USDT 交易对 · Alpha ${feed.alpha || 0} 个 · ${feed.key_note || ""}${pollAt}${feed.last_error ? " · " + feed.last_error : ""}`
+      ? feedLine(s, feed, pollAt)
       : "当前是本地回放数据，不是币安实时行情。";
   }
   document.querySelectorAll("#controls [data-act]").forEach((b) => {

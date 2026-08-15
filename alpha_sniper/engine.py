@@ -52,10 +52,29 @@ class AlphaSniperEngine:
         self.near_misses: list[dict] = []
         self.allow_new_entries: bool = True
         self.record_events: bool = True
+        self.scan: dict[str, int | str] = {
+            "bars": 0,
+            "pulses": 0,
+            "coincidences": 0,
+            "opens": 0,
+            "blocked_chase": 0,
+            "blocked_score": 0,
+            "blocked_risk": 0,
+            "last_symbol": "",
+            "last_why": "",
+        }
 
     def attach_profiles(self, profiles) -> None:
         self.universe.set_profiles(profiles)
         self.coiled.set_profiles(profiles)
+
+    def ingest_history(self, bar: Bar) -> None:
+        """只补指标。不改账户日切、不开仓、不平仓。给换盯盘补历史用。"""
+        self.venue.on_price(bar.symbol, bar.close)
+        self.universe.on_bar(bar)
+        coiled = self.coiled.on_bar(bar)
+        self.narrative.on_bar(bar)
+        self.sensors.on_bar(bar, coiled)
 
     def equity(self) -> float:
         return self.account.equity(self.book.unrealized(self.venue.marks))
@@ -67,6 +86,7 @@ class AlphaSniperEngine:
         coiled = self.coiled.on_bar(bar)
         self.narrative.on_bar(bar)
         self.risk.roll_clocks(self.account, bar.ts)
+        self.scan["bars"] = int(self.scan.get("bars") or 0) + 1
 
         closed: list[Thesis] = []
         for thesis, reason, qty in self.book.manage(bar.symbol, bar.close, bar.ts):
@@ -94,12 +114,16 @@ class AlphaSniperEngine:
             self.recent_pulses.extend(pulses)
             if len(self.recent_pulses) > 240:
                 self.recent_pulses = self.recent_pulses[-240:]
+            self.scan["pulses"] = int(self.scan.get("pulses") or 0) + len(pulses)
 
         seen: set[tuple[str, str]] = set()
+        formed_sides: set[str] = set()
         for pulse in pulses:
             coin = self.coincidence.ingest(pulse, coiled.silence, coiled.exhaustion)
             if coin is None:
                 continue
+            formed_sides.add(coin.side)
+            self.scan["coincidences"] = int(self.scan.get("coincidences") or 0) + 1
             key = (coin.symbol, coin.side)
             if key in seen or self.book.has_symbol(coin.symbol):
                 continue
@@ -109,9 +133,12 @@ class AlphaSniperEngine:
                 self.recent_coincidences = self.recent_coincidences[-80:]
             opp = self._opportunity(bar, coiled, coin, lag_why)
             if opp is None:
+                self.scan["blocked_score"] = int(self.scan.get("blocked_score") or 0) + 1
+                self.scan["last_symbol"] = bar.symbol
                 if self.record_events:
                     scores = self.universe.scores_partial(bar.symbol, bar)
                     why = self.scorer.reject_reason(coin, scores, classify_ignition(bar, self.sensors.volume_z(bar.symbol)), coiled.armed or coin.side == "short")
+                    self.scan["last_why"] = why
                     self.near_misses.append(
                         {
                             "ts": bar.ts,
@@ -131,6 +158,8 @@ class AlphaSniperEngine:
                 self.account, self.book.open_count(), bar.ts, self.universe.regime(), opp.side
             )
             if deny:
+                self.scan["blocked_risk"] = int(self.scan.get("blocked_risk") or 0) + 1
+                self.scan["last_why"] = deny
                 if self.record_events:
                     self.skips.append((bar.symbol, deny))
                     self.journal.append(JournalEvent(bar.ts, "skip", bar.symbol, deny))
@@ -138,6 +167,8 @@ class AlphaSniperEngine:
             if not self.allow_new_entries:
                 continue
             self._open(opp, bar)
+        if self.record_events and pulses:
+            self._log_blocked_coincidence(bar, coiled, formed_sides)
         return closed
 
     def _opportunity(self, bar: Bar, coiled, coin, lag_why: str) -> Opportunity | None:
@@ -190,6 +221,9 @@ class AlphaSniperEngine:
             # 失效价太远等于没有止损，拆掉
             self._reduce(thesis, "bad_stop", thesis.remaining_qty, fill.price, bar.ts)
             return None
+        self.scan["opens"] = int(self.scan.get("opens") or 0) + 1
+        self.scan["last_symbol"] = opp.symbol
+        self.scan["last_why"] = "opened"
         side_zh = "做多" if opp.side == "long" else "做空"
         venue_zh = {"spot": "现货", "futures_1x": "1x 合约", "alpha": "Alpha"}.get(opp.venue, opp.venue)
         eq = self.equity()
@@ -240,6 +274,50 @@ class AlphaSniperEngine:
             )
             return thesis
         return None
+
+    def _log_blocked_coincidence(self, bar: Bar, coiled, formed_sides: set[str]) -> None:
+        """三类信号齐了但因不够安静/未缩簧没形成共振：记下来，避免看起来像「没机会」。"""
+        votes = self.coincidence.votes(bar.symbol, bar.ts)
+        for side in ("long", "short"):
+            if side in formed_sides:
+                continue
+            fams = sorted({v["family"] for v in votes if v.get("side") == side})
+            if len(fams) < self.config.min_independent_families:
+                continue
+            if any(
+                m.get("symbol") == bar.symbol
+                and m.get("side") == side
+                and bar.ts - float(m.get("ts") or 0) < 3 * 3600
+                for m in self.near_misses[-12:]
+            ):
+                continue
+            self.scan["blocked_chase"] = int(self.scan.get("blocked_chase") or 0) + 1
+            if side == "short":
+                why = (
+                    f"三类信号齐了，但不是抛物线衰竭（衰竭 {coiled.exhaustion:.2f}），"
+                    f"安静度 {coiled.silence:.2f}，按纪律不开"
+                )
+            else:
+                why = (
+                    f"三类信号齐了，但还在追涨/不够安静（安静度 {coiled.silence:.2f}，"
+                    f"缩簧 {coiled.coiled_score:.2f}），按纪律不开"
+                )
+            self.scan["last_symbol"] = bar.symbol
+            self.scan["last_why"] = why
+            self.near_misses.append(
+                {
+                    "ts": bar.ts,
+                    "symbol": bar.symbol,
+                    "side": side,
+                    "families": fams,
+                    "reason": why,
+                    "possibility": round(self.universe.possibility(bar.symbol), 3),
+                    "crowding": round(self.universe.crowding(bar.symbol, self.universe.already_moved(bar.symbol)), 3),
+                    "exit_liquidity": round(self.universe.exit_liquidity(bar.symbol, bar), 3),
+                }
+            )
+            if len(self.near_misses) > 40:
+                self.near_misses = self.near_misses[-40:]
 
     def flatten_all(self, now: float, reason: str = "手动全部平仓") -> None:
         for thesis in list(self.book.open.values()):

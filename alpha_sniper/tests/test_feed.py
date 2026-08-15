@@ -6,7 +6,7 @@ from alpha_sniper.binance_feed import BinanceFeed
 
 
 class FeedParseTests(unittest.TestCase):
-    def test_filters_stables_and_picks_mover(self):
+    def test_filters_stables_and_picks_quiet_over_fat(self):
         feed = BinanceFeed()
         feed.refresh_quotes(
             [
@@ -46,10 +46,35 @@ class FeedParseTests(unittest.TestCase):
                     "highPrice": "0.000014",
                     "lowPrice": "0.00001",
                 },
+                {
+                    "symbol": "QUIETUSDT",
+                    "lastPrice": "1.2",
+                    "priceChangePercent": "2.4",
+                    "quoteVolume": "8000000",
+                    "count": 40,
+                    "highPrice": "1.22",
+                    "lowPrice": "1.17",
+                },
+                {
+                    "symbol": "FATUSDT",
+                    "lastPrice": "10",
+                    "priceChangePercent": "1.0",
+                    "quoteVolume": "500000000",
+                    "count": 10,
+                    "highPrice": "10.1",
+                    "lowPrice": "9.9",
+                },
             ]
         )
         self.assertIn("BTCUSDT", feed.quotes)
         self.assertNotIn("USDCUSDT", feed.quotes)
         self.assertNotIn("ABCUPUSDT", feed.quotes)
         picked = feed.pick_universe(8)
-        self.assertTrue(any(q.symbol == "PEPEUSDT" for q in picked))
+        names = [q.symbol for q in picked]
+        self.assertIn("QUIETUSDT", names)
+        self.assertIn("PEPEUSDT", names)
+        self.assertNotIn("FATUSDT", names)
+        quiet = next(q for q in picked if q.symbol == "QUIETUSDT")
+        self.assertEqual(quiet.bucket, "coil")
+        pepe = next(q for q in picked if q.symbol == "PEPEUSDT")
+        self.assertEqual(pepe.bucket, "parabolic")

@@ -21,6 +21,7 @@ SENSOR_ZH = {
     "exchange_inflow": "充币到交易所",
     "unlock_calendar": "解锁",
     "weekend_vacuum": "周末流动性差",
+    "liquidity_hours": "薄流动性时段",
     "alpha_new_listing": "Alpha 上新",
     "narrative_lag": "同板块还没涨的",
     "narrative_dump": "同板块一起跌",
@@ -168,6 +169,8 @@ def build_snapshot(session) -> dict:
         ],
         "equity_curve": session.equity_curve[-400:],
         "prices": session.price_tails,
+        "health": getattr(session, "health", {}) or {},
+        "loop_error": getattr(session, "loop_error", "") or "",
     }
 
 

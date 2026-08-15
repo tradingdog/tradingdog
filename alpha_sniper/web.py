@@ -29,11 +29,19 @@ class Watchtower:
 
         def loop() -> None:
             while not stop.is_set():
-                with session.lock:
-                    running = session.running and not session.finished
-                    n = session.speed
-                if running or getattr(session, "mode", "") == "binance_sim":
-                    session.tick(n)
+                try:
+                    with session.lock:
+                        running = session.running and not session.finished
+                        n = session.speed
+                    if running or getattr(session, "mode", "") == "binance_sim":
+                        session.tick(n)
+                except Exception as exc:
+                    try:
+                        session.loop_error = str(exc)[:240]
+                    except Exception:
+                        pass
+                    time.sleep(4.0)
+                    continue
                 time.sleep(2.4 if getattr(session, "mode", "") == "binance_sim" else 0.28)
 
         threading.Thread(target=loop, daemon=True).start()

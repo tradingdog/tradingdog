@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections import defaultdict, deque
 
 from .coiled import CoiledState
@@ -24,6 +25,7 @@ class SensorHub:
         pulses += self._inflow_dump(bar, coiled)
         pulses += self._unlock(bar, coiled)
         pulses += self._weekend(bar, coiled, z)
+        pulses += self._liquidity_hours(bar, coiled, z)
         pulses += self._alpha_pipeline(bar, coiled)
         return [p for p in pulses if p.strength >= 0.35]
 
@@ -99,6 +101,25 @@ class SensorHub:
             return []
         side: Side = "long" if bar.taker_buy_ratio >= 0.52 else "short"
         return [Pulse("weekend_vacuum", "calendar", bar.symbol, side, 0.55 + 0.3 * coiled.vacuum, bar.ts, {})]
+
+    def _liquidity_hours(self, bar: Bar, coiled: CoiledState, z: float) -> list[Pulse]:
+        """UTC 薄流动性时段：只给已经缩簧的币凑日历票，避免给已经在跑的龙头凑齐三类。"""
+        hour = time.gmtime(bar.ts).tm_hour
+        thin = bar.is_weekend or hour in {22, 23, 0, 1, 2, 3, 4}
+        if not thin or not coiled.armed or coiled.silence < 0.45 or coiled.exhaustion >= 0.35 or z < 1.2:
+            return []
+        side: Side = "long" if bar.taker_buy_ratio >= 0.52 else "short"
+        return [
+            Pulse(
+                "liquidity_hours",
+                "calendar",
+                bar.symbol,
+                side,
+                0.50 + 0.25 * coiled.silence,
+                bar.ts,
+                {"hour": hour},
+            )
+        ]
 
     def _alpha_pipeline(self, bar: Bar, coiled: CoiledState) -> list[Pulse]:
         if not bar.is_alpha:

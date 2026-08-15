@@ -8,6 +8,11 @@ from .types import Opportunity, Thesis
 _ids = itertools.count(1)
 
 
+def set_id_counter(n: int) -> None:
+    global _ids
+    _ids = itertools.count(max(1, int(n)))
+
+
 class ThesisBook:
     def __init__(self, config: SniperConfig):
         self.config = config

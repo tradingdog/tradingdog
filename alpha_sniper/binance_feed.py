@@ -29,6 +29,7 @@ class Quote:
     high24h: float
     low24h: float
     is_alpha: bool = False
+    bucket: str = ""
 
 
 @dataclass
@@ -209,6 +210,7 @@ class BinanceFeed:
             if base in STABLE:
                 continue
             try:
+                prev = self.quotes.get(sym)
                 q = Quote(
                     symbol=sym,
                     price=float(row["lastPrice"]),
@@ -218,6 +220,7 @@ class BinanceFeed:
                     high24h=float(row.get("highPrice") or 0),
                     low24h=float(row.get("lowPrice") or 0),
                     is_alpha=sym in self.alpha or base in self.alpha,
+                    bucket=prev.bucket if prev else "",
                 )
             except (KeyError, ValueError, TypeError):
                 continue
@@ -227,43 +230,98 @@ class BinanceFeed:
         return out
 
     def pick_universe(self, max_symbols: int = 24) -> list[Quote]:
-        quotes = [q for q in self.quotes.values() if q.symbol != "BTCUSDT"]
-        # 排除深流动性大盘，留下还有暴涨暴跌空间的
-        tradable = [
+        """盯还没走完的币：横盘可交易为主，另留少量抛物线给空头。"""
+        quotes = [q for q in self.quotes.values() if q.symbol != "BTCUSDT" and q.price > 0]
+
+        def rng(q: Quote) -> float:
+            if q.price <= 0:
+                return 1.0
+            if q.high24h > 0 and q.low24h > 0:
+                return (q.high24h - q.low24h) / q.price
+            return abs(q.change24h)
+
+        coiled = [
             q
             for q in quotes
-            if 800_000 <= q.quote_volume <= 120_000_000 and q.price > 0
+            if 1_000_000 <= q.quote_volume <= 45_000_000
+            and abs(q.change24h) <= 0.12
+            and rng(q) <= 0.22
         ]
-        tradable.sort(key=lambda q: abs(q.change24h) * (1.0 + (q.quote_volume ** 0.15)), reverse=True)
+        coiled.sort(key=lambda q: (abs(q.change24h), -q.quote_volume))
+        if len(coiled) < 10:
+            extra = [
+                q
+                for q in quotes
+                if 1_000_000 <= q.quote_volume <= 45_000_000
+                and abs(q.change24h) <= 0.12
+                and q not in coiled
+            ]
+            extra.sort(key=lambda q: abs(q.change24h))
+            coiled = coiled + extra
+
+        shorts = [
+            q
+            for q in quotes
+            if 2_000_000 <= q.quote_volume <= 120_000_000 and q.change24h >= 0.18
+        ]
+        shorts.sort(key=lambda q: q.change24h, reverse=True)
+
+        dumps = [
+            q
+            for q in quotes
+            if 2_000_000 <= q.quote_volume <= 120_000_000 and q.change24h <= -0.18
+        ]
+        dumps.sort(key=lambda q: q.change24h)
+
         picked: list[Quote] = []
-        seen = set()
-        for q in tradable:
-            if q.symbol in seen:
-                continue
-            picked.append(q)
-            seen.add(q.symbol)
-            if len(picked) >= max_symbols:
-                break
-        # Alpha 优先补进
-        for q in quotes:
-            if q.is_alpha and q.symbol not in seen and q.quote_volume >= 200_000:
+        seen: set[str] = set()
+
+        def take(rows: list[Quote], n: int, bucket: str) -> None:
+            added = 0
+            for q in rows:
+                if q.symbol in seen:
+                    continue
+                q.bucket = bucket
                 picked.append(q)
                 seen.add(q.symbol)
-            if len(picked) >= max_symbols + 6:
+                added += 1
+                if added >= n or len(picked) >= max_symbols:
+                    return
+
+        take(coiled, max(14, max_symbols - 6), "coil")
+        take(shorts, 4, "parabolic")
+        take(dumps, 2, "dump")
+        for q in quotes:
+            if q.is_alpha and q.symbol not in seen and 200_000 <= q.quote_volume <= 80_000_000:
+                q.bucket = "alpha"
+                picked.append(q)
+                seen.add(q.symbol)
+            if len(picked) >= max_symbols + 4:
                 break
         return picked
 
-    def kline_to_bar(self, symbol: str, k: list, quote: Quote | None, depth: float, listing: str = "") -> Bar:
+    def kline_to_bar(
+        self,
+        symbol: str,
+        k: list,
+        quote: Quote | None,
+        depth: float,
+        listing: str = "",
+        change_24h: float | None = None,
+    ) -> Bar:
         open_t = float(k[0]) / 1000.0
         o, h, l, c = float(k[1]), float(k[2]), float(k[3]), float(k[4])
         vol = float(k[5])
         quote_vol = float(k[7]) if len(k) > 7 else vol * c
-        trades = float(k[8]) if len(k) > 8 else 0.0
         taker_buy = float(k[9]) if len(k) > 9 else vol * 0.5
         taker_ratio = (taker_buy / vol) if vol > 0 else 0.5
-        avg_trade = (quote_vol / trades) if trades > 0 else 0.0
-        large = min(1.0, avg_trade / max(quote_vol * 0.02, 1.0)) if quote_vol else 0.0
-        chg = quote.change24h if quote else 0.0
+        # 公开 K 线没有逐笔大单；主动买卖失衡是最接近「大单方向」的量
+        large = min(1.0, abs(taker_ratio - 0.5) / 0.22)
+        if change_24h is None:
+            chg = quote.change24h if quote else 0.0
+        else:
+            chg = change_24h
+        book = depth if depth and depth > 1 else max(quote_vol * 0.01, 1.0)
         return Bar(
             ts=open_t,
             symbol=symbol,
@@ -274,23 +332,40 @@ class BinanceFeed:
             volume=max(quote_vol, 1.0),
             taker_buy_ratio=taker_ratio,
             large_print_share=large,
-            book_depth_usd=depth or max(quote_vol * 0.01, 1.0),
+            book_depth_usd=book,
             listing_event=listing,
-            narrative=_narrative(quote),
+            narrative=_narrative_chg(quote, chg),
             social_heat=min(1.0, abs(chg) / 0.18),
             is_alpha=bool(quote and quote.is_alpha),
             is_weekend=time.gmtime(open_t).tm_wday >= 5,
         )
 
 
+def kline_is_closed(k: list, now: float | None = None) -> bool:
+    now = time.time() if now is None else now
+    if len(k) < 7:
+        return True
+    try:
+        close_ms = int(k[6])
+    except (TypeError, ValueError):
+        return True
+    return close_ms <= int(now * 1000) + 250
+
+
 def _narrative(quote: Quote | None) -> str:
+    if quote is None:
+        return "other"
+    return _narrative_chg(quote, quote.change24h)
+
+
+def _narrative_chg(quote: Quote | None, chg: float) -> str:
     if quote is None:
         return "other"
     if quote.is_alpha:
         return "alpha"
-    if quote.change24h >= 0.12:
+    if chg >= 0.12:
         return "hot-up"
-    if quote.change24h <= -0.12:
+    if chg <= -0.12:
         return "hot-down"
     return "other"
 
