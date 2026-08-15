@@ -12,10 +12,11 @@ from .persist import apply_state, clear_state, load_state, save_state
 from .snapshot import build_snapshot
 from .types import SymbolProfile
 
-BAR_SEC = 15 * 60
-HUNT_BARS = 192
-MIN_WARM_BARS = 130
+BAR_SEC = 3600
+HUNT_BARS = 96
+MIN_WARM_BARS = 150
 UNIVERSE_REFRESH_SEC = 6 * 3600
+LIVE_INTERVAL = "1h"
 
 
 class RealSimSession:
@@ -71,6 +72,8 @@ class RealSimSession:
         tickers = self.feed.ticker_24h()
         self.feed.refresh_quotes(tickers)
         saved = load_state()
+        if saved and saved.get("bar_interval") != LIVE_INTERVAL:
+            saved = None
         btc = self.feed.quotes.get("BTCUSDT")
         picked = self.feed.pick_universe(22)
         symbols = ["BTCUSDT"] + [q.symbol for q in picked]
@@ -164,7 +167,7 @@ class RealSimSession:
                 "note": (
                     "从上次状态恢复"
                     if saved
-                    else "启动时用最近约 48 小时已收盘的 15 分钟 K 线，按同一套开仓纪律回放"
+                    else "启动时用最近约 4 天已收盘的 1 小时 K 线，按抓妖纪律回放"
                 ),
             }
             self._record(force=True)
@@ -183,7 +186,7 @@ class RealSimSession:
             if depth <= 1 and sym != "BTCUSDT":
                 q = self.feed.quotes.get(sym)
                 depth = max((q.quote_volume * 0.004) if q else 0.0, 2_000)
-            rows = self.feed.klines(sym, "15m", 400)
+            rows = self.feed.klines(sym, LIVE_INTERVAL, 400)
             return sym, depth, rows
 
         with ThreadPoolExecutor(max_workers=4) as pool:
@@ -219,12 +222,13 @@ class RealSimSession:
             if len(xs) > 800:
                 self._closes[sym] = xs[-500:]
                 xs = self._closes[sym]
-            if len(xs) >= 96 and xs[-96] > 0:
-                chg = xs[-1] / xs[-96] - 1.0
+            n24 = max(8, int(round(86400 / BAR_SEC)))
+            if len(xs) >= n24 and xs[-n24] > 0:
+                chg = xs[-1] / xs[-n24] - 1.0
             else:
                 q = self.feed.quotes.get(sym)
                 chg = q.change24h if q else 0.0
-            listing = self._listing_flag(sym) if listing_ts and open_ms == listing_ts else ""
+            listing = self._listing_flag(sym, open_ms / 1000.0)
             quote = self.feed.quotes.get(sym)
             bar = self.feed.kline_to_bar(sym, k, quote, self._depths.get(sym, 0.0), listing, change_24h=chg)
             with self.lock:
@@ -239,13 +243,30 @@ class RealSimSession:
                 self.engine.allow_new_entries = prev
                 self._last_bar_ts[sym] = bar.ts
 
-    def _listing_flag(self, symbol: str) -> str:
-        base = symbol.replace("USDT", "")
+    def _listing_flag(self, symbol: str, bar_open: float = 0.0) -> str:
+        from .binance_feed import match_announcement
+
+        base = symbol[:-4] if symbol.endswith("USDT") else symbol
+        hit = ""
         for art in self.feed.announcements:
             title = art.get("title") or ""
-            if base and base in title.upper() and any(w in title for w in ("上线", "List", "list", "Alpha")):
-                return "alpha_list" if "Alpha" in title or "alpha" in title else "spot_list"
-        return ""
+            kind = match_announcement(title, base)
+            if not kind:
+                continue
+            ts = art.get("ts") or 0
+            try:
+                ts = float(ts)
+            except (TypeError, ValueError):
+                ts = 0.0
+            if ts > 1e12:
+                ts = ts / 1000.0
+            if bar_open and ts:
+                if bar_open < ts - 3 * 3600 or bar_open > ts + 36 * 3600:
+                    continue
+            if kind == "delist":
+                return "delist"
+            hit = kind
+        return hit
 
     def poll(self, bars: bool = True) -> None:
         if not self.ready:
@@ -286,7 +307,7 @@ class RealSimSession:
                 self.loop_error = f"换盯盘失败: {exc}"[:240]
         for sym, q in pending:
             try:
-                ks = self.feed.klines(sym, "15m", 3)
+                ks = self.feed.klines(sym, LIVE_INTERVAL, 3)
             except Exception:
                 continue
             closed = [k for k in ks if kline_is_closed(k, now)]
@@ -307,12 +328,13 @@ class RealSimSession:
                 if len(xs) > 800:
                     self._closes[sym] = xs[-500:]
                     xs = self._closes[sym]
-                if len(xs) >= 96 and xs[-96] > 0:
-                    chg = xs[-1] / xs[-96] - 1.0
+                n24 = max(8, int(round(86400 / BAR_SEC)))
+                if len(xs) >= n24 and xs[-n24] > 0:
+                    chg = xs[-1] / xs[-n24] - 1.0
                 else:
                     chg = q.change24h
                 bar = self.feed.kline_to_bar(
-                    sym, k, q, self._depths.get(sym, 0.0), self._listing_flag(sym), change_24h=chg
+                    sym, k, q, self._depths.get(sym, 0.0), self._listing_flag(sym, open_t), change_24h=chg
                 )
                 prev = self.engine.allow_new_entries
                 if sym in self.blocked:

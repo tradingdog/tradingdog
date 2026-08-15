@@ -26,8 +26,9 @@ class PossibilitySurface:
         self._social[bar.symbol].append(bar.social_heat)
         if bar.symbol == "BTCUSDT":
             closes = self._closes[bar.symbol]
-            if len(closes) >= 96:
-                prev = closes[-96]
+            n = max(8, int(round(86400 / max(self.config.bar_seconds, 60.0))))
+            if len(closes) >= n:
+                prev = closes[-n]
                 if prev > 0:
                     self.btc_ret_24h = bar.close / prev - 1.0
 
@@ -71,7 +72,8 @@ class PossibilitySurface:
     def crowding(self, symbol: str, already_moved: float) -> float:
         heats = self._social[symbol]
         heat = sum(heats) / len(heats) if heats else 0.0
-        move = min(1.0, abs(already_moved) / 0.35)
+        # 只把「已经向上走完」当成拥挤。大跌不是追空拥挤，那是出货段。
+        move = min(1.0, max(0.0, already_moved) / 0.35)
         return _clamp(0.55 * heat + 0.45 * move)
 
     def exit_liquidity(self, symbol: str, bar: Bar | None = None) -> float:
@@ -83,10 +85,12 @@ class PossibilitySurface:
         # 深度必须能吞下数次减仓；成交量不能冒充退出通道（放量时薄盘仍会卡死）。
         return _clamp(depth / (need * 5.0))
 
-    def already_moved(self, symbol: str, lookback: int = 24) -> float:
+    def already_moved(self, symbol: str, lookback: int | None = None) -> float:
         closes = self._closes[symbol]
         if len(closes) < 2:
             return 0.0
+        if lookback is None:
+            lookback = max(8, int(round(86400 / max(self.config.bar_seconds, 60.0))))
         window = list(closes)[-lookback:]
         if window[0] <= 0:
             return 0.0

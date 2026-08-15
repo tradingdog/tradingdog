@@ -131,6 +131,14 @@ class AlphaSniperEngine:
             self.recent_coincidences.append(coin)
             if len(self.recent_coincidences) > 80:
                 self.recent_coincidences = self.recent_coincidences[-80:]
+            morph = self._morphology_reason(bar, coiled, coin)
+            if morph:
+                self.scan["blocked_score"] = int(self.scan.get("blocked_score") or 0) + 1
+                self.scan["last_symbol"] = bar.symbol
+                self.scan["last_why"] = morph
+                if self.record_events:
+                    self._note_miss(bar, coin, morph, coiled)
+                continue
             opp = self._opportunity(bar, coiled, coin, lag_why)
             if opp is None:
                 self.scan["blocked_score"] = int(self.scan.get("blocked_score") or 0) + 1
@@ -139,20 +147,7 @@ class AlphaSniperEngine:
                     scores = self.universe.scores_partial(bar.symbol, bar)
                     why = self.scorer.reject_reason(coin, scores, classify_ignition(bar, self.sensors.volume_z(bar.symbol)), coiled.armed or coin.side == "short")
                     self.scan["last_why"] = why
-                    self.near_misses.append(
-                        {
-                            "ts": bar.ts,
-                            "symbol": bar.symbol,
-                            "side": coin.side,
-                            "families": list(coin.families),
-                            "reason": why,
-                            "possibility": round(scores.possibility, 3),
-                            "crowding": round(scores.crowding, 3),
-                            "exit_liquidity": round(scores.exit_liquidity, 3),
-                        }
-                    )
-                    if len(self.near_misses) > 40:
-                        self.near_misses = self.near_misses[-40:]
+                    self._note_miss(bar, coin, why, coiled)
                 continue
             deny = self.risk.allow_new(
                 self.account, self.book.open_count(), bar.ts, self.universe.regime(), opp.side
@@ -178,6 +173,9 @@ class AlphaSniperEngine:
 
     def _opportunity(self, bar: Bar, coiled, coin, lag_why: str) -> Opportunity | None:
         scores = self.universe.scores_partial(bar.symbol, bar)
+        if coin.side == "short":
+            # 出货段刚开始时，过去 24h 的上涨不应当成「追空拥挤」。
+            scores.crowding = self.universe.crowding(bar.symbol, 0.0)
         z = self.sensors.volume_z(bar.symbol)
         kind = classify_ignition(bar, z)
         scores.ignition = ignition_score(kind, coin.score, z)
@@ -207,6 +205,48 @@ class AlphaSniperEngine:
             hours,
             precomputed=coiled.armed or coin.side == "short",
         )
+
+    def _morphology_reason(self, bar: Bar, coiled, coin) -> str | None:
+        """K线必须是：箱体 → 大实体突破，必要时等回踩。没有这个形态就不是妖币启动。"""
+        fuse = set(self.config.fuse_families)
+        if not fuse.intersection(coin.families):
+            return "没有消息/板块/解锁导火线。纯 K 线突破假突破太多，按抓妖纪律不开"
+        if coin.side == "long":
+            if not coiled.armed:
+                return "K线还没收成箱体（横盘缩量不够），不是妖币启动前的形态"
+            if not coiled.ignited and not coiled.pullback_ready:
+                return "还没有突破箱顶的大实体K线，也没有回踩确认"
+            if coiled.extended and not coiled.pullback_ready and "catalyst" not in coin.families:
+                return "第一波已经离开箱体超过 12%，等回踩箱顶，不追第一根大阳"
+            moved = self.universe.already_moved(bar.symbol)
+            if moved > 0.18 and "catalyst" not in coin.families and "narrative" not in coin.families:
+                return f"近端已经涨了 {moved:.0%}，这是追涨不是抓启动"
+        else:
+            if coiled.exhaustion < 0.50 and coiled.silence < 0.40:
+                return "空头要先有抛物线衰竭或横盘箱体，现在两边都不是"
+            if coiled.exhaustion >= 0.50:
+                if coiled.range_expand < 1.4 and not coiled.ignited and not coiled.pullback_ready:
+                    return "出货段还没有大阴线确认，不抢第一波已经走完的阴线"
+            elif not coiled.ignited and not coiled.pullback_ready:
+                return "还没有跌破箱底的大阴线"
+        return None
+
+    def _note_miss(self, bar: Bar, coin, why: str, coiled) -> None:
+        scores = self.universe.scores_partial(bar.symbol, bar)
+        self.near_misses.append(
+            {
+                "ts": bar.ts,
+                "symbol": bar.symbol,
+                "side": coin.side,
+                "families": list(coin.families),
+                "reason": why,
+                "possibility": round(scores.possibility, 3),
+                "crowding": round(scores.crowding, 3),
+                "exit_liquidity": round(scores.exit_liquidity, 3),
+            }
+        )
+        if len(self.near_misses) > 40:
+            self.near_misses = self.near_misses[-40:]
 
     def _open(self, opp: Opportunity, bar: Bar) -> Thesis | None:
         mtm = self.book.unrealized(self.venue.marks)
@@ -351,7 +391,7 @@ class AlphaSniperEngine:
 def _exit_zh(reason: str) -> str:
     return {
         "invalidation": "打到止损价，全部平掉",
-        "time_stop": "超过持仓时限且涨跌不到 8%，时间止损",
+        "time_stop": "超过持仓时限且涨跌不到 20%，判定不是妖币走势，时间止损",
         "trail": "已赚超过 20%，又从高/低点回撤 25%，跟踪止盈",
         "scale_40": "浮盈达到 40%，先减仓 25%",
         "scale_100": "浮盈达到 100%，再减仓 25%",
@@ -366,6 +406,7 @@ def run_paper(config: SniperConfig | None = None) -> AlphaSniperEngine:
     from .paper import PaperUniverse
 
     config = config or SniperConfig()
+    config.bar_seconds = config.paper_bar_seconds
     world = PaperUniverse(config)
     engine = AlphaSniperEngine(config)
     engine.attach_profiles(world.profiles)

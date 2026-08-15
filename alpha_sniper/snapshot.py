@@ -22,6 +22,7 @@ SENSOR_ZH = {
     "unlock_calendar": "解锁",
     "weekend_vacuum": "周末流动性差",
     "liquidity_hours": "薄流动性时段",
+    "attention_burst": "成交突然爆发（近似关注度）",
     "alpha_new_listing": "Alpha 上新",
     "narrative_lag": "同板块还没涨的",
     "narrative_dump": "同板块一起跌",
@@ -39,7 +40,7 @@ SKIP_ZH = {
 
 EXIT_ZH = {
     "invalidation": "打到止损价，全部平掉",
-    "time_stop": "超过持仓时限且涨跌不到 8%，时间止损",
+    "time_stop": "超过持仓时限且涨跌不到 20%，判定不是妖币走势，时间止损",
     "trail": "已赚超过 20%，又从高/低点回撤 25%，跟踪止盈",
     "scale_40": "浮盈达到 40%，先减仓 25% 锁定一部分",
     "scale_100": "浮盈达到 100%，再减仓 25%",
@@ -244,11 +245,11 @@ def _plain_thesis(t: Thesis) -> str:
     stop_pct = abs(t.entry - t.invalidation) / t.entry if t.entry else 0.0
     return (
         f"{ch}{SIDE_ZH[t.side]} {t.symbol}。"
-        f"入场理由：{fams} 三类以上独立信号同时出现。"
+        f"入场理由：{fams} 三类以上独立信号，并且 K 线是箱体突破（必要时等回踩）。"
         f"用了 {t.notional:.1f} USDT。"
         f"止损 {t.invalidation:.8g}（距入场 {stop_pct:.1%}）。"
         f"涨/跌 40% 先减 25%，涨/跌 100% 再减 25%；"
-        f"从极值回撤 25% 且已赚 20% 则跟踪止盈；超时没走出 8% 则平掉。"
+        f"从极值回撤 25% 且已赚 20% 则跟踪止盈；超时没走出 20% 则判定不是妖、平掉。"
     )
 
 
@@ -308,9 +309,15 @@ def _discoveries(engine, now: float, quotes) -> list[dict]:
         how = []
         if row["armed"]:
             how.append(
-                f"用币安 15 分钟 K 线算出来的：波动收窄、成交萎缩"
+                f"用币安 1 小时 K 线算出来的：波动收窄、成交萎缩"
                 f"（横盘缩量 {row['coiled']:.2f}，安静度 {row['silence']:.2f}）"
             )
+        if row.get("ignited"):
+            how.append("已经出现突破箱体的大实体 K 线")
+        if row.get("pullback_ready"):
+            how.append("突破后回踩箱沿，符合启动后再确认的形态")
+        if row.get("extended"):
+            how.append("已经离开箱体较远，若没有上币导火线会等回踩，不追第一根大阳")
         if row["votes"]:
             seen = set()
             parts = []
@@ -325,13 +332,13 @@ def _discoveries(engine, now: float, quotes) -> list[dict]:
                 how.append("已经出现的信号：" + "、".join(parts))
         if not how:
             if row["coiled"] >= 0.28:
-                how.append(f"15 分钟波动在收窄（缩量 {row['coiled']:.2f}），还没到可开仓的横盘标准")
+                how.append(f"1 小时波动在收窄（缩量 {row['coiled']:.2f}），还没到可开仓的横盘标准")
             else:
-                how.append("还在扫币安 15 分钟 K 线和盘口，尚未形成可交易结构")
+                how.append("还在扫币安 1 小时 K 线和盘口，尚未形成可交易结构")
         if row["gap"] == 0 and row["armed"]:
-            status = "独立信号已齐，还要过空间/拥挤/退出流动性才能开仓"
+            status = "独立信号已齐，还要过 K 线形态和空间/拥挤/退出流动性才能开仓"
         elif row["armed"]:
-            status = f"已盯上。还差 {row['gap']} 类独立信号（成交/消息/大单/板块/时间点里再凑）"
+            status = f"已盯上横盘箱体。还差 {row['gap']} 类独立信号（成交/消息/大单/板块/时间点里再凑）"
         else:
             status = row["wait"]
         interesting = row["armed"] or bool(row["votes"]) or row["coiled"] >= 0.28
@@ -410,7 +417,7 @@ def _rules(engine, now: float, regime: str) -> list[dict]:
         },
         {
             "title": "时间",
-            "text": f"横盘突破单最多拿 {cfg.coiled_breakout_hours:.0f} 小时，消息单 {cfg.catalyst_hours:.0f} 小时，空头 {cfg.dump_hours:.0f} 小时。超时且涨跌不到 8% 就平。",
+            "text": f"横盘突破单最多拿 {cfg.coiled_breakout_hours:.0f} 小时，消息单 {cfg.catalyst_hours:.0f} 小时，空头 {cfg.dump_hours:.0f} 小时。超时且涨跌不到 {cfg.time_stop_min_move:.0%} 就判定不是妖、平掉。",
         },
         {
             "title": "熔断",
@@ -437,9 +444,9 @@ def _hunt_rows(engine, now: float) -> list[dict]:
         if st is None:
             continue
         if gap == 0 and st.armed:
-            wait = "三类信号已齐，等风控放行"
+            wait = "三类信号已齐，等 K 线突破或回踩确认"
         elif st.armed:
-            wait = f"横盘缩量，还差 {gap} 类信号"
+            wait = f"横盘缩量箱体已形成，还差 {gap} 类信号"
         elif st.coiled_score >= 0.28:
             wait = "波动在收窄，继续看"
         else:
@@ -456,6 +463,9 @@ def _hunt_rows(engine, now: float) -> list[dict]:
                 "vacuum": round(st.vacuum, 3),
                 "exhaustion": round(st.exhaustion, 3),
                 "armed": st.armed,
+                "ignited": st.ignited,
+                "pullback_ready": st.pullback_ready,
+                "extended": st.extended,
                 "side": st.preferred_side,
                 "side_zh": SIDE_ZH[st.preferred_side],
                 "venue_zh": VENUE_ZH.get(st.venue, st.venue),
@@ -571,7 +581,7 @@ def _narrate(state, open_theses, armed, regime, engine, now, marks) -> str:
             head
             + "发现："
             + "；".join(bits)
-            + "。这是币安 15 分钟 K 线算出的横盘缩量。还要再出现两类以上独立信号才开仓。"
+            + "。这是币安 1 小时 K 线算出的横盘缩量箱体。还要突破大实体、并出现消息/板块/解锁导火线才开仓。"
         )
     last_close = engine.book.closed[-1].exit_ts if engine.book.closed else 0.0
     quiet_h = max(0.0, (now - last_close) / 3600.0) if last_close else 0.0
@@ -580,7 +590,7 @@ def _narrate(state, open_theses, armed, regime, engine, now, marks) -> str:
         wait = f"空仓已等 {quiet_h:.0f} 小时。"
     else:
         wait = "现在空仓。"
-    return head + f"{wait}监控里有 {n_coil} 个横盘缩量的币。没有三类独立信号同时出现，就不开仓。"
+    return head + f"{wait}监控里有 {n_coil} 个横盘缩量的币。没有箱体突破加导火线，就不开仓。抓的是少而精的妖币，不是小波动。"
 
 
 def _stones(equity: float, starting: float) -> list[dict]:

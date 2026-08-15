@@ -24,6 +24,25 @@ LEVERAGE_MARK = ("UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT", "3LUSDT", "3SUSDT
 HOSTS = ("https://api.binance.com", "https://data-api.binance.vision")
 
 
+LIST_WORDS = ("上线", "上币", "Will List", "will list", "Will list", "Lists ", "Listing", "Alpha")
+DELIST_WORDS = ("下架", "下线", "Delist", "delist", "Suspend", "暂停交易", "暂停充")
+
+
+def match_announcement(title: str, base: str) -> str:
+    """把币安公告标题对上交易对，返回 listing / delist / 空。"""
+    if not title or not base:
+        return ""
+    upper = title.upper()
+    token = base.upper()
+    if token not in upper and token not in upper.replace(" ", ""):
+        return ""
+    if any(w in title for w in DELIST_WORDS) or any(w in upper for w in ("DELIST", "SUSPEND")):
+        return "delist"
+    if any(w in title for w in LIST_WORDS) or "WILL LIST" in upper:
+        return "alpha_list" if "ALPHA" in upper else "spot_list"
+    return ""
+
+
 def _is_non_crypto(base: str, price: float) -> bool:
     if base in STABLE or base in TOKENIZED_STOCK:
         return True
@@ -167,7 +186,7 @@ class BinanceFeed:
         return found
 
     def load_announcements(self) -> list[dict]:
-        url = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=15"
+        url = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=40"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "alpha-sniper-sim/0.1"})
             with urllib.request.urlopen(req, timeout=8.0) as resp:
@@ -178,7 +197,7 @@ class BinanceFeed:
                 articles.extend(cat.get("articles") or [])
             self.announcements = [
                 {"title": a.get("title", ""), "ts": a.get("releaseDate", 0)}
-                for a in articles[:20]
+                for a in articles[:40]
             ]
         except Exception:
             self.announcements = []
@@ -195,7 +214,7 @@ class BinanceFeed:
             return [data]
         return []
 
-    def klines(self, symbol: str, interval: str = "15m", limit: int = 200) -> list[list]:
+    def klines(self, symbol: str, interval: str = "1h", limit: int = 200) -> list[list]:
         data = self.get_json("/api/v3/klines", {"symbol": symbol, "interval": interval, "limit": limit})
         return data if isinstance(data, list) else []
 
@@ -248,8 +267,15 @@ class BinanceFeed:
         return out
 
     def pick_universe(self, max_symbols: int = 24) -> list[Quote]:
-        """盯还没走完的币：横盘可交易为主，另留少量抛物线给空头。"""
-        quotes = [q for q in self.quotes.values() if q.symbol != "BTCUSDT" and q.price > 0]
+        """盯还没走完、仍有资格走出大涨大跌的币。排除大盘和假横盘。"""
+        from .config import SniperConfig
+
+        majors = set(SniperConfig().excluded_large_caps)
+        quotes = [
+            q
+            for q in self.quotes.values()
+            if q.symbol != "BTCUSDT" and q.symbol not in majors and q.price > 0
+        ]
 
         def rng(q: Quote) -> float:
             if q.price <= 0:
@@ -269,7 +295,7 @@ class BinanceFeed:
         coiled = [
             q
             for q in quotes
-            if 1_000_000 <= q.quote_volume <= 45_000_000
+            if 800_000 <= q.quote_volume <= 20_000_000
             and abs(q.change24h) <= 0.12
             and 0.025 <= rng(q) <= 0.22
             and not peggy(q)
@@ -279,7 +305,7 @@ class BinanceFeed:
             extra = [
                 q
                 for q in quotes
-                if 1_000_000 <= q.quote_volume <= 45_000_000
+                if 800_000 <= q.quote_volume <= 20_000_000
                 and abs(q.change24h) <= 0.12
                 and rng(q) >= 0.025
                 and not peggy(q)
@@ -291,14 +317,14 @@ class BinanceFeed:
         shorts = [
             q
             for q in quotes
-            if 2_000_000 <= q.quote_volume <= 120_000_000 and q.change24h >= 0.18
+            if 1_000_000 <= q.quote_volume <= 80_000_000 and q.change24h >= 0.18
         ]
         shorts.sort(key=lambda q: q.change24h, reverse=True)
 
         dumps = [
             q
             for q in quotes
-            if 2_000_000 <= q.quote_volume <= 120_000_000 and q.change24h <= -0.18
+            if 1_000_000 <= q.quote_volume <= 80_000_000 and q.change24h <= -0.18
         ]
         dumps.sort(key=lambda q: q.change24h)
 
@@ -321,7 +347,7 @@ class BinanceFeed:
         take(shorts, 4, "parabolic")
         take(dumps, 2, "dump")
         for q in quotes:
-            if q.is_alpha and q.symbol not in seen and 200_000 <= q.quote_volume <= 80_000_000:
+            if q.is_alpha and q.symbol not in seen and 200_000 <= q.quote_volume <= 40_000_000:
                 q.bucket = "alpha"
                 picked.append(q)
                 seen.add(q.symbol)
@@ -350,6 +376,9 @@ class BinanceFeed:
             chg = quote.change24h if quote else 0.0
         else:
             chg = change_24h
+        social = min(1.0, abs(chg) / 0.35)
+        if listing:
+            social = min(1.0, social + 0.25)
         book = depth if depth and depth > 1 else max(quote_vol * 0.01, 1.0)
         return Bar(
             ts=open_t,
@@ -363,8 +392,8 @@ class BinanceFeed:
             large_print_share=large,
             book_depth_usd=book,
             listing_event=listing,
-            narrative=_narrative_chg(quote, chg),
-            social_heat=min(1.0, abs(chg) / 0.18),
+            narrative=_narrative(quote),
+            social_heat=social,
             is_alpha=bool(quote and quote.is_alpha),
             is_weekend=time.gmtime(open_t).tm_wday >= 5,
         )
@@ -382,21 +411,12 @@ def kline_is_closed(k: list, now: float | None = None) -> bool:
 
 
 def _narrative(quote: Quote | None) -> str:
+    # 板块标签必须稳定。用 24h 涨跌给龙头改名，滞后币就永远对不上龙头。
     if quote is None:
-        return "other"
-    return _narrative_chg(quote, quote.change24h)
-
-
-def _narrative_chg(quote: Quote | None, chg: float) -> str:
-    if quote is None:
-        return "other"
+        return "alt"
     if quote.is_alpha:
         return "alpha"
-    if chg >= 0.12:
-        return "hot-up"
-    if chg <= -0.12:
-        return "hot-down"
-    return "other"
+    return "alt"
 
 
 def _extract_alpha_symbols(data) -> set[str]:

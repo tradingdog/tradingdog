@@ -294,7 +294,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.69"  # 修复：监控台断线不再刷 BrokenPipe 堆栈
+APP_VERSION = "0.1.70"  # 修复：实盘改1小时抓妖，拉长持仓，箱体突破才开仓
 # 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"

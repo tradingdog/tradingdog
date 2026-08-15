@@ -38,7 +38,8 @@ def save_state(session) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     engine = session.engine
     payload = {
-        "version": 1,
+        "version": 2,
+        "bar_interval": "1h" if getattr(session, "mode", "") == "binance_sim" else "paper",
         "saved_at": time.time(),
         "allow_new": bool(session.allow_new),
         "running": bool(session.running),

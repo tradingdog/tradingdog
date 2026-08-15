@@ -7,7 +7,7 @@ from alpha_sniper.coincidence import CoincidenceEngine
 from alpha_sniper.config import SniperConfig
 from alpha_sniper.engine import run_paper
 from alpha_sniper.risk import RiskGovernor
-from alpha_sniper.types import Account, Bar, Pulse, SymbolProfile
+from alpha_sniper.types import Account, Bar, Coincidence, Pulse, SymbolProfile
 from alpha_sniper.universe import PossibilitySurface
 
 
@@ -222,6 +222,8 @@ class PersistTests(unittest.TestCase):
                 persist_mod.save_state(session)
                 payload = persist_mod.load_state()
                 self.assertIsNotNone(payload)
+                self.assertEqual(payload.get("bar_interval"), "1h")
+                self.assertEqual(payload.get("version"), 2)
                 fresh = RealSimSession()
                 persist_mod.apply_state(fresh, payload)
                 self.assertAlmostEqual(fresh.engine.account.cash, 880)
@@ -230,6 +232,80 @@ class PersistTests(unittest.TestCase):
                 self.assertTrue(any(e.kind == "open" for e in fresh.engine.journal))
         finally:
             persist_mod.STATE_PATH = old
+
+
+class BoxBreakoutTests(unittest.TestCase):
+    def test_quiet_box_then_wide_body_ignites(self):
+        reg = CoiledRegistry(SniperConfig())
+        px = 1.0
+        for i in range(90):
+            vol = 6000 if i < 25 else 350
+            reg.on_bar(_bar("MOONUSDT", i * 3600, px, volume=vol, book_depth_usd=8_000))
+        self.assertTrue(reg.states["MOONUSDT"].armed)
+        self.assertFalse(reg.states["MOONUSDT"].ignited)
+        st = reg.on_bar(
+            Bar(
+                ts=90 * 3600,
+                symbol="MOONUSDT",
+                open=1.0,
+                high=1.09,
+                low=0.998,
+                close=1.08,
+                volume=12_000,
+                taker_buy_ratio=0.74,
+                large_print_share=0.45,
+                book_depth_usd=5_000,
+            )
+        )
+        self.assertTrue(st.ignited)
+        self.assertFalse(st.extended)
+        self.assertGreater(st.range_expand, 1.6)
+
+    def test_extended_without_catalyst_waits_for_pullback(self):
+        from alpha_sniper.coiled import CoiledState
+        from alpha_sniper.engine import AlphaSniperEngine
+
+        eng = AlphaSniperEngine()
+        bar = _bar("MOONUSDT", 1_700_000_000, 1.20)
+        coiled = CoiledState(
+            "MOONUSDT", 0.6, 0.6, 0.7, 0.5, 0.1, 0.6, "long", "spot", 0.97, True,
+            box_high=1.0, box_low=0.96, ignited=True, pullback_ready=False, extended=True, range_expand=3.0,
+        )
+        lag = Coincidence(
+            "MOONUSDT", "long", bar.ts, ("microstructure", "narrative", "positioning"), (), 0.8, 0.7,
+        )
+        why = eng._morphology_reason(bar, coiled, lag)
+        self.assertIsNotNone(why)
+        self.assertIn("回踩", why)
+        listed = Coincidence(
+            "MOONUSDT", "long", bar.ts, ("microstructure", "catalyst", "positioning"), (), 0.8, 0.7,
+        )
+        self.assertIsNone(eng._morphology_reason(bar, coiled, listed))
+
+    def test_no_fuse_is_rejected(self):
+        from alpha_sniper.coiled import CoiledState
+        from alpha_sniper.engine import AlphaSniperEngine
+
+        eng = AlphaSniperEngine()
+        bar = _bar("XUSDT", 1, 1.0)
+        coiled = CoiledState(
+            "XUSDT", 0.6, 0.6, 0.7, 0.5, 0.1, 0.6, "long", "spot", 0.97, True,
+            ignited=True, pullback_ready=False, extended=False,
+        )
+        coin = Coincidence("XUSDT", "long", 1, ("microstructure", "positioning"), (), 0.8, 0.7)
+        why = eng._morphology_reason(bar, coiled, coin)
+        self.assertIsNotNone(why)
+        self.assertIn("导火线", why)
+
+
+class AnnouncementMatchTests(unittest.TestCase):
+    def test_listing_and_delist_keywords(self):
+        from alpha_sniper.binance_feed import match_announcement
+
+        self.assertEqual(match_announcement("Binance Will List FOO", "FOO"), "spot_list")
+        self.assertEqual(match_announcement("Binance Alpha 上线 BAR", "BAR"), "alpha_list")
+        self.assertEqual(match_announcement("Binance Will Delist BAZ", "BAZ"), "delist")
+        self.assertEqual(match_announcement("无相关", "FOO"), "")
 
 
 if __name__ == "__main__":

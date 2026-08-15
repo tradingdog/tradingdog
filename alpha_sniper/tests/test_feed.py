@@ -74,6 +74,15 @@ class FeedParseTests(unittest.TestCase):
                     "lowPrice": "220",
                 },
                 {
+                    "symbol": "ETHUSDT",
+                    "lastPrice": "3000",
+                    "priceChangePercent": "1.0",
+                    "quoteVolume": "8000000",
+                    "count": 40,
+                    "highPrice": "3050",
+                    "lowPrice": "2950",
+                },
+                {
                     "symbol": "TRBUSDT",
                     "lastPrice": "13.3",
                     "priceChangePercent": "1.0",
@@ -94,6 +103,7 @@ class FeedParseTests(unittest.TestCase):
         self.assertIn("QUIETUSDT", names)
         self.assertIn("PEPEUSDT", names)
         self.assertNotIn("FATUSDT", names)
+        self.assertNotIn("ETHUSDT", names)
         quiet = next(q for q in picked if q.symbol == "QUIETUSDT")
         self.assertEqual(quiet.bucket, "coil")
         pepe = next(q for q in picked if q.symbol == "PEPEUSDT")

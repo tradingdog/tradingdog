@@ -104,7 +104,7 @@ function render(s) {
 
   $("theses").innerHTML = s.theses.length
     ? s.theses.map(thesisCard).join("")
-    : `<div class="empty"><strong>现在空仓</strong>没有模拟持仓是正常的。上面「发现了什么」里出现横盘缩量，并且凑齐三类独立信号，才会开仓。</div>`;
+    : `<div class="empty"><strong>现在空仓</strong>没有模拟持仓是正常的。抓的是少而精的妖币：1 小时图上先有横盘箱体，再出现突破大实体和消息/板块导火线，才会开仓。</div>`;
 
   const rules = $("rules");
   if (rules) {
@@ -202,7 +202,7 @@ function discoveryRow(r, s) {
       <p><strong>怎么发现的</strong></p>
       <ul class="how">${how || "<li>还在扫描</li>"}</ul>
       <p><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
-      <p class="plan">24h成交额 ${vol} · 止盈1 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（40% 减 25%） · 止盈2 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%） · ${r.time_stop_hours || 12} 小时没走出 8% 就平</p>
+      <p class="plan">24h成交额 ${vol} · 止盈1 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（40% 减 25%） · 止盈2 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%） · ${r.time_stop_hours || 72} 小时没走出 20% 就平</p>
       <div class="actions">
         <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
         <button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button>

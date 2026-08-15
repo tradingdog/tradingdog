@@ -41,7 +41,7 @@ class NarrativeLagEngine:
         if not leaders:
             return 0.0, ""
         best = max(leaders, key=lambda x: x[1])
-        if best[1] < 0.15:
+        if best[1] < 0.18:
             return 0.0, ""
         # 自己还没动、仍相对压缩，才叫滞后机会
         if already_moved > 0.08 or coiled_score < 0.20:

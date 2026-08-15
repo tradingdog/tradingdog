@@ -89,7 +89,7 @@ class ThesisBook:
             if t.side == "short" and price >= t.invalidation:
                 actions.append((t, "invalidation", t.remaining_qty))
                 continue
-            if now >= t.time_stop_ts and abs(ret) < 0.08:
+            if now >= t.time_stop_ts and abs(ret) < self.config.time_stop_min_move:
                 actions.append((t, "time_stop", t.remaining_qty))
                 continue
             trail = self.config.trail_drawdown

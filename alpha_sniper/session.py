@@ -18,6 +18,7 @@ class LiveSession:
 
     def __init__(self, config: SniperConfig | None = None):
         self.config = config or SniperConfig(paper_days=36, seed=42)
+        self.config.bar_seconds = self.config.paper_bar_seconds
         self.lock = threading.RLock()
         self.running = False
         self.finished = False
