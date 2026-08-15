@@ -92,12 +92,13 @@ class RealSimSession:
         self._depths[symbol] = depth
         rows = self.feed.klines(symbol, "15m", 400)
         listing = self._listing_flag(symbol)
-        with self.lock:
-            for k in rows:
-                bar = self.feed.kline_to_bar(symbol, k, quote, depth, listing if k is rows[-1] else "")
+        for k in rows:
+            bar = self.feed.kline_to_bar(symbol, k, quote, depth, listing if k is rows[-1] else "")
+            with self.lock:
                 self.engine.step(bar)
                 self._last_bar_ts[symbol] = bar.ts
-            if quote:
+        if quote:
+            with self.lock:
                 self.engine.venue.on_price(symbol, quote.price)
 
     def poll(self) -> None:
