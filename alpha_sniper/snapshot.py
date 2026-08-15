@@ -36,6 +36,18 @@ SKIP_ZH = {
     "dust": "算出来的仓位太小，放弃",
 }
 
+EXIT_ZH = {
+    "invalidation": "打到止损价，全部平掉",
+    "time_stop": "超过持仓时限且涨跌不到 8%，时间止损",
+    "trail": "已赚超过 20%，又从高/低点回撤 25%，跟踪止盈",
+    "scale_40": "浮盈达到 40%，先减仓 25% 锁定一部分",
+    "scale_100": "浮盈达到 100%，再减仓 25%",
+    "flatten": "手动全部平仓",
+    "手动全部平仓": "手动全部平仓",
+    "手动平仓": "手动平仓",
+    "bad_stop": "止损距离不合理，开完立刻撤掉",
+}
+
 VENUE_ZH = {"spot": "现货", "futures_1x": "1x 合约", "alpha": "Alpha"}
 SIDE_ZH = {"long": "做多", "short": "做空"}
 REGIME_ZH = {"risk_on": "偏多", "chop": "震荡", "btc_stress": "BTC 大跌"}
@@ -122,9 +134,12 @@ def build_snapshot(session) -> dict:
             "max_leverage": engine.config.max_leverage,
             "gates": _gates(engine, now, regime),
         },
-        "theses": [_thesis_view(t, marks, now) for t in open_theses],
-        "closed": [_thesis_view(t, marks, now) for t in engine.book.closed[-12:]],
+        "theses": [_thesis_view(t, marks, now, engine) for t in open_theses],
+        "closed": [_thesis_view(t, marks, now, engine) for t in engine.book.closed[-12:]],
         "hunt": _hunt_rows(engine, now),
+        "discoveries": _discoveries(engine, now, getattr(session, "quotes", {}) or {}),
+        "performance": _performance(engine, equity, starting),
+        "rules": _rules(engine, now, regime),
         "pulses": [_pulse_view(p) for p in engine.recent_pulses[-40:]],
         "journal": [
             {
@@ -133,7 +148,7 @@ def build_snapshot(session) -> dict:
                 "kind": e.kind,
                 "kind_zh": {"open": "开仓", "close": "平仓", "skip": "过滤"}.get(e.kind, e.kind),
                 "symbol": e.symbol,
-                "detail": e.detail,
+                "detail": SKIP_ZH.get(e.detail, e.detail),
             }
             for e in engine.journal[-50:]
         ],
@@ -156,7 +171,7 @@ def build_snapshot(session) -> dict:
     }
 
 
-def _thesis_view(t: Thesis, marks: dict[str, float], now: float) -> dict:
+def _thesis_view(t: Thesis, marks: dict[str, float], now: float, engine=None) -> dict:
     px = marks.get(t.symbol, t.exit_price or t.entry)
     if t.entry > 0:
         raw = px / t.entry - 1.0
@@ -170,19 +185,37 @@ def _thesis_view(t: Thesis, marks: dict[str, float], now: float) -> dict:
         pnl = t.realized_pnl
         ret = t.realized_pnl / t.notional if t.notional else ret
     remain_h = max(0.0, (t.time_stop_ts - now) / 3600.0) if t.status == "open" else 0.0
+    hold_h = (t.time_stop_ts - t.opened_ts) / 3600.0 if t.time_stop_ts and t.opened_ts else 0.0
+    stop_pct = abs(t.entry - t.invalidation) / t.entry if t.entry else 0.0
+    if t.side == "long":
+        tp1 = t.entry * 1.40
+        tp2 = t.entry * 2.00
+    else:
+        tp1 = t.entry * 0.60
+        tp2 = t.entry * 0.00
+    eq = engine.account.starting if engine is None else max(engine.equity(), 1.0)
     return {
         "id": t.id,
         "symbol": t.symbol,
+        "binance_url": _binance_url(t.symbol),
         "side": t.side,
         "side_zh": SIDE_ZH[t.side],
         "venue": t.venue,
         "venue_zh": VENUE_ZH.get(t.venue, t.venue),
         "hypothesis": t.hypothesis,
         "plain": _plain_thesis(t),
+        "why_side": _why_side(t.side, t.families),
         "entry": t.entry,
         "mark": px,
+        "exit_price": t.exit_price,
         "invalidation": t.invalidation,
-        "notional": t.notional,
+        "stop_pct": round(stop_pct, 4),
+        "tp1": tp1,
+        "tp2": tp2,
+        "notional": round(t.notional, 2),
+        "qty": t.qty,
+        "remaining_qty": t.remaining_qty,
+        "size_pct": round(t.notional / eq, 4) if eq else 0.0,
         "remaining_frac": (t.remaining_qty / t.qty) if t.qty else 0.0,
         "ret": round(ret, 4),
         "pnl": round(pnl, 2),
@@ -193,20 +226,191 @@ def _thesis_view(t: Thesis, marks: dict[str, float], now: float) -> dict:
         "families_zh": [FAMILY_ZH.get(f, f) for f in t.families],
         "status": t.status,
         "exit_reason": t.exit_reason,
+        "exit_reason_zh": EXIT_ZH.get(t.exit_reason or "", t.exit_reason or ""),
         "hours_left": round(remain_h, 2),
+        "hold_hours": round(hold_h, 2),
+        "opened_ts": t.opened_ts,
+        "exit_ts": t.exit_ts,
         "opened_day": round(t.opened_ts / 86400.0, 3),
     }
 
 
 def _plain_thesis(t: Thesis) -> str:
-    fams = "、".join(FAMILY_ZH.get(f, f) for f in t.families) or "未知证据"
-    way = "大涨" if t.side == "long" else "大跌"
+    fams = "、".join(FAMILY_ZH.get(f, f) for f in t.families) or "未知信号"
     ch = VENUE_ZH.get(t.venue, t.venue)
+    stop_pct = abs(t.entry - t.invalidation) / t.entry if t.entry else 0.0
     return (
-        f"{ch}{SIDE_ZH[t.side]} {t.symbol}，看{way}。"
-        f"开仓理由：{fams} 同时出现。"
-        f"跌破/升破 {t.invalidation:.6g} 或超时没走出幅度，就平掉。"
+        f"{ch}{SIDE_ZH[t.side]} {t.symbol}。"
+        f"入场理由：{fams} 三类以上独立信号同时出现。"
+        f"用了 {t.notional:.1f} USDT。"
+        f"止损 {t.invalidation:.8g}（距入场 {stop_pct:.1%}）。"
+        f"涨/跌 40% 先减 25%，涨/跌 100% 再减 25%；"
+        f"从极值回撤 25% 且已赚 20% 则跟踪止盈；超时没走出 8% 则平掉。"
     )
+
+
+def _why_side(side: str, families) -> str:
+    fams = set(families or [])
+    if side == "short":
+        extra = "、".join(FAMILY_ZH.get(f, f) for f in fams) or "出货信号"
+        return f"做空：{extra} 指向下跌/出货，而不是反弹。"
+    extra = "、".join(FAMILY_ZH.get(f, f) for f in fams) or "横盘后启动"
+    return f"做多：{extra} 指向向上突破，且没有解锁+急涨的出货结构。"
+
+
+def _binance_url(symbol: str) -> str:
+    base = symbol[:-4] if symbol.endswith("USDT") else symbol
+    return f"https://www.binance.com/zh-CN/trade/{base}_USDT?type=spot"
+
+
+def _quote_of(quotes, symbol: str):
+    if isinstance(quotes, dict):
+        q = quotes.get(symbol)
+        if q is None:
+            return None
+        if hasattr(q, "price"):
+            return q
+        if isinstance(q, dict):
+            return q
+    return None
+
+
+def _discoveries(engine, now: float, quotes) -> list[dict]:
+    rows = []
+    cfg = engine.config
+    eq = max(engine.equity(), 1.0)
+    planned = min(eq * cfg.base_risk_frac, engine.account.cash * 0.95)
+    planned_moon = min(eq * cfg.moonshot_frac, engine.account.cash * 0.95)
+    for row in _hunt_rows(engine, now):
+        q = _quote_of(quotes, row["symbol"])
+        px = row["mark"] or (getattr(q, "price", None) if q is not None else None) or 0.0
+        chg = getattr(q, "change24h", None) if q is not None else None
+        if chg is None and isinstance(q, dict):
+            chg = q.get("change24h")
+        if chg is None:
+            chg = row["moved"]
+        vol = getattr(q, "quote_volume", None) if q is not None else None
+        if vol is None and isinstance(q, dict):
+            vol = q.get("quote_volume")
+        st = engine.coiled.states.get(row["symbol"])
+        stop = st.invalidation_hint if st else 0.0
+        if row["side"] == "long":
+            tp1 = px * (1.0 + cfg.scale_40) if px else 0.0
+            tp2 = px * (1.0 + cfg.scale_100) if px else 0.0
+            stop_pct = (px - stop) / px if px else 0.0
+        else:
+            tp1 = px * (1.0 - cfg.scale_40) if px else 0.0
+            tp2 = px * (1.0 - cfg.scale_100) if px else 0.0
+            stop_pct = (stop - px) / px if px else 0.0
+        how = []
+        if row["armed"]:
+            how.append(
+                f"用币安 15 分钟 K 线算出来的：波动收窄、成交萎缩"
+                f"（横盘缩量 {row['coiled']:.2f}，安静度 {row['silence']:.2f}）"
+            )
+        if row["votes"]:
+            how.append(
+                "已经出现的信号："
+                + "、".join(f"{v['sensor_zh']}（{v['family_zh']}）" for v in row["votes"])
+            )
+        if not how:
+            if row["coiled"] >= 0.28:
+                how.append(f"15 分钟波动在收窄（缩量 {row['coiled']:.2f}），还没到可开仓的横盘标准")
+            else:
+                how.append("还在扫币安 15 分钟 K 线和盘口，尚未形成可交易结构")
+        if row["gap"] == 0 and row["armed"]:
+            status = "独立信号已齐，还要过空间/拥挤/退出流动性才能开仓"
+        elif row["armed"]:
+            status = f"已盯上。还差 {row['gap']} 类独立信号（成交/消息/大单/板块/时间点里再凑）"
+        else:
+            status = row["wait"]
+        interesting = row["armed"] or bool(row["votes"]) or row["coiled"] >= 0.28
+        rows.append(
+            {
+                **row,
+                "interesting": interesting,
+                "binance_url": _binance_url(row["symbol"]),
+                "price": px,
+                "change24h": chg,
+                "quote_volume": vol,
+                "how_found": how,
+                "why_side": _why_side(row["side"], row["families"]),
+                "status": status,
+                "planned_usdt": round(planned, 2),
+                "planned_moon_usdt": round(planned_moon, 2),
+                "stop": stop,
+                "stop_pct": round(stop_pct, 4),
+                "tp1": tp1,
+                "tp2": tp2,
+                "time_stop_hours": cfg.coiled_breakout_hours,
+                "trail_pct": cfg.trail_drawdown,
+                "scale_frac": cfg.scale_frac,
+            }
+        )
+    rows.sort(key=lambda r: (not r["armed"], not r["votes"], -r["coiled"], r["gap"]))
+    return rows
+
+
+def _performance(engine, equity: float, starting: float) -> dict:
+    closed = list(engine.book.closed)
+    pnls = [t.realized_pnl for t in closed]
+    rets = [(t.realized_pnl / t.notional) if t.notional else 0.0 for t in closed]
+    wins = [p for p in pnls if p > 0]
+    losses = [p for p in pnls if p <= 0]
+    best = max(closed, key=lambda t: t.realized_pnl, default=None)
+    worst = min(closed, key=lambda t: t.realized_pnl, default=None)
+    return {
+        "trades": len(closed),
+        "open": engine.book.open_count(),
+        "wins": len(wins),
+        "losses": len(losses),
+        "win_rate": (len(wins) / len(closed)) if closed else 0.0,
+        "realized_pnl": round(sum(pnls), 2),
+        "unrealized": round(engine.book.unrealized(engine.venue.marks), 2),
+        "equity": round(equity, 2),
+        "starting": starting,
+        "total_ret": round((equity - starting) / starting, 4) if starting else 0.0,
+        "avg_win": round(sum(wins) / len(wins), 2) if wins else 0.0,
+        "avg_loss": round(sum(losses) / len(losses), 2) if losses else 0.0,
+        "best_symbol": best.symbol if best else "",
+        "best_pnl": round(best.realized_pnl, 2) if best else 0.0,
+        "worst_symbol": worst.symbol if worst else "",
+        "worst_pnl": round(worst.realized_pnl, 2) if worst else 0.0,
+        "avg_ret": round(sum(rets) / len(rets), 4) if rets else 0.0,
+        "daily_pnl": round(engine.account.daily_pnl, 2),
+        "weekly_pnl": round(engine.account.weekly_pnl, 2),
+    }
+
+
+def _rules(engine, now: float, regime: str) -> list[dict]:
+    cfg = engine.config
+    acc = engine.account
+    return [
+        {
+            "title": "仓位",
+            "text": f"普通一笔约权益的 {cfg.base_risk_frac:.0%}（现在约 {acc.tradable_equity() * cfg.base_risk_frac:.0f} USDT）。信号极强才用 {cfg.moonshot_frac:.0%}。杠杆硬顶 {cfg.max_leverage:.0f}x，同时最多 {cfg.max_concurrent} 笔。",
+        },
+        {
+            "title": "止损",
+            "text": f"开仓前就算好止损价。止损距离不超过入场价 35%。单笔最大亏损按权益 {cfg.max_loss_frac:.0%} 约束。打到止损价就全平。",
+        },
+        {
+            "title": "止盈",
+            "text": f"浮盈 {cfg.scale_40:.0%} 先减仓 {cfg.scale_frac:.0%}；浮盈 {cfg.scale_100:.0%} 再减 {cfg.scale_frac:.0%}。已赚 20% 后又从高/低点回撤 {cfg.trail_drawdown:.0%}，跟踪止盈全平。",
+        },
+        {
+            "title": "时间",
+            "text": f"横盘突破单最多拿 {cfg.coiled_breakout_hours:.0f} 小时，消息单 {cfg.catalyst_hours:.0f} 小时，空头 {cfg.dump_hours:.0f} 小时。超时且涨跌不到 8% 就平。",
+        },
+        {
+            "title": "熔断",
+            "text": f"当天亏超过起始资金的 {cfg.daily_kill_frac:.0%} 停止开新仓。当周亏超过 {cfg.weekly_kill_frac:.0%} 停更久。亏一笔后冷却 {cfg.post_loss_cooldown_hours:.0f} 小时。",
+        },
+        {
+            "title": "BTC",
+            "text": f"BTC 24 小时跌超过 {abs(cfg.btc_stress_24h):.0%} 时，禁止新开山寨多单。现在 BTC 24h {engine.universe.btc_ret_24h:+.2%}，环境：{REGIME_ZH.get(regime, regime)}。",
+        },
+    ]
 
 
 def _hunt_rows(engine, now: float) -> list[dict]:
@@ -342,8 +546,23 @@ def _narrate(state, open_theses, armed, regime, engine, now, marks) -> str:
             bits.append(f"{t.symbol} {SIDE_ZH[t.side]} {ret:+.0%}")
         return head + "当前持仓：" + "；".join(bits) + "。止损没打就拿着，打了就平。"
     if state == "ARMED":
-        names = "、".join(armed[:4])
-        return head + f"正在盯 {names}。结构已经压缩，再出现两类以上信号才会开仓。"
+        bits = []
+        for sym in armed[:3]:
+            st = engine.coiled.states.get(sym)
+            px = marks.get(sym)
+            if st and px:
+                bits.append(
+                    f"{sym} 现价 {px:.8g}，预案{SIDE_ZH[st.preferred_side]}，"
+                    f"止损 {st.invalidation_hint:.8g}"
+                )
+            else:
+                bits.append(sym)
+        return (
+            head
+            + "发现："
+            + "；".join(bits)
+            + "。这是币安 15 分钟 K 线算出的横盘缩量。还要再出现两类以上独立信号才开仓。"
+        )
     last_close = engine.book.closed[-1].exit_ts if engine.book.closed else 0.0
     quiet_h = max(0.0, (now - last_close) / 3600.0) if last_close else 0.0
     n_coil = sum(1 for s in engine.coiled.states.values() if s.armed)

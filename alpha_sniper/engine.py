@@ -51,6 +51,7 @@ class AlphaSniperEngine:
         self.recent_coincidences: list = []
         self.near_misses: list[dict] = []
         self.allow_new_entries: bool = True
+        self.record_events: bool = True
 
     def attach_profiles(self, profiles) -> None:
         self.universe.set_profiles(profiles)
@@ -108,24 +109,31 @@ class AlphaSniperEngine:
                 self.recent_coincidences = self.recent_coincidences[-80:]
             opp = self._opportunity(bar, coiled, coin, lag_why)
             if opp is None:
-                self.near_misses.append(
-                    {
-                        "ts": bar.ts,
-                        "symbol": bar.symbol,
-                        "side": coin.side,
-                        "families": list(coin.families),
-                        "reason": "三类信号齐了，但空间/拥挤度/退出流动性没过线，所以没开",
-                    }
-                )
-                if len(self.near_misses) > 40:
-                    self.near_misses = self.near_misses[-40:]
+                if self.record_events:
+                    scores = self.universe.scores_partial(bar.symbol, bar)
+                    why = self.scorer.reject_reason(coin, scores, classify_ignition(bar, self.sensors.volume_z(bar.symbol)), coiled.armed or coin.side == "short")
+                    self.near_misses.append(
+                        {
+                            "ts": bar.ts,
+                            "symbol": bar.symbol,
+                            "side": coin.side,
+                            "families": list(coin.families),
+                            "reason": why,
+                            "possibility": round(scores.possibility, 3),
+                            "crowding": round(scores.crowding, 3),
+                            "exit_liquidity": round(scores.exit_liquidity, 3),
+                        }
+                    )
+                    if len(self.near_misses) > 40:
+                        self.near_misses = self.near_misses[-40:]
                 continue
             deny = self.risk.allow_new(
                 self.account, self.book.open_count(), bar.ts, self.universe.regime(), opp.side
             )
             if deny:
-                self.skips.append((bar.symbol, deny))
-                self.journal.append(JournalEvent(bar.ts, "skip", bar.symbol, deny))
+                if self.record_events:
+                    self.skips.append((bar.symbol, deny))
+                    self.journal.append(JournalEvent(bar.ts, "skip", bar.symbol, deny))
                 continue
             if not self.allow_new_entries:
                 continue
@@ -182,12 +190,20 @@ class AlphaSniperEngine:
             # 失效价太远等于没有止损，拆掉
             self._reduce(thesis, "bad_stop", thesis.remaining_qty, fill.price, bar.ts)
             return None
+        side_zh = "做多" if opp.side == "long" else "做空"
+        venue_zh = {"spot": "现货", "futures_1x": "1x 合约", "alpha": "Alpha"}.get(opp.venue, opp.venue)
+        eq = self.equity()
         self.journal.append(
             JournalEvent(
                 bar.ts,
                 "open",
                 opp.symbol,
-                f"{opp.side} {opp.venue} notional={notional:.1f} moon={moonshot} {thesis.hypothesis}",
+                (
+                    f"{venue_zh}{side_zh}，用了 {notional:.1f} USDT"
+                    f"（约占权益 {notional / eq:.0%}{'，加大仓位' if moonshot else ''}），"
+                    f"入场 {fill.price:.8g}，止损 {thesis.invalidation:.8g}。"
+                    f"{thesis.hypothesis}"
+                ),
             )
         )
         return thesis
@@ -216,7 +232,10 @@ class AlphaSniperEngine:
                     now,
                     "close",
                     thesis.symbol,
-                    f"{reason} pnl={thesis.realized_pnl:.2f} ret={win_ret:.1%} {thesis.hypothesis[:80]}",
+                    (
+                        f"{_exit_zh(reason)}，盈亏 {thesis.realized_pnl:.2f} USDT，"
+                        f"收益率 {win_ret:.1%}，出场 {px:.8g}"
+                    ),
                 )
             )
             return thesis
@@ -244,6 +263,20 @@ class AlphaSniperEngine:
                 closed.append(t)
         self.risk.ratchet(self.account, self.equity())
         return closed
+
+
+def _exit_zh(reason: str) -> str:
+    return {
+        "invalidation": "打到止损价，全部平掉",
+        "time_stop": "超过持仓时限且涨跌不到 8%，时间止损",
+        "trail": "已赚超过 20%，又从高/低点回撤 25%，跟踪止盈",
+        "scale_40": "浮盈达到 40%，先减仓 25%",
+        "scale_100": "浮盈达到 100%，再减仓 25%",
+        "flatten": "手动全部平仓",
+        "手动全部平仓": "手动全部平仓",
+        "手动平仓": "手动平仓",
+        "bad_stop": "止损距离不合理，开完立刻撤掉",
+    }.get(reason, reason)
 
 
 def run_paper(config: SniperConfig | None = None) -> AlphaSniperEngine:

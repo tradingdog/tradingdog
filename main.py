@@ -294,7 +294,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.62"  # 修复：热身拉 K 线时不再长时间锁死监控台接口
+APP_VERSION = "0.1.63"  # 修复：监控台按发现/仓位/止损/成绩单展示，并与币安现价对齐
 # 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"

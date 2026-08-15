@@ -62,10 +62,15 @@ class RealSimSession:
                 self.engine.attach_profiles(profiles)
                 self.watch = [p.symbol for p in profiles]
                 self.engine.allow_new_entries = False
+                self.engine.record_events = False
             for sym in list(self.watch):
                 self._warmup_symbol(sym)
             with self.lock:
                 self.engine.allow_new_entries = self.allow_new and self.running
+                self.engine.record_events = True
+                self.engine.near_misses.clear()
+                self.engine.journal.clear()
+                self.engine.skips.clear()
                 self._warm_done = True
                 self.ready = True
                 self.last_poll = time.time()

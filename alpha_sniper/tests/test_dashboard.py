@@ -23,6 +23,9 @@ class SnapshotTests(unittest.TestCase):
         self.assertTrue(any(w in snap["narration"] + snap["state_zh"] for w in ("空仓", "持仓", "盯")))
         self.assertGreaterEqual(snap["account"]["equity"], 1)
         self.assertTrue(snap["hunt"])
+        self.assertTrue(snap["discoveries"])
+        self.assertIn("trades", snap["performance"])
+        self.assertTrue(snap["rules"])
         self.assertTrue(any(row["family_lamps"] for row in snap["hunt"]))
         self.assertEqual(len(snap["risk"]["gates"]), 6)
         self.assertFalse(snap["live"])
@@ -37,6 +40,12 @@ class SnapshotTests(unittest.TestCase):
             snap["theses"],
         )
         self.assertTrue(any("COIL" in snap["narration"] or t["symbol"] == "COILUSDT" for t in snap["theses"]))
+        coil = next(t for t in snap["theses"] if t["symbol"] == "COILUSDT")
+        self.assertGreater(coil["notional"], 10)
+        self.assertGreater(coil["entry"], 0)
+        self.assertGreater(coil["invalidation"], 0)
+        self.assertIn("做多", coil["why_side"])
+        self.assertTrue(coil["binance_url"].endswith("COIL_USDT?type=spot"))
 
     def test_manual_flatten_closes_open_position(self):
         session = LiveSession(SniperConfig(paper_days=36, seed=42))
@@ -77,6 +86,8 @@ class HttpTests(unittest.TestCase):
         try:
             html = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5).read().decode()
             self.assertIn("交易监控", html)
+            self.assertIn("发现了什么", html)
+            self.assertIn("成绩单", html)
             self.assertIn("当前持仓", html)
             self.assertIn("继续开仓", html)
             self.assertNotIn("下一枪", html)

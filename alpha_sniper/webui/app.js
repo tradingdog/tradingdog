@@ -63,35 +63,33 @@ function render(s) {
       ? `监控 ${feed.symbols || 0} 个 USDT 交易对 · Alpha ${feed.alpha || 0} 个 · ${feed.key_note || ""}${pollAt}${feed.last_error ? " · " + feed.last_error : ""}`
       : "当前是本地回放数据，不是币安实时行情。";
   }
-  const mv = $("movers");
-  if (mv) {
-    const quotes = (s.quotes || []).slice(0, 8);
-    mv.innerHTML = quotes.length
-      ? quotes.map((q) => `<div class="mover"><div class="sym">${q.symbol}${q.is_alpha ? " · Alpha" : ""}</div><div class="chg ret ${clsRet(q.change24h)}">${pct(q.change24h)}</div></div>`).join("")
-      : "";
-  }
-
   document.querySelectorAll("#speeds button").forEach((b) => {
     b.classList.toggle("on", Number(b.dataset.speed) === s.speed);
   });
 
   const a = s.account;
+  const p = s.performance || {};
   $("metrics").innerHTML = [
-    metric("权益", money(a.equity), `起始 ${money(a.starting)} · ${a.multiple.toFixed(2)}x`, clsRet(a.equity - a.starting)),
-    metric("可用资金", money(a.cash), "模拟账户里还能开仓的钱"),
-    metric("锁定利润", money(a.vault), "翻倍后锁住，不再拿去开新仓"),
-    metric("浮动盈亏", money(a.unrealized), "未平仓的模拟盈亏", clsRet(a.unrealized)),
-    metric("距 100 倍", pct(a.progress_log), `线性 ${pct(a.progress_linear)} · 目标 ${money(a.target)}`),
+    metric("模拟权益", money(a.equity), `起始 ${money(a.starting)} · ${a.multiple.toFixed(2)}x`, clsRet(a.equity - a.starting)),
+    metric("可用资金", money(a.cash), "还能用来开新仓的模拟资金"),
+    metric("总收益率", pct(p.total_ret != null ? p.total_ret : (a.equity - a.starting) / a.starting), `已实现 ${money(p.realized_pnl || 0)} · 浮动 ${money(a.unrealized)}`, clsRet(a.equity - a.starting)),
+    metric("胜率", p.trades ? pct(p.win_rate) : "—", p.trades ? `${p.wins} 赢 / ${p.losses} 亏 · 共 ${p.trades} 笔` : "还没有平过仓"),
+    metric("今日盈亏", money(a.daily_pnl), `本周 ${money(a.weekly_pnl)} · 锁定利润 ${money(a.vault)}`, clsRet(a.daily_pnl)),
   ].join("");
 
-  $("stones").innerHTML = a.stepping_stones
-    .map((st) => `<span class="stone ${st.hit ? "hit" : ""}">${st.label}</span>`)
-    .join("<span class='stone'>→</span>");
+  const disc = $("discoveries");
+  if (disc) disc.innerHTML = renderDiscoveries(s);
 
   $("theses").innerHTML = s.theses.length
     ? s.theses.map(thesisCard).join("")
-    : `<div class="empty"><strong>◎ 空仓</strong>现在没有模拟持仓，这是正常的。<br/>下面列表里出现横盘缩量、再凑齐三类信号，才会开仓。</div>`;
+    : `<div class="empty"><strong>现在空仓</strong>没有模拟持仓是正常的。上面「发现了什么」里出现横盘缩量，并且凑齐三类独立信号，才会开仓。</div>`;
 
+  const rules = $("rules");
+  if (rules) {
+    rules.innerHTML = (s.rules || [])
+      .map((r) => `<div class="rule"><strong>${r.title}</strong><div>${r.text}</div></div>`)
+      .join("");
+  }
   $("gates").innerHTML = s.risk.gates
     .map(
       (g) => `<div class="gate"><span><i class="dot ${g.ok ? "ok" : "bad"}"></i>${g.label}</span><span class="mute">${g.detail}</span></div>`
@@ -101,38 +99,8 @@ function render(s) {
     ? "<div>最近没开仓的原因</div>" + s.skips.map((x) => `<div>${x.why_zh} · ${x.count} 次</div>`).join("")
     : "<div>还没有过滤记录。安静说明没乱开仓。</div>";
 
-  $("hunt").innerHTML = s.hunt
-    .map((r) => {
-      const lamps = r.family_lamps
-        .map((l) => `<span class="lamp ${l.on ? "on" : ""}" title="${l.zh}">${l.zh.slice(0, 1)}</span>`)
-        .join("");
-      const q = (s.quotes || []).find((x) => x.symbol === r.symbol);
-      const chg = q ? q.change24h : r.moved;
-      return `<tr>
-        <td><strong>${r.symbol}</strong><div class="mute">${r.is_alpha ? "Alpha" : r.tier} · ${r.venue_zh}</div></td>
-        <td class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</td>
-        <td class="mono">${r.mark == null ? "—" : Number(r.mark).toPrecision(6)}</td>
-        <td class="mono">${r.coiled.toFixed(2)}${r.armed ? " · 已盯" : ""}</td>
-        <td class="mono">${r.silence.toFixed(2)}</td>
-        <td><div class="lamps">${lamps}</div></td>
-        <td>
-          <div class="bars">
-            <div class="bar" title="可能性"><i style="width:${pct(r.possibility)}"></i></div>
-            <div class="bar crowd" title="拥挤"><i style="width:${pct(r.crowding)}"></i></div>
-            <div class="bar exit" title="退出"><i style="width:${pct(r.exit_liquidity)}"></i></div>
-          </div>
-        </td>
-        <td>${r.wait}</td>
-        <td><button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button></td>
-      </tr>`;
-    })
-    .join("");
-
-  $("script").innerHTML = s.script
-    .map(
-      (ev) => `<li class="${ev.status}"><span class="d">${ev.symbol || "公告"}</span><div><strong>${ev.title}</strong><div class="mute">${ev.hint || ""}</div></div></li>`
-    )
-    .join("");
+  const sc = $("scorecard");
+  if (sc) sc.innerHTML = renderScorecard(p);
 
   const journal = [...s.journal].reverse();
   $("journal").innerHTML = journal.length
@@ -154,15 +122,16 @@ function render(s) {
         .reverse()
         .map(
           (t) => `<div class="closed-row">
-            <strong>${t.symbol}</strong>
+            <div><strong>${t.symbol}</strong> <a class="ext" href="${t.binance_url || "#"}" target="_blank" rel="noreferrer">币安</a></div>
             <span class="tag ${t.side}">${t.side_zh}</span>
-            <span class="mono ret ${clsRet(t.ret)}">${pct(t.ret)}</span>
-            <span>${t.exit_reason || "—"} · ${(t.families_zh || []).join("、")}</span>
-            <span class="mono">${money(t.pnl)}</span>
+            <span class="mono">${money(t.notional)} U</span>
+            <span class="mono">入 ${Number(t.entry).toPrecision(6)} → 出 ${Number(t.exit_price || t.mark).toPrecision(6)}</span>
+            <span>${t.exit_reason_zh || t.exit_reason || "—"}</span>
+            <span class="mono ret ${clsRet(t.ret)}">${pct(t.ret)} · ${money(t.pnl)}</span>
           </div>`
         )
         .join("")
-    : `<div class="empty">还没有平过仓。</div>`;
+    : `<div class="empty">还没有平过仓。有了第一笔，这里会写出场价、盈亏和收益率。</div>`;
 
   drawEquity(s.equity_curve, a.starting, a.target);
 }
@@ -171,21 +140,92 @@ function metric(k, v, hint, extra) {
   return `<article class="metric"><div class="k">${k}</div><div class="v ${extra || ""}">${v}</div><div class="hint">${hint}</div></article>`;
 }
 
+function renderDiscoveries(s) {
+  const rows = s.discoveries || s.hunt || [];
+  const focus = rows.filter((r) => r.interesting || r.armed).slice(0, 8);
+  const rest = rows.filter((r) => !focus.includes(r));
+  const cards = focus.length
+    ? focus.map((r) => discoveryCard(r, s)).join("")
+    : `<div class="empty">还没有盯上任何币。系统在扫币安现货里波动还能走大的 USDT 交易对。</div>`;
+  const table = rest.length
+    ? `<table class="rest"><thead><tr><th>币对</th><th>现价</th><th>24h</th><th>方向预案</th><th>系统判断</th><th></th></tr></thead><tbody>${rest
+        .map((r) => {
+          const chg = r.change24h != null ? r.change24h : r.moved;
+          return `<tr>
+            <td><strong>${r.symbol}</strong> <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">币安</a></td>
+            <td class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</td>
+            <td class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</td>
+            <td>${r.side_zh || ""}</td>
+            <td>${r.status || r.wait || ""}</td>
+            <td><button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑"}</button></td>
+          </tr>`;
+        })
+        .join("")}</tbody></table>`
+    : "";
+  return cards + table;
+}
+
+function discoveryCard(r, s) {
+  const chg = r.change24h != null ? r.change24h : r.moved;
+  const how = (r.how_found || []).map((x) => `<li>${x}</li>`).join("");
+  const vol = r.quote_volume != null ? `${money(r.quote_volume)} USDT` : "—";
+  return `<article class="find ${r.armed ? "hot" : ""}">
+    <div class="row">
+      <h3>${r.symbol} <span class="tag ${r.side}">${r.side_zh}</span> ${r.armed ? '<span class="tag">已盯上</span>' : ""}</h3>
+      <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
+    </div>
+    <div class="nums">
+      <div><span class="k">现价</span><span class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</span></div>
+      <div><span class="k">24h</span><span class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</span></div>
+      <div><span class="k">24h成交额</span><span class="mono">${vol}</span></div>
+      <div><span class="k">计划仓位</span><span class="mono">${money(r.planned_usdt)} U</span></div>
+    </div>
+    <p class="plain">${r.why_side || ""}</p>
+    <p class="plain"><strong>怎么发现的：</strong></p>
+    <ul class="how">${how || "<li>还在扫描</li>"}</ul>
+    <p class="plain"><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
+    <div class="plan">
+      预案止损 ${r.stop ? Number(r.stop).toPrecision(6) : "—"}（约 ${pct(r.stop_pct || 0)}）
+      · 第一档止盈 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（${r.side === "short" ? "跌" : "涨"} 40% 减 25%）
+      · 第二档 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%）
+      · ${r.time_stop_hours || 12} 小时没走出 8% 就平
+    </div>
+    <div class="actions">
+      <button type="button" class="tiny" data-block="${r.symbol}">${(s.blocked || []).includes(r.symbol) ? "取消拉黑" : "拉黑这个币"}</button>
+    </div>
+  </article>`;
+}
+
+function renderScorecard(p) {
+  if (!p) return "";
+  return `<div class="score">
+    <div><span class="k">已平仓笔数</span><b>${p.trades || 0}</b></div>
+    <div><span class="k">胜率</span><b>${p.trades ? pct(p.win_rate) : "—"}</b></div>
+    <div><span class="k">已实现盈亏</span><b class="ret ${clsRet(p.realized_pnl || 0)}">${money(p.realized_pnl || 0)}</b></div>
+    <div><span class="k">平均盈利 / 亏损</span><b>${money(p.avg_win || 0)} / ${money(p.avg_loss || 0)}</b></div>
+    <div><span class="k">最好一笔</span><b>${p.best_symbol || "—"} ${p.best_symbol ? money(p.best_pnl) : ""}</b></div>
+    <div><span class="k">最差一笔</span><b>${p.worst_symbol || "—"} ${p.worst_symbol ? money(p.worst_pnl) : ""}</b></div>
+  </div>`;
+}
+
 function thesisCard(t) {
   return `<article class="card">
     <div class="row">
       <h3>${t.symbol} <span class="tag ${t.side}">${t.side_zh}</span> <span class="tag">${t.venue_zh}</span></h3>
-      <div class="mono ret ${clsRet(t.ret)}">${pct(t.ret)} · ${money(t.pnl)}</div>
+      <div class="mono ret ${clsRet(t.ret)}">${pct(t.ret)} · ${money(t.pnl)} U</div>
     </div>
+    <p class="plain">${t.why_side || ""}</p>
     <p class="plain">${t.plain}</p>
-    <div class="mute" style="margin-top:10px">
-      入场 ${t.entry.toPrecision(4)} · 现价 ${Number(t.mark).toPrecision(4)} · 止损 ${t.invalidation.toPrecision(4)}
-      · 剩余仓 ${(t.remaining_frac * 100).toFixed(0)}%
-      · 还剩 ${t.hours_left.toFixed(1)} 小时
-      ${t.scaled_40 ? " · 已减 40%" : ""}
-      ${t.scaled_100 ? " · 已减 100% 档" : ""}
+    <div class="nums">
+      <div><span class="k">仓位</span><span class="mono">${money(t.notional)} U（${pct(t.size_pct || 0)} 权益）</span></div>
+      <div><span class="k">入场</span><span class="mono">${Number(t.entry).toPrecision(6)}</span></div>
+      <div><span class="k">现价</span><span class="mono">${Number(t.mark).toPrecision(6)}</span></div>
+      <div><span class="k">止损</span><span class="mono">${Number(t.invalidation).toPrecision(6)}（${pct(t.stop_pct || 0)}）</span></div>
+      <div><span class="k">止盈1 / 2</span><span class="mono">${Number(t.tp1).toPrecision(6)} / ${Number(t.tp2).toPrecision(6)}</span></div>
+      <div><span class="k">剩余时间</span><span class="mono">${t.hours_left.toFixed(1)} / ${t.hold_hours ? t.hold_hours.toFixed(0) : "—"} 小时</span></div>
     </div>
     <div class="actions">
+      <a class="ext" href="${t.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
       <button type="button" class="tiny danger" data-close="${t.id}">平掉这一笔</button>
     </div>
   </article>`;

@@ -74,5 +74,29 @@ class ConvictionScorer:
         )
 
 
+    def reject_reason(
+        self,
+        coincidence: Coincidence,
+        scores: FourScores,
+        kind: IgnitionKind,
+        precomputed: bool,
+    ) -> str:
+        cfg = self.config
+        bits: list[str] = []
+        if scores.possibility < cfg.min_possibility:
+            bits.append(f"空间分 {scores.possibility:.2f} 低于 {cfg.min_possibility:.2f}（大涨大跌空间不够）")
+        if scores.ignition < cfg.min_ignition:
+            bits.append(f"点火分 {scores.ignition:.2f} 低于 {cfg.min_ignition:.2f}（还没真正启动）")
+        if scores.crowding > cfg.max_crowding:
+            bits.append(f"拥挤度 {scores.crowding:.2f} 高于 {cfg.max_crowding:.2f}（已经走完一大截）")
+        if scores.exit_liquidity < cfg.min_exit_liquidity:
+            bits.append(f"退出流动性 {scores.exit_liquidity:.2f} 低于 {cfg.min_exit_liquidity:.2f}（盘口太薄）")
+        if kind == "retail_fomo" and scores.crowding > 0.45:
+            bits.append("更像散户追涨，且已经拥挤")
+        if not bits:
+            bits.append(f"综合把握低于 {cfg.min_conviction:.2f}，不开")
+        return "；".join(bits)
+
+
 def _clamp(x: float) -> float:
     return max(0.0, min(1.0, x))

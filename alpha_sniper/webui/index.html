@@ -6,17 +6,16 @@
   <title>交易监控 · Alpha Sniper</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="app.css" />
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
   <header class="top">
     <div class="brand">
       <div class="mark">◎</div>
       <div>
         <h1>交易监控</h1>
-        <p class="sub">币安现货 / 1x 合约 / Alpha · 真实行情 · 模拟资金</p>
+        <p class="sub">币安现货真实价格 · 模拟资金 · 1x · 不会下真单</p>
       </div>
     </div>
     <div class="status-cluster">
@@ -36,74 +35,49 @@
 
   <section class="narration" id="narration">正在连接币安行情…</section>
   <section class="feedline" id="feedline"></section>
-  <section class="movers" id="movers"></section>
-
   <section class="metrics" id="metrics"></section>
-  <section class="stones" id="stones"></section>
 
   <main class="grid">
+    <section class="panel span-2">
+      <header>
+        <h2>发现了什么</h2>
+        <p>系统从币安现货 24h 行情里挑出来的币。现价可点链接去币安核对。这里写清楚：发现了谁、怎么发现的、为什么做多/做空、计划用多少钱、止损止盈怎么算。</p>
+      </header>
+      <div id="discoveries"></div>
+    </section>
+
     <section class="panel theses">
       <header>
         <h2>当前持仓</h2>
-        <p>模拟仓位。止损到了会自动平，也可以手动平掉这一笔。</p>
+        <p>模拟仓位。止损到了会自动平。每一笔都写明入场理由、仓位、止损、止盈。</p>
       </header>
       <div id="theses"></div>
     </section>
 
     <section class="panel risk">
       <header>
-        <h2>风控状态</h2>
-        <p>先活下来，再谈抓住大波动。</p>
+        <h2>风控规则</h2>
+        <p>这些数字就是代码里的硬限制，接入真金前先看模拟盘能不能守住。</p>
       </header>
+      <div id="rules"></div>
       <div id="gates"></div>
       <div id="skips" class="skips"></div>
     </section>
 
-    <section class="panel hunt span-2">
+    <section class="panel span-2">
       <header>
-        <h2>监控列表</h2>
-        <p>五盏灯 = 五类独立信号（成交 / 消息 / 大单 / 板块 / 时间点）。同类信号再多也只算一票。要三类同时亮才考虑开仓。</p>
+        <h2>成绩单</h2>
+        <p>模拟账户从 1000 出发的结果。先看这里，再决定要不要接真金。</p>
       </header>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>币对</th>
-              <th>24h</th>
-              <th>现价</th>
-              <th>缩量横盘</th>
-              <th>安静多久</th>
-              <th>信号</th>
-              <th>空间 / 拥挤 / 能否退出</th>
-              <th>系统判断</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="hunt"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel chart">
-      <header>
-        <h2>模拟权益</h2>
-        <p>起始 1000，目标 100000。这是模拟账户，不是币安余额。</p>
-      </header>
-      <canvas id="equity" width="720" height="220"></canvas>
-    </section>
-
-    <section class="panel script">
-      <header>
-        <h2>币安公告</h2>
-        <p>上币、下架这类消息，系统会拿来当开仓理由之一。</p>
-      </header>
-      <ol id="script"></ol>
+      <div id="scorecard"></div>
+      <canvas id="equity" width="720" height="180"></canvas>
+      <div id="closed"></div>
     </section>
 
     <section class="panel log">
       <header>
-        <h2>成交与过滤</h2>
-        <p>开仓、平仓、以及为什么没开。</p>
+        <h2>开平仓记录</h2>
+        <p>每一笔为什么开、用了多少钱、为什么平、收益率。</p>
       </header>
       <ul id="journal"></ul>
     </section>
@@ -111,22 +85,14 @@
     <section class="panel miss">
       <header>
         <h2>信号够了但没开</h2>
-        <p>三类信号齐了，但太挤、盘口太薄或风控拦住。</p>
+        <p>三类独立信号齐了，但空间、拥挤或盘口没过线。这是过滤，不是漏单。</p>
       </header>
       <ul id="misses"></ul>
-    </section>
-
-    <section class="panel closed span-2">
-      <header>
-        <h2>已平仓</h2>
-        <p>看它为什么平，比只看赚亏有用。</p>
-      </header>
-      <div id="closed"></div>
     </section>
   </main>
 
   <footer>
-    资金是模拟的，价格来自币安。密钥只放在服务器环境变量里，页面上看不到。空仓是正常状态。
+    价格来自币安公开行情，资金是模拟的。密钥不在页面上。空仓是正常状态。核对现价请点每个币的「去币安」。
   </footer>
   <script src="app.js"></script>
 </body>
