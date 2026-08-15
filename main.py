@@ -294,7 +294,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.73"  # 修复：451不刷屏；近失标明启动回放K线时间；监控台显示各模块启动与运行时长
+APP_VERSION = "0.1.74"  # 修复：监控台时间统一按北京时间显示
 # 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"

@@ -120,6 +120,8 @@ class HttpTests(unittest.TestCase):
             self.assertIn("patchDiscoveryLive", js)
             self.assertIn("renderRuntime", js)
             self.assertIn("fmtDur", js)
+            self.assertIn("Asia/Shanghai", js)
+            self.assertIn("北京时间", js)
             self.assertNotIn("__OPEN_INIT", js)
             self.assertIn('id="runtime"', html)
             self.assertIn("启动回放", html)

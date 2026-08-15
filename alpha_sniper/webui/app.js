@@ -40,6 +40,7 @@ function fmtWall(ts, withSec) {
   if (ts == null || Number(ts) < 1e9) return "—";
   const opt = {
     hour12: false,
+    timeZone: "Asia/Shanghai",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -87,7 +88,7 @@ function renderRuntime(s) {
     rtCard("本进程启动", fmtWall(rt.process_started_at, true), `已运行 ${fmtDur(rt.uptime_sec)}`),
     rtCard("行情就绪", fmtWall(rt.ready_at, true), rt.ready_at ? `就绪后已盯 ${fmtDur(rt.ready_sec)}` : "仍在拉 K 线"),
     rtCard("上次刷新公开行情", fmtWall(rt.last_poll_at, true), rt.last_poll_ago_sec != null ? `${fmtDur(rt.last_poll_ago_sec)} 前` : "尚未刷新"),
-    rtCard("最近 1 小时 K", barOpen ? `${fmtWall(barOpen)} → ${fmtWall(barClose)}` : "—", nextHint),
+    rtCard("最近 1 小时 K（北京时间）", barOpen ? `${fmtWall(barOpen)} → ${fmtWall(barClose)}` : "—", nextHint),
     rtCard("盯盘池上次重选", fmtWall(rt.universe_at, true), "大约每 6 小时按横盘缩量重挑一次"),
     rtCard("模拟账户落盘", fmtWall(rt.saved_at, true), rt.restored ? "本进程从上次状态接着跑" : (rt.saved_at ? "已写入本机状态文件" : "尚未落盘")),
   ].join("");
@@ -115,6 +116,7 @@ function when(s, day, ts) {
   if (s && s.clock_mode === "unix" && ts && ts > 1e9) {
     return new Date(ts * 1000).toLocaleString("zh-CN", {
       hour12: false,
+      timeZone: "Asia/Shanghai",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
@@ -133,7 +135,7 @@ function render(s) {
   pill.className = "pill " + ({ SQUAT: "squat", ARMED: "armed", IN_THESIS: "fire" }[s.state] || "squat");
   if (s.mode === "binance_sim") {
     const wall = rt.wall_now || Date.now() / 1000;
-    $("clock").textContent = fmtWall(wall, true);
+    $("clock").textContent = `${fmtWall(wall, true)} 北京时间`;
     const up = $("uptimePill");
     if (up) up.textContent = `已运行 ${fmtDur(rt.uptime_sec)}`;
   } else if (s.clock_mode === "unix" && s.now > 1e9) {
