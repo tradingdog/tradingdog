@@ -309,10 +309,17 @@ def _discoveries(engine, now: float, quotes) -> list[dict]:
                 f"（横盘缩量 {row['coiled']:.2f}，安静度 {row['silence']:.2f}）"
             )
         if row["votes"]:
-            how.append(
-                "已经出现的信号："
-                + "、".join(f"{v['sensor_zh']}（{v['family_zh']}）" for v in row["votes"])
-            )
+            seen = set()
+            parts = []
+            for v in row["votes"]:
+                key = (v.get("sensor_zh"), v.get("family_zh"), v.get("side"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                side = "做多" if v.get("side") == "long" else "做空" if v.get("side") == "short" else ""
+                parts.append(f"{v.get('sensor_zh')}（{v.get('family_zh')}{('，' + side) if side else ''}）")
+            if parts:
+                how.append("已经出现的信号：" + "、".join(parts))
         if not how:
             if row["coiled"] >= 0.28:
                 how.append(f"15 分钟波动在收窄（缩量 {row['coiled']:.2f}），还没到可开仓的横盘标准")
