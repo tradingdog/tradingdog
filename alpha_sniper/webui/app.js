@@ -301,13 +301,28 @@ async function poll() {
   setTimeout(poll, 700);
 }
 
-async function startReplay() {
-  const res = await fetch("replay.json", { cache: "no-store" });
-  if (!res.ok) {
-    $("narration").textContent = "打不开观察台数据。请用文里的公网链接，不要打开 127.0.0.1。";
-    return;
+function loadEmbeddedReplay() {
+  const node = document.getElementById("replay-data");
+  if (!node || !node.textContent.trim()) return null;
+  try {
+    return JSON.parse(node.textContent);
+  } catch (_) {
+    return null;
   }
-  const data = await res.json();
+}
+
+async function startReplay() {
+  let data = loadEmbeddedReplay();
+  if (!data) {
+    const base = document.querySelector('meta[name="asset-base"]');
+    const prefix = base ? base.getAttribute("content") : "";
+    const res = await fetch(`${prefix}replay.json`, { cache: "no-store" });
+    if (!res.ok) {
+      $("narration").textContent = "打不开观察台数据。请用最新的预览链接，不要打开 jsDelivr 或 127.0.0.1。";
+      return;
+    }
+    data = await res.json();
+  }
   replay.frames = data.frames || [];
   showReplay(0);
   if (replay.timer) clearInterval(replay.timer);

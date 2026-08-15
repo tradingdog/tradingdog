@@ -48,6 +48,14 @@ class ReplayFileTests(unittest.TestCase):
         self.assertIn("narration", first)
         self.assertIn("hunt", first)
         self.assertIn("account", first)
+        from alpha_sniper.export_replay import build_standalone
+
+        stand = build_standalone()
+        text = stand.read_text(encoding="utf-8")
+        self.assertIn("<!DOCTYPE html>", text)
+        self.assertIn('id="replay-data"', text)
+        self.assertIn("观察台", text)
+        self.assertGreater(stand.stat().st_size, 50_000)
 
 
 class HttpTests(unittest.TestCase):

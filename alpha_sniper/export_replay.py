@@ -91,6 +91,30 @@ def export_replay(path: Path | None = None, days: int = 36, seed: int = 42, ever
     return path
 
 
+def build_standalone(webui: Path | None = None) -> Path:
+    """把 CSS / JS / 重放数据打进一个 HTML，预览站才能当网页渲染。"""
+    webui = webui or Path(__file__).resolve().parent / "webui"
+    html = (webui / "index.html").read_text(encoding="utf-8")
+    css = (webui / "app.css").read_text(encoding="utf-8")
+    js = (webui / "app.js").read_text(encoding="utf-8")
+    replay = (webui / "replay.json").read_text(encoding="utf-8")
+    if "</script>" in replay.lower():
+        raise ValueError("replay.json 含有 </script>，不能内嵌")
+    html = html.replace(
+        '<link rel="stylesheet" href="app.css" />',
+        "<style>\n" + css + "\n</style>",
+    )
+    html = html.replace(
+        '<script src="app.js"></script>',
+        '<script type="application/json" id="replay-data">' + replay + "</script>\n<script>\n" + js + "\n</script>",
+    )
+    out = webui / "watchtower.html"
+    out.write_text(html, encoding="utf-8")
+    return out
+
+
 if __name__ == "__main__":
-    out = export_replay()
-    print(out, out.stat().st_size)
+    replay_path = export_replay()
+    stand = build_standalone()
+    print(replay_path, replay_path.stat().st_size)
+    print(stand, stand.stat().st_size)

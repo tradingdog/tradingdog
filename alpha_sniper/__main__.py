@@ -24,10 +24,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "export":
-        from .export_replay import export_replay
+        from .export_replay import build_standalone, export_replay
 
         path = export_replay()
+        stand = build_standalone()
         print(f"已写入 {path} ({path.stat().st_size} bytes)")
+        print(f"已写入 {stand} ({stand.stat().st_size} bytes)")
         return 0
 
     if args.cmd == "ui":
