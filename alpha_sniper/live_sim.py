@@ -109,8 +109,10 @@ class RealSimSession:
     def poll(self, bars: bool = True) -> None:
         if not self.ready:
             return
+        with self.lock:
+            watch = list(self.watch)
         try:
-            tickers = self.feed.ticker_24h()
+            tickers = self.feed.ticker_24h(watch)
             self.feed.refresh_quotes(tickers)
         except Exception as exc:
             self.feed.status.last_error = str(exc)[:180]

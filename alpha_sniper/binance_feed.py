@@ -165,11 +165,16 @@ class BinanceFeed:
             self.announcements = []
         return self.announcements
 
-    def ticker_24h(self) -> list[dict]:
-        data = self.get_json("/api/v3/ticker/24hr")
-        if not isinstance(data, list):
-            return []
-        return data
+    def ticker_24h(self, symbols: list[str] | None = None) -> list[dict]:
+        params = None
+        if symbols:
+            params = {"symbols": json.dumps(list(symbols), separators=(",", ":"))}
+        data = self.get_json("/api/v3/ticker/24hr", params or {})
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict) and data.get("symbol"):
+            return [data]
+        return []
 
     def klines(self, symbol: str, interval: str = "15m", limit: int = 200) -> list[list]:
         data = self.get_json("/api/v3/klines", {"symbol": symbol, "interval": interval, "limit": limit})
