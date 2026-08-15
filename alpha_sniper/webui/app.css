@@ -127,11 +127,16 @@ button.danger { color: var(--clay); border-color: #6a3d36; }
 }
 .ext { color: var(--amber); font-size: 12px; }
 .disc-wrap {
-  max-height: min(420px, 52vh);
-  overflow: auto;
+  max-height: min(480px, 58vh);
+  overflow-y: scroll;
+  overflow-x: hidden;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
   border: 1px solid var(--line);
   background: var(--paper-2);
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  min-height: 0;
 }
 .disc-item { border-bottom: 1px solid var(--line); }
 .disc-item:last-child { border-bottom: 0; }
@@ -352,7 +357,7 @@ footer {
   .metrics { padding: 0 12px; }
   .grid { padding: 12px 12px 28px; }
   .closed-row { grid-template-columns: 1fr; gap: 4px; }
-  .disc-wrap { max-height: min(360px, 48vh); }
+  .disc-wrap { max-height: min(420px, 56vh); }
 }
 
 @media (max-width: 720px) {

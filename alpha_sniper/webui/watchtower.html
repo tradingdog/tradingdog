@@ -137,11 +137,16 @@ button.danger { color: var(--clay); border-color: #6a3d36; }
 }
 .ext { color: var(--amber); font-size: 12px; }
 .disc-wrap {
-  max-height: min(420px, 52vh);
-  overflow: auto;
+  max-height: min(480px, 58vh);
+  overflow-y: scroll;
+  overflow-x: hidden;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
   border: 1px solid var(--line);
   background: var(--paper-2);
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  min-height: 0;
 }
 .disc-item { border-bottom: 1px solid var(--line); }
 .disc-item:last-child { border-bottom: 0; }
@@ -362,7 +367,7 @@ footer {
   .metrics { padding: 0 12px; }
   .grid { padding: 12px 12px 28px; }
   .closed-row { grid-template-columns: 1fr; gap: 4px; }
-  .disc-wrap { max-height: min(360px, 48vh); }
+  .disc-wrap { max-height: min(420px, 56vh); }
 }
 
 @media (max-width: 720px) {
@@ -428,7 +433,7 @@ footer {
         <h2>发现了什么</h2>
         <p>一行一个币：现价、方向、计划仓位、止损、卡在哪。点开才看发现原因和止盈。列表在框里滚，下面持仓和成绩单不用翻很久。</p>
       </header>
-      <div id="discoveries"></div>
+      <div id="discoveries" class="disc-wrap"></div>
     </section>
 
     <section class="panel theses">
@@ -583,7 +588,19 @@ function render(s) {
   ].join("");
 
   const disc = $("discoveries");
-  if (disc) disc.innerHTML = renderDiscoveries(s);
+  if (disc) {
+    bindDiscScroll(disc);
+    const html = renderDiscoveries(s);
+    const skel = discoverySkeleton(s);
+    const y = disc.scrollTop;
+    if (disc.dataset.skel !== skel) {
+      disc.innerHTML = html;
+      disc.dataset.skel = skel;
+      restoreDiscScroll(disc, y);
+    } else {
+      patchDiscoveryLive(disc, s);
+    }
+  }
 
   $("theses").innerHTML = s.theses.length
     ? s.theses.map(thesisCard).join("")
@@ -645,18 +662,63 @@ function metric(k, v, hint, extra) {
   return `<article class="metric"><div class="k">${k}</div><div class="v ${extra || ""}">${v}</div><div class="hint">${hint}</div></article>`;
 }
 
+function bindDiscScroll(el) {
+  if (!el || el.dataset.scrollBound) return;
+  el.dataset.scrollBound = "1";
+  el.addEventListener("scroll", () => { window.__DISC_Y = el.scrollTop; }, { passive: true });
+}
+
+function restoreDiscScroll(el, y) {
+  if (!el) return;
+  const apply = () => {
+    el.scrollTop = y;
+    window.__DISC_Y = el.scrollTop;
+  };
+  apply();
+  requestAnimationFrame(() => {
+    apply();
+    requestAnimationFrame(apply);
+  });
+}
+
+function discoverySkeleton(s) {
+  const rows = s.discoveries || s.hunt || [];
+  if (!rows.length) return "empty";
+  window.__OPEN = window.__OPEN || new Set();
+  const blocked = s.blocked || [];
+  return rows.map((r) => `${r.symbol}:${window.__OPEN.has(r.symbol) ? 1 : 0}:${r.armed ? 1 : 0}:${blocked.includes(r.symbol) ? 1 : 0}`).join("|");
+}
+
 function renderDiscoveries(s) {
   const rows = s.discoveries || s.hunt || [];
   if (!rows.length) {
     return `<div class="empty">还没有盯上任何币。系统在扫币安现货里波动还能走大的 USDT 交易对。</div>`;
   }
   window.__OPEN = window.__OPEN || new Set();
-  if (!window.__OPEN_INIT) {
-    const first = rows.find((r) => r.armed);
-    if (first) window.__OPEN.add(first.symbol);
-    window.__OPEN_INIT = true;
+  return rows.map((r) => discoveryRow(r, s)).join("");
+}
+
+function patchDiscoveryLive(root, s) {
+  const rows = s.discoveries || s.hunt || [];
+  for (const r of rows) {
+    const item = root.querySelector(`[data-sym="${r.symbol}"]`);
+    if (!item) continue;
+    const chg = r.change24h != null ? r.change24h : r.moved;
+    const chgEl = item.querySelector("[data-f=chg]");
+    if (chgEl) {
+      chgEl.textContent = chg == null ? "—" : pct(chg);
+      chgEl.className = `mono ret ${clsRet(chg || 0)}`;
+    }
+    const priceEl = item.querySelector("[data-f=price]");
+    if (priceEl) priceEl.textContent = r.price != null ? Number(r.price).toPrecision(6) : "—";
+    const planEl = item.querySelector("[data-f=plan]");
+    if (planEl) planEl.textContent = money(r.planned_usdt);
+    const stopEl = item.querySelector("[data-f=stop]");
+    if (stopEl) stopEl.textContent = r.stop ? Number(r.stop).toPrecision(6) : "—";
+    item.querySelectorAll("[data-f=status]").forEach((n) => {
+      n.textContent = r.status || r.wait || (n.closest(".disc-body") ? "—" : "");
+    });
   }
-  return `<div class="disc-wrap">${rows.map((r) => discoveryRow(r, s)).join("")}</div>`;
 }
 
 function discoveryRow(r, s) {
@@ -664,27 +726,27 @@ function discoveryRow(r, s) {
   const open = window.__OPEN.has(r.symbol);
   const how = (r.how_found || []).map((x) => `<li>${x}</li>`).join("");
   const vol = r.quote_volume != null ? `${money(r.quote_volume)} USDT` : "—";
-  return `<article class="disc-item ${r.armed ? "hot" : ""} ${open ? "open" : ""}">
+  return `<article class="disc-item ${r.armed ? "hot" : ""} ${open ? "open" : ""}" data-sym="${r.symbol}">
     <button type="button" class="disc-head" data-toggle="${r.symbol}" aria-expanded="${open ? "true" : "false"}">
       <div class="disc-top">
         <span class="disc-name"><strong>${r.symbol}</strong>
           <span class="tag ${r.side}">${r.side_zh || ""}</span>
           ${r.armed ? '<span class="tag">已盯上</span>' : ""}
         </span>
-        <span class="mono ret ${clsRet(chg || 0)}">${chg == null ? "—" : pct(chg)}</span>
+        <span class="mono ret ${clsRet(chg || 0)}" data-f="chg">${chg == null ? "—" : pct(chg)}</span>
       </div>
       <div class="disc-sub">
-        <span>现价 <b class="mono">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</b></span>
-        <span>计划 <b class="mono">${money(r.planned_usdt)} U</b></span>
-        <span>止损 <b class="mono">${r.stop ? Number(r.stop).toPrecision(6) : "—"}</b></span>
-        <span class="disc-status">${r.status || r.wait || ""}</span>
+        <span>现价 <b class="mono" data-f="price">${r.price != null ? Number(r.price).toPrecision(6) : "—"}</b></span>
+        <span>计划 <b class="mono" data-f="plan">${money(r.planned_usdt)}</b> U</span>
+        <span>止损 <b class="mono" data-f="stop">${r.stop ? Number(r.stop).toPrecision(6) : "—"}</b></span>
+        <span class="disc-status" data-f="status">${r.status || r.wait || ""}</span>
       </div>
     </button>
     ${open ? `<div class="disc-body">
       <p>${r.why_side || ""}</p>
       <p><strong>怎么发现的</strong></p>
       <ul class="how">${how || "<li>还在扫描</li>"}</ul>
-      <p><strong>现在卡在哪：</strong>${r.status || r.wait || "—"}</p>
+      <p><strong>现在卡在哪：</strong><span data-f="status">${r.status || r.wait || "—"}</span></p>
       <p class="plan">24h成交额 ${vol} · 止盈1 ${r.tp1 ? Number(r.tp1).toPrecision(6) : "—"}（40% 减 25%） · 止盈2 ${r.tp2 ? Number(r.tp2).toPrecision(6) : "—"}（100% 再减 25%） · ${r.time_stop_hours || 72} 小时没走出 20% 就平</p>
       <div class="actions">
         <a class="ext" href="${r.binance_url || "#"}" target="_blank" rel="noreferrer">去币安核对</a>
@@ -885,7 +947,10 @@ document.body.addEventListener("click", (ev) => {
     const symbol = toggle.dataset.toggle;
     if (window.__OPEN.has(symbol)) window.__OPEN.delete(symbol);
     else window.__OPEN.add(symbol);
+    const wrap = $("discoveries");
+    const y = wrap ? wrap.scrollTop : (window.__DISC_Y || 0);
     if (window.__SNAP) render(window.__SNAP);
+    restoreDiscScroll($("discoveries"), y);
     return;
   }
   const btn = ev.target.closest("button[data-block]");
