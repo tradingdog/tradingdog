@@ -58,18 +58,6 @@
         ]
     },
     {
-        "artist": "Orisonne Solum",
-        "albums": [
-            "Streetlamp After the Last Shift"
-        ]
-    },
-    {
-        "artist": "Orin Blackwell",
-        "albums": [
-            "Gaps In Our Music"
-        ]
-    },
-    {
         "artist": "Kyn Veyr",
         "albums": [
             "Stitched Accounts"
@@ -82,27 +70,27 @@
         ]
     },
     {
-        "artist": "Esmund Slora",
-        "albums": [
-            "Woven Across Miles"
-        ]
-    },
-    {
-        "artist": "Rex Veyr",
-        "albums": [
-            "Size Shifter Saga"
-        ]
-    },
-    {
         "artist": "Kaelin Veyra",
         "albums": [
             "Cherry Tree Lane Pages"
         ]
     },
     {
-        "artist": "Kael Rainer",
+        "artist": "Kaelen Ryn",
         "albums": [
-            "Pandoran Kin Weave"
+            "Stand Of The Few"
+        ]
+    },
+    {
+        "artist": "Lysandra Keen",
+        "albums": [
+            "The Silent Fracture"
+        ]
+    },
+    {
+        "artist": "Nerys Calderwick",
+        "albums": [
+            "Latchkey Orchard"
         ]
     }
 ]
