@@ -204,11 +204,22 @@ def urlopen_direct(url: str, timeout: float):
 
 
 def configure_tidal_session_network(session) -> None:
-    """Tidal API 请求强制直连，避免 requests 读取失效代理。"""
+    """Tidal API 请求强制直连，并给每次请求加上超时，避免套接字一直挂起。"""
     req = getattr(session, "request_session", None)
-    if req is not None:
-        req.trust_env = False
-        req.proxies = {}
+    if req is None:
+        return
+    req.trust_env = False
+    req.proxies = {}
+    if getattr(req, "_playlist_timeout_wrapped", False):
+        return
+    original = req.request
+
+    def request_with_timeout(*args, **kwargs):
+        kwargs.setdefault("timeout", TIDAL_HTTP_TIMEOUT)
+        return original(*args, **kwargs)
+
+    req.request = request_with_timeout
+    req._playlist_timeout_wrapped = True
 
 
 # 进程启动时清除失效代理，避免 import 后首次 API 请求仍走 127.0.0.1
@@ -266,6 +277,7 @@ _original_print = print
 def print(*args, **kwargs):
     message = ' '.join(str(arg) for arg in args)
     logging.info(message)  # 写入日志文件
+    kwargs.setdefault("flush", True)
     try:
         _original_print(*args, **kwargs)  # 输出到控制台
     except UnicodeEncodeError:
@@ -294,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.56"  # 数据：新增 Lysandra Keen、Nerys Calderwick
+APP_VERSION = "0.1.57"  # 修复：OAuth 兑换 token 无超时，浏览器成功后长时间无输出
 # 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
 DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
@@ -321,8 +333,9 @@ TIDAL_LOGIN_WITH_PASSWORD_MATCH_THRESHOLD = 0.9   # 验证码页图像识别阈�
 TIDAL_OAUTH_PENDING_FILE = ".tidal_oauth_pending.json"  # mcp 模式待办（仅 Agent handoff 用）
 TIDAL_LOGIN_MODE = "auto"         # Tidal 登录：auto=全自动浏览器, selenium=无痕, mcp=仅写待办等 Agent
 TIDAL_MCP_LOGIN_TIMEOUT = 600     # mcp 模式最长等待（秒）
-TIDAL_OAUTH_WAIT_TIMEOUT = 120    # 浏览器 OAuth 完成后等待 tidalapi 就绪（秒）
-TIDAL_OAUTH_CHECK_INTERVAL = 3.0  # check_login 轮询间隔（秒）
+TIDAL_OAUTH_WAIT_TIMEOUT = 120    # 浏览器 OAuth 完成后等待 token 兑换（秒）
+TIDAL_OAUTH_CHECK_INTERVAL = 2.0  # 设备码兑换 token 的轮询间隔（秒）
+TIDAL_HTTP_TIMEOUT = 30          # Tidal HTTP 超时（秒）。auth 偶发二十多秒才返回，无超时则会一直挂住
 TIDAL_OAUTH_API_RETRIES = 3                         # auth.tidal.com 请求失败重试次数
 TIDAL_OAUTH_FAILURE_BROWSER_PAUSE = 20              # 登录失败时保留浏览器秒数，便于查看页面
 TIDAL_EMAIL_FILE = "tidal_email.txt"                # Tidal 账号邮箱密码文件
@@ -837,6 +850,11 @@ def init_chrome_driver_with_retry(scene_name: str, *, incognito: bool = True, pr
             options = build_chrome_options(incognito=incognito, profile_dir=profile_dir)
             service = Service(executable_path=driver_path)
             driver = webdriver.Chrome(service=service, options=options)
+            try:
+                driver.set_page_load_timeout(30)
+                driver.set_script_timeout(20)
+            except Exception:
+                pass
             driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
                 "source": """
                     Object.defineProperty(navigator, 'webdriver', {
@@ -1265,7 +1283,7 @@ def _start_tidal_oauth_session(session):
     for attempt in range(1, TIDAL_OAUTH_API_RETRIES + 1):
         try:
             configure_tidal_session_network(session)
-            return session.login_oauth()
+            return session.get_link_login()
         except Exception as e:
             last_error = e
             err = str(e)
@@ -1273,8 +1291,8 @@ def _start_tidal_oauth_session(session):
                 sanitize_stale_process_proxy()
                 configure_tidal_session_network(session)
             retryable = any(
-                token in err
-                for token in ("SSL", "EOF", "Connection", "timeout", "Max retries", "Proxy", "17890")
+                token in err.lower()
+                for token in ("ssl", "eof", "connection", "timeout", "timed out", "max retries", "proxy", "17890")
             )
             if retryable and attempt < TIDAL_OAUTH_API_RETRIES:
                 wait_s = 2 * attempt
@@ -1430,44 +1448,94 @@ def _tidal_browser_oauth_linked(driver) -> bool:
         return False
 
 
-def _wait_tidal_oauth_session_ready(session, future, driver) -> bool:
+def _exchange_tidal_device_token(session, link_login, deadline: float) -> bool:
+    """用设备码兑换 access token。单次请求有超时，失败会重试到 deadline。"""
+    url = session.config.api_oauth2_token
+    payload = {
+        "client_id": session.config.client_id,
+        "device_code": link_login.device_code,
+        "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+        "scope": "r_usr w_usr w_sub",
+    }
+    secret = getattr(session.config, "client_secret", None)
+    if secret:
+        payload["client_secret"] = secret
+
+    interval = max(TIDAL_OAUTH_CHECK_INTERVAL, float(getattr(link_login, "interval", 2) or 2))
+    last_note = 0.0
+    print("    · 正在向 Tidal 兑换设备 token...")
+    while time.time() < deadline:
+        remain = max(0, int(deadline - time.time()))
+        try:
+            resp = session.request_session.post(url, data=payload, timeout=TIDAL_HTTP_TIMEOUT)
+            try:
+                body = resp.json()
+            except Exception:
+                body = {}
+            if resp.ok and body.get("access_token"):
+                last_exc = None
+                for _ in range(3):
+                    try:
+                        session.process_auth_token(body, is_pkce_token=False)
+                        return True
+                    except Exception as e:
+                        last_exc = e
+                        print(f"    · 已拿到 token，拉取会话失败，将重试: {e}")
+                        time.sleep(1.5)
+                print(f"  ✗ 会话初始化失败: {last_exc}")
+                return False
+
+            err = str(body.get("error") or f"HTTP {resp.status_code}")
+            if err == "expired_token":
+                print("  ✗ 设备授权码已过期")
+                return False
+            if err == "slow_down":
+                interval = min(interval + 2.0, 8.0)
+            now = time.time()
+            if now - last_note >= 8:
+                print(f"    · 正在兑换设备 token（{err}，剩余 {remain}s）")
+                last_note = now
+        except Exception as e:
+            now = time.time()
+            if now - last_note >= 8:
+                print(f"    · token 请求未完成，将重试（剩余 {remain}s）: {e}")
+                last_note = now
+        time.sleep(min(interval, max(0.2, deadline - time.time())))
+    return False
+
+
+def _wait_tidal_oauth_session_ready(session, link_login, driver) -> bool:
     """
-    浏览器 OAuth 流程结束后，等待 tidalapi session 就绪。
-    容忍 api.tidal.com 短暂 SSL/网络抖动，避免浏览器已成功却误判失败。
+    浏览器 OAuth 流程结束后，自己轮询设备码兑换 token。
+    不再使用 tidalapi 后台 future：其 POST 没有超时，套接字挂起时终端会一直停在「设备链接成功」。
     """
     timeout = TIDAL_OAUTH_WAIT_TIMEOUT
     deadline = time.time() + timeout
-    future_settled = False
-    browser_ok_logged = False
-
     print(f"  等待 OAuth 验证完成（最长 {timeout} 秒，含重试）...")
 
-    while time.time() < deadline:
-        if not future_settled:
-            if future.done():
-                future_settled = True
-                try:
-                    future.result(timeout=0)
-                except Exception as e:
-                    print(f"  ⚠ OAuth future 异常（将继续重试 check_login）: {e}")
-
-        if driver and _tidal_browser_oauth_linked(driver):
-            if not browser_ok_logged:
+    if driver:
+        try:
+            if _tidal_browser_oauth_linked(driver):
                 print("    ✓ 浏览器已显示设备链接成功")
-                browser_ok_logged = True
+        except Exception as e:
+            print(f"    · 读取浏览器结果失败，继续兑换 token: {e}")
 
+    if not _exchange_tidal_device_token(session, link_login, deadline):
+        return False
+
+    for _ in range(3):
         try:
             if session.check_login():
                 return True
         except Exception as e:
-            print(f"  ⚠ check_login 重试: {e}")
+            print(f"  ⚠ 登录状态确认失败，将重试: {e}")
+        time.sleep(1)
 
-        time.sleep(TIDAL_OAUTH_CHECK_INTERVAL)
-
-    try:
-        return session.check_login()
-    except Exception:
-        return False
+    user_id = getattr(getattr(session, "user", None), "id", None)
+    if session.access_token and user_id:
+        print("  ⚠ 订阅接口暂不可用，但 token 已就绪，继续后续操作")
+        return True
+    return False
 
 
 def login_tidal_with_mcp_handoff(email: str, password: str, timeout: int | None = None):
@@ -1622,7 +1690,7 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
             print("✗ 无法启动浏览器")
             return None, None
 
-        login_info, future = _start_tidal_oauth_session(session)
+        login_info = _start_tidal_oauth_session(session)
         auth_url = login_info.verification_uri_complete
         if auth_url and not auth_url.startswith("http"):
             auth_url = "https://" + auth_url
@@ -1633,7 +1701,7 @@ def login_tidal_with_automation(email: str, password: str, *, incognito: bool = 
             print("✗ 自动 OAuth 登录失败")
             return None, None
 
-        if not _wait_tidal_oauth_session_ready(session, future, driver):
+        if not _wait_tidal_oauth_session_ready(session, login_info, driver):
             print("✗ Tidal 登录验证失败")
             return None, None
 
