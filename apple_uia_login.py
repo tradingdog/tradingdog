@@ -238,40 +238,46 @@ def complete_password_phase(password: str) -> bool:
     focus_apple_chrome()
     time.sleep(1.2)
 
-    # 1) 优先短超时找「使用密碼登入」；找不到立刻用固定坐标点（HK 实测）
     switch_names = ["使用密碼登入", "Sign In with Password"]
     pwd_names = ["密碼", "Password"]
-    if find_named_center(pwd_names, timeout=0.8):
-        _log("STEP already_on_password_page")
-    else:
-        pt = find_named_center(switch_names, timeout=2.0)
-        if pt:
-            click_xy(*pt)
-            _log(f"STEP coord_switch_password uia {pt}")
+
+    for attempt in range(1, 4):
+        focus_apple_chrome()
+        switch_to_english_ime()
+        if find_named_center(pwd_names, timeout=0.8):
+            _log(f"STEP already_on_password_page attempt={attempt}")
         else:
-            click_xy(*XY["password_switch"])
-            _log("STEP coord_switch_password xy")
-        time.sleep(2.0)
+            pt = find_named_center(switch_names, timeout=2.0)
+            if pt:
+                click_xy(*pt)
+                _log(f"STEP coord_switch_password uia {pt} attempt={attempt}")
+            else:
+                click_xy(*XY["password_switch"])
+                _log(f"STEP coord_switch_password xy attempt={attempt}")
+            time.sleep(2.0)
 
-    # 2) 填密码
-    focus_apple_chrome()
-    switch_to_english_ime()
-    pwd_pt = find_named_center(pwd_names, timeout=2.5) or XY["password"]
-    paste_at(pwd_pt[0], pwd_pt[1], password)
-    _log(f"STEP coord_password_pasted {pwd_pt}")
-    time.sleep(0.35)
+        focus_apple_chrome()
+        switch_to_english_ime()
+        pwd_pt = find_named_center(pwd_names, timeout=2.5) or XY["password"]
+        paste_at(pwd_pt[0], pwd_pt[1], password)
+        _log(f"STEP coord_password_pasted {pwd_pt} attempt={attempt}")
+        time.sleep(0.35)
 
-    # 3) 提交箭头
-    submit_pt = find_named_center(["登入", "Sign In"], timeout=1.0)
-    if submit_pt and abs(submit_pt[1] - pwd_pt[1]) < 80 and submit_pt[0] > pwd_pt[0]:
-        click_xy(*submit_pt)
-        _log(f"STEP coord_password_submit uia {submit_pt}")
-    else:
-        click_xy(*XY["password_submit"])
-        _log("STEP coord_password_submit xy")
-    time.sleep(3.0)
+        submit_pt = find_named_center(["登入", "Sign In"], timeout=1.0)
+        if submit_pt and abs(submit_pt[1] - pwd_pt[1]) < 80 and submit_pt[0] > pwd_pt[0]:
+            click_xy(*submit_pt)
+            _log(f"STEP coord_password_submit uia {submit_pt}")
+        else:
+            click_xy(*XY["password_submit"])
+            _log("STEP coord_password_submit xy")
+        time.sleep(3.0)
 
-    # 4) 欢迎页 Continue
+        # 仍停在验证码页说明密码未生效，重试切换
+        if find_named_center(switch_names, timeout=0.8):
+            _log(f"STEP password_still_on_code_page retry={attempt}")
+            continue
+        break
+
     for i in range(3):
         if wait_named(["我的帳户", "我的账户", "My Account"], timeout=0.6):
             _log("STEP coord_logged_in_visible")

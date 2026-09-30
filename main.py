@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.77"  # 修复：加歌前强制前置 Chrome，避免后台窗导致菜单点不到
-# 更新内容：每张专辑/加歌前 focus Apple Chrome；欢迎窗仅识别到繼續才点
+APP_VERSION = "0.1.78"  # 修复：勿把选国家窗当空黑框关掉；密码阶段失败重试；加歌前前置 Chrome
+# 更新内容：选国家/地区窗排除空黑框；密码仍停验证码页则重试；加歌前 focus Chrome
 
 
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
@@ -3537,7 +3537,7 @@ def _apple_js_blank_auth_modal_state(driver) -> dict:
     const markers = ['以電郵繼續','Continue with Email','使用密碼登入','Sign In with Password',
       '請檢查電郵','Check Your Email','使用 Apple 帳户登入','Sign in with Apple',
       '重新傳送驗證碼','Resend','密碼','Password','電郵','Email','歡迎使用','Welcome to Apple',
-      '驗證碼','Verification'];
+      '驗證碼','Verification','請選擇國家或地區','Choose Country','Choose a Country'];
     for (const m of markers) {
       if (bodyText.includes(m)) { hasAuthText = true; break; }
     }
@@ -3664,6 +3664,23 @@ def _apple_is_blank_auth_modal(driver) -> bool:
     # 底部地区条（香港+Continue）绝不能当空黑框关掉，否则会卡在 /us/ 无加歌菜单
     if _apple_geo_banner_present(driver):
         return False
+    # 选国家/地区大窗绝不能当空黑框关掉（否则登录态被打断）
+    try:
+        body = driver.execute_script(
+            "return (document.body && document.body.innerText) || '';"
+        ) or ""
+        if any(
+            x in body
+            for x in (
+                "請選擇國家或地區",
+                "请选择国家或地区",
+                "Choose a Country or Region",
+                "Choose Country or Region",
+            )
+        ):
+            return False
+    except Exception:
+        pass
     # 验证码 / 密码切换页 → 绝对不要关
     try:
         from apple_uia_login import find_named_center
@@ -3677,6 +3694,9 @@ def _apple_is_blank_auth_modal(driver) -> bool:
                 "請檢查電郵",
                 "密碼",
                 "Password",
+                "請選擇國家或地區",
+                "Hong Kong",
+                "香港",
             ],
             timeout=0.6,
         ):
