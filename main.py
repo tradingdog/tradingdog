@@ -306,8 +306,9 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.73"  # 修复：欢迎弹窗勿当空黑框关掉；仅识别到才点繼續
-# 更新内容：_apple_is_blank_auth_modal 排除欢迎窗；登录后/搜索前按需点繼續
+APP_VERSION = "0.1.74"  # 修复：点搜索后才弹出的欢迎窗，轮询识别到再点繼續
+# 更新内容：搜索等待中检测欢迎窗；搜框超时则清窗重试；登录等待结束后再识别一次
+
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -3029,12 +3030,35 @@ def _apple_is_logged_in(driver) -> bool:
 
 
 def _apple_welcome_modal_present(driver) -> bool:
-    """登录后「歡迎使用 Apple Music / Welcome to Apple Music」全屏欢迎弹窗。"""
+    """登录后「歡迎使用 Apple Music / Welcome to Apple Music」全屏欢迎弹窗。
+
+    偶发，点搜索后也可能才弹出；含 shadow DOM 文案。
+    """
     try:
         driver.switch_to.default_content()
         return bool(driver.execute_script("""
-            const t = (document.body && document.body.innerText) || '';
-            return /歡迎使用\\s*Apple\\s*Music|Welcome to Apple Music/i.test(t);
+            const re = /歡迎使用\\s*Apple\\s*Music|欢迎使用\\s*Apple\\s*Music|Welcome to Apple Music|Apple Podcast\\s*和\\s*Apple TV|Apple Podcasts? and Apple TV/i;
+            const collect = (root, depth) => {
+              if (!root || depth > 12) return '';
+              let t = '';
+              try { t += (root.innerText || root.textContent || ''); } catch (e) {}
+              const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+              for (const el of nodes) {
+                try {
+                  if (el.shadowRoot) t += collect(el.shadowRoot, depth + 1);
+                } catch (e) {}
+              }
+              return t;
+            };
+            if (re.test(collect(document.documentElement, 0))) return true;
+            // iframe
+            for (const f of document.querySelectorAll('iframe')) {
+              try {
+                const doc = f.contentDocument;
+                if (doc && re.test(collect(doc.documentElement, 0))) return true;
+              } catch (e) {}
+            }
+            return false;
         """))
     except Exception:
         return False
@@ -3057,19 +3081,39 @@ def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
                   const t = (s || '').replace(/\\s+/g, ' ').trim();
                   return t === 'Continue' || t === '繼續' || t === '继续';
                 };
-                const nodes = Array.from(document.querySelectorAll('button, [role="button"]'));
-                for (const b of nodes) {
-                  const r = b.getBoundingClientRect();
-                  if (r.width < 40 || r.height < 20 || r.bottom < 0 || r.top > innerHeight) continue;
-                  const label = (b.innerText || b.getAttribute('aria-label') || '').trim();
-                  if (isContinue(label)) return b;
-                }
-                return null;
+                const scan = (root, depth) => {
+                  if (!root || depth > 10) return null;
+                  const nodes = root.querySelectorAll
+                    ? root.querySelectorAll('button, [role="button"]') : [];
+                  for (const b of nodes) {
+                    try {
+                      const r = b.getBoundingClientRect();
+                      if (r.width < 40 || r.height < 20 || r.bottom < 0 || r.top > innerHeight) continue;
+                      const label = (b.innerText || b.getAttribute('aria-label') || '').trim();
+                      if (isContinue(label)) return b;
+                      if (b.shadowRoot) {
+                        const hit = scan(b.shadowRoot, depth + 1);
+                        if (hit) return hit;
+                      }
+                    } catch (e) {}
+                  }
+                  // 继续扫其它 shadow
+                  const all = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                  for (const el of all) {
+                    try {
+                      if (el.shadowRoot) {
+                        const hit = scan(el.shadowRoot, depth + 1);
+                        if (hit) return hit;
+                      }
+                    } catch (e) {}
+                  }
+                  return null;
+                };
+                return scan(document, 0);
             """)
         except Exception:
             el = None
         if el is None:
-            # 未找到继续按钮：不盲点，直接返回
             print("    · 识别到欢迎弹窗但未找到「繼續」按钮，跳过", flush=True)
             return clicked
         ok = _apple_safe_click(driver, el)
@@ -4241,8 +4285,10 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                     _apple_step(driver, "LOGIN_OK")
                     print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
                     _apple_ensure_storefront(driver, sf)
+                    # 20 秒等待期间欢迎窗可能刚弹出，离开前再识别一次
                     print("  等待 20 秒后继续原加歌流程...", flush=True)
                     time.sleep(20)
+                    _apple_dismiss_welcome_modal(driver, max_clicks=2)
                     return True
 
             # 3) 检测左下角账户态；成功后固定等 20 秒（等同人工确认 Y）
@@ -4264,6 +4310,7 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                     _apple_ensure_storefront(driver, sf)
                     print("  等待 20 秒后继续原加歌流程...", flush=True)
                     time.sleep(20)
+                    _apple_dismiss_welcome_modal(driver, max_clicks=2)
                     return True
                 if i in (2, 5, 8):
                     # 仅欢迎弹窗出现时点繼續；否则不盲点
@@ -4277,6 +4324,7 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                 _apple_ensure_storefront(driver, sf)
                 print("  等待 20 秒后继续原加歌流程...", flush=True)
                 time.sleep(20)
+                _apple_dismiss_welcome_modal(driver, max_clicks=2)
                 return True
 
             _apple_step(driver, "login_round_fail", f"round={round_i}")
@@ -4641,12 +4689,28 @@ def search_album_on_apple(driver, artist_name, album_name):
     try:
         click_apple_search(driver)
 
-        search_input = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR,
-                "input#search-input__text-field, input.search-input__text-field, "
-                "input[data-testid='search-input__text-field'], input[type='search'][role='searchbox']"
-            ))
+        search_input = None
+        search_css = (
+            "input#search-input__text-field, input.search-input__text-field, "
+            "input[data-testid='search-input__text-field'], input[type='search'][role='searchbox']"
         )
+        for attempt in range(2):
+            try:
+                search_input = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, search_css))
+                )
+                break
+            except Exception as wait_err:
+                # 点搜索后才弹出欢迎窗时，搜框被挡住 —— 识别到再点繼續后重试
+                if _apple_welcome_modal_present(driver):
+                    print("  · 搜索框被欢迎弹窗挡住，点繼續后重试...", flush=True)
+                    _apple_dismiss_welcome_modal(driver, max_clicks=2)
+                    apple_human_delay(1.0, 1.5)
+                    continue
+                raise wait_err
+        if search_input is None:
+            raise RuntimeError("搜索框未出现")
+
         apple_move_to_element(driver, search_input)
         apple_human_delay(0.3, 0.5)
         search_input.click()
@@ -4749,8 +4813,8 @@ def click_apple_home(driver):
 
 def click_apple_search(driver):
     """点击 Apple Music 左侧搜索入口，并等待新版顶部搜索框出现。"""
-    if _apple_welcome_modal_present(driver):
-        _apple_dismiss_welcome_modal(driver, max_clicks=3)
+    # 点搜索前若已有欢迎窗则清掉；点搜索后也可能才弹出
+    _apple_dismiss_welcome_modal(driver, max_clicks=2)
 
     search_selectors = [
         (By.XPATH, "//a[contains(@href, '/search') and (@data-testid='search' or .//span[contains(@class, 'navigation-item__label')]) ]"),
@@ -4772,7 +4836,24 @@ def click_apple_search(driver):
                 driver.execute_script("arguments[0].click();", search_btn)
 
             print(f"  ✓ 已点击搜索入口，等待 {APPLE_SEARCH_PANEL_WAIT_SECONDS} 秒加载搜索框")
-            time.sleep(APPLE_SEARCH_PANEL_WAIT_SECONDS)
+            # 等待期间轮询：欢迎弹窗出现则点繼續（点搜索后才偶发弹出）
+            deadline = time.time() + APPLE_SEARCH_PANEL_WAIT_SECONDS
+            while time.time() < deadline:
+                if _apple_welcome_modal_present(driver):
+                    _apple_dismiss_welcome_modal(driver, max_clicks=2)
+                try:
+                    el = driver.find_element(
+                        By.CSS_SELECTOR,
+                        "input#search-input__text-field, input.search-input__text-field, "
+                        "input[data-testid='search-input__text-field'], input[type='search'][role='searchbox']",
+                    )
+                    if el.is_displayed():
+                        return True
+                except Exception:
+                    pass
+                time.sleep(0.5)
+            # 结束等待后再清一次（防止刚弹）
+            _apple_dismiss_welcome_modal(driver, max_clicks=2)
             return True
         except Exception as e:
             last_error = e
