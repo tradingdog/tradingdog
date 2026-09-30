@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.79"  # 修复：欢迎窗「繼續」DOM 难找时，确认标题后坐标点红钮
-# 更新内容：改进繼續查找；欢迎标题确认后 UIA 失败再用坐标；skendk 重跑
+APP_VERSION = "0.1.80"  # 修复：欢迎窗仅在可见标题块时判定，避免残留文案反复点繼續
+# 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
@@ -3033,30 +3033,40 @@ def _apple_is_logged_in(driver) -> bool:
 def _apple_welcome_modal_present(driver) -> bool:
     """登录后「歡迎使用 Apple Music / Welcome to Apple Music」全屏欢迎弹窗。
 
-    偶发，点搜索后也可能才弹出；含 shadow DOM 文案。
-    只用欢迎标题判断，不用页面常见的 Podcasts/TV 营销文案（易误判）。
+    偶发，点搜索后也可能才弹出；含 shadow DOM。
+    必须看到可见弹层里的欢迎标题（避免关掉后残留文案误判）。
     """
     try:
         driver.switch_to.default_content()
         return bool(driver.execute_script("""
             const re = /歡迎使用\\s*Apple\\s*Music|欢迎使用\\s*Apple\\s*Music|Welcome to Apple Music/i;
-            const collect = (root, depth) => {
-              if (!root || depth > 12) return '';
-              let t = '';
-              try { t += (root.innerText || root.textContent || ''); } catch (e) {}
-              const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+            const visible = (el) => {
+              try {
+                const r = el.getBoundingClientRect();
+                const st = window.getComputedStyle(el);
+                return r.width > 40 && r.height > 20 && r.bottom > 0 && r.top < innerHeight
+                  && st.visibility !== 'hidden' && st.display !== 'none' && st.opacity !== '0';
+              } catch (e) { return false; }
+            };
+            const check = (root, depth) => {
+              if (!root || depth > 12) return false;
+              const nodes = root.querySelectorAll
+                ? root.querySelectorAll('h1,h2,h3,header,div,span,section,[role=\"dialog\"],.cc-modal') : [];
               for (const el of nodes) {
                 try {
-                  if (el.shadowRoot) t += collect(el.shadowRoot, depth + 1);
+                  const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+                  // 标题块较短；整页营销文案很长，排除
+                  if (t.length >= 10 && t.length <= 120 && re.test(t) && visible(el)) return true;
+                  if (el.shadowRoot && check(el.shadowRoot, depth + 1)) return true;
                 } catch (e) {}
               }
-              return t;
+              return false;
             };
-            if (re.test(collect(document.documentElement, 0))) return true;
+            if (check(document, 0)) return true;
             for (const f of document.querySelectorAll('iframe')) {
               try {
                 const doc = f.contentDocument;
-                if (doc && re.test(collect(doc.documentElement, 0))) return true;
+                if (doc && check(doc, 0)) return true;
               } catch (e) {}
             }
             return false;
