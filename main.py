@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.75"  # 修复：欢迎窗「繼續」非 button 时扩大查找，并用 UIA 点击
-# 更新内容：欢迎窗已识别但 DOM 无 button 时，扫 div/span + UIA 点繼續
+APP_VERSION = "0.1.76"  # 修复：欢迎窗仅识别到「繼續」才点，去掉盲点坐标
+# 更新内容：偶发欢迎窗——找到繼續/Continue 才点；文案在但无按钮则跳过
 
 
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
@@ -3034,11 +3034,12 @@ def _apple_welcome_modal_present(driver) -> bool:
     """登录后「歡迎使用 Apple Music / Welcome to Apple Music」全屏欢迎弹窗。
 
     偶发，点搜索后也可能才弹出；含 shadow DOM 文案。
+    只用欢迎标题判断，不用页面常见的 Podcasts/TV 营销文案（易误判）。
     """
     try:
         driver.switch_to.default_content()
         return bool(driver.execute_script("""
-            const re = /歡迎使用\\s*Apple\\s*Music|欢迎使用\\s*Apple\\s*Music|Welcome to Apple Music|Apple Podcast\\s*和\\s*Apple TV|Apple Podcasts? and Apple TV/i;
+            const re = /歡迎使用\\s*Apple\\s*Music|欢迎使用\\s*Apple\\s*Music|Welcome to Apple Music/i;
             const collect = (root, depth) => {
               if (!root || depth > 12) return '';
               let t = '';
@@ -3052,7 +3053,6 @@ def _apple_welcome_modal_present(driver) -> bool:
               return t;
             };
             if (re.test(collect(document.documentElement, 0))) return true;
-            // iframe
             for (const f of document.querySelectorAll('iframe')) {
               try {
                 const doc = f.contentDocument;
@@ -3065,8 +3065,51 @@ def _apple_welcome_modal_present(driver) -> bool:
         return False
 
 
+def _apple_find_welcome_continue_el(driver):
+    """在页面（含 shadow）里找可见的「繼續 / Continue」；找不到返回 None。"""
+    try:
+        return driver.execute_script("""
+            const isContinue = (s) => {
+              const t = (s || '').replace(/\\s+/g, ' ').trim();
+              return t === 'Continue' || t === '繼續' || t === '继续';
+            };
+            const candidates = [];
+            const pushEl = (b) => {
+              try {
+                const r = b.getBoundingClientRect();
+                if (r.width < 60 || r.height < 24 || r.bottom < 0 || r.top > innerHeight) return;
+                const aria = (b.getAttribute('aria-label') || '').trim();
+                const label = (b.innerText || b.textContent || aria || '')
+                  .replace(/\\s+/g, ' ').trim();
+                if (!isContinue(label) && !isContinue(aria)) {
+                  if (!(label.length <= 12 && /繼續|继续|Continue/i.test(label)
+                        && isContinue(label.split('\\n')[0]))) {
+                    return;
+                  }
+                }
+                candidates.push({el: b, area: r.width * r.height, y: r.top});
+              } catch (e) {}
+            };
+            const walk = (root, depth) => {
+              if (!root || depth > 12) return;
+              const nodes = root.querySelectorAll
+                ? root.querySelectorAll('button, [role="button"], a, div, span') : [];
+              for (const n of nodes) {
+                pushEl(n);
+                try { if (n.shadowRoot) walk(n.shadowRoot, depth + 1); } catch (e) {}
+              }
+            };
+            walk(document, 0);
+            if (!candidates.length) return null;
+            candidates.sort((a, b) => b.area - a.area);
+            return candidates[0].el;
+        """)
+    except Exception:
+        return None
+
+
 def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
-    """仅当识别到欢迎弹窗时才点红色「繼續 / Continue」；未识别则不点。"""
+    """偶发欢迎窗：识别到可见「繼續 / Continue」才点；没识别到就不点（不盲点坐标）。"""
     clicked = 0
     for _ in range(max_clicks):
         try:
@@ -3075,66 +3118,22 @@ def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
             pass
         if not _apple_welcome_modal_present(driver):
             return clicked
-        el = None
-        try:
-            # 繼續 可能是 button / div / span，不限 tag；取最大可见点击块
-            el = driver.execute_script("""
-                const isContinue = (s) => {
-                  const t = (s || '').replace(/\\s+/g, ' ').trim();
-                  return t === 'Continue' || t === '繼續' || t === '继续';
-                };
-                const candidates = [];
-                const pushEl = (b) => {
-                  try {
-                    const r = b.getBoundingClientRect();
-                    if (r.width < 60 || r.height < 24 || r.bottom < 0 || r.top > innerHeight) return;
-                    const label = (b.innerText || b.textContent || b.getAttribute('aria-label') || '')
-                      .replace(/\\s+/g, ' ').trim();
-                    // 整段就是继续，或子节点很短且自身是继续
-                    if (!isContinue(label) && !isContinue((b.getAttribute('aria-label') || '').trim())) {
-                      // 允许按钮内仅有一行「繼續」
-                      if (!(label.length <= 12 && /繼續|继续|Continue/i.test(label) && isContinue(label.split('\\n')[0]))) {
-                        return;
-                      }
-                    }
-                    candidates.push({el: b, area: r.width * r.height, y: r.top});
-                  } catch (e) {}
-                };
-                const walk = (root, depth) => {
-                  if (!root || depth > 12) return;
-                  const nodes = root.querySelectorAll
-                    ? root.querySelectorAll('button, [role="button"], a, div, span') : [];
-                  for (const n of nodes) {
-                    pushEl(n);
-                    try { if (n.shadowRoot) walk(n.shadowRoot, depth + 1); } catch (e) {}
-                  }
-                };
-                walk(document, 0);
-                if (!candidates.length) return null;
-                candidates.sort((a, b) => b.area - a.area);
-                return candidates[0].el;
-            """)
-        except Exception:
-            el = None
+        el = _apple_find_welcome_continue_el(driver)
         if el is None:
-            # Selenium 找不到时：已确认是欢迎窗，用 UIA/坐标点「繼續」（仍不盲点）
+            # DOM 没有「繼續」：再用 UIA 认一次；仍没有则跳过，绝不坐标盲点
             try:
-                from apple_uia_login import click_named, focus_apple_chrome, click_xy, XY as _XY
+                from apple_uia_login import click_named, focus_apple_chrome
                 focus_apple_chrome()
                 if click_named(["繼續", "继续", "Continue"], timeout=2.0):
                     clicked += 1
-                    print(f"    · 已识别欢迎弹窗并点击 繼續 (UIA, {clicked})", flush=True)
+                    print(f"    · 已识别「繼續」并点击 (UIA, {clicked})", flush=True)
                     apple_human_delay(1.2, 2.0)
                     continue
-                # 坐标兜底：仅在已识别欢迎文案时使用
-                click_xy(*_XY.get("welcome_continue", (800, 580)))
-                clicked += 1
-                print(f"    · 已识别欢迎弹窗并点击 繼續 (坐标, {clicked})", flush=True)
-                apple_human_delay(1.2, 2.0)
-                continue
             except Exception as e:
-                print(f"    · 识别到欢迎弹窗但点击「繼續」失败: {e}", flush=True)
+                print(f"    · 欢迎窗文案在但未识别到「繼續」，跳过: {e}", flush=True)
                 return clicked
+            print("    · 欢迎窗文案在但未识别到「繼續」，跳过（不盲点）", flush=True)
+            return clicked
         ok = _apple_safe_click(driver, el)
         if not ok:
             try:
@@ -3148,14 +3147,15 @@ def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
                 focus_apple_chrome()
                 if click_named(["繼續", "继续", "Continue"], timeout=2.0):
                     clicked += 1
-                    print(f"    · 已识别欢迎弹窗并点击 繼續 (UIA, {clicked})", flush=True)
+                    print(f"    · 已识别「繼續」并点击 (UIA, {clicked})", flush=True)
                     apple_human_delay(1.2, 2.0)
                     continue
             except Exception:
                 pass
+            print("    · 识别到「繼續」但点击失败，跳过", flush=True)
             return clicked
         clicked += 1
-        print(f"    · 已识别欢迎弹窗并点击 繼續 ({clicked})", flush=True)
+        print(f"    · 已识别「繼續」并点击 ({clicked})", flush=True)
         apple_human_delay(1.2, 2.0)
     return clicked
 
