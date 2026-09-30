@@ -306,9 +306,9 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.57"  # 修复：OAuth 兑换 token 无超时，浏览器成功后长时间无输出
-# 更新内容：不再强求艺人名+is_displayed；对齐 product-lockup-link 最新 DOM
-DEFAULT_ALBUM_COUNT = 17         # 中间部分从主库抽取的专辑数量
+APP_VERSION = "0.1.69"  # 新增：Apple 登录 auto/manual；加歌间隔约 2.5 秒
+# 更新内容：默认自动登录；自定义 APPLE_LOGIN_MODE=manual 可回退人工确认 Y；歌间约 2.5s
+DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
 MIN_COMBINATION_DIFF = 0.85      # 最小组合差异度（0-1），低于此值会重新生成
@@ -319,8 +319,8 @@ WEIGHT_DECAY_POWER = 4           # 权重衰减的幂次
 
 # Tidal 集成配置
 TIDAL_MODE = 1                   # Tidal 模式：1=新增播放列表，2=删除指定艺人专辑歌曲
-TIDAL_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
-TIDAL_TRACK_COUNT_MAX = 13       # 每张专辑添加的最大歌曲数量
+TIDAL_TRACK_COUNT_MIN = 12       # 每张专辑添加的最小歌曲数量
+TIDAL_TRACK_COUNT_MAX = 16       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
@@ -350,12 +350,20 @@ CHROMEDRIVER_PLATFORM = "win64"
 CHROMEDRIVER_CACHE_DIR = ".webdriver_cache"
 
 # Apple Music 集成配置
-APPLE_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
-APPLE_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
-APPLE_DELAY_MIN = 0.3           # 操作间隔最小延迟（秒）
-APPLE_DELAY_MAX = 0.8            # 操作间隔最大延迟（秒）
+APPLE_TRACK_COUNT_MIN = 12       # 每张专辑添加的最小歌曲数量
+APPLE_TRACK_COUNT_MAX = 18       # 每张专辑添加的最大歌曲数量
+APPLE_DELAY_MIN = 0.3            # 一般操作间隔最小延迟（秒）
+APPLE_DELAY_MAX = 0.6            # 一般操作间隔最大延迟（秒）
+APPLE_SONG_INTERVAL_MIN = 2.2    # 歌与歌之间间隔最小（秒），约 2.5s
+APPLE_SONG_INTERVAL_MAX = 2.8    # 歌与歌之间间隔最大（秒）
+APPLE_LOGIN_MODE = "auto"        # Apple 登录：auto=读 apple_email.txt 全自动；manual=浏览器内手动登录后输入 y
 APPLE_LOGIN_CONFIRM_TIMEOUT = 1800  # Apple Music 手动登录确认最长等待时间（秒）
 APPLE_SEARCH_PANEL_WAIT_SECONDS = 10  # 点击左侧搜索入口后等待顶部搜索框出现（秒）
+APPLE_EMAIL_FILE = "apple_email.txt"  # Apple 账号邮箱密码文件（格式同 tidal_email.txt）
+APPLE_HOME_URL = "https://music.apple.com"
+APPLE_LOGIN_TIMEOUT = 180        # 自动登录最长等待（秒）
+APPLE_ASSETS_DIR = "apple_assets"  # 登录调试截图目录
+APPLE_MAX_ALBUMS = None           # 每账号最多处理专辑数；None=全量（可用 --apple-max-albums 覆盖）
 
 # Qobuz 集成配置
 QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
@@ -516,6 +524,28 @@ def load_tidal_accounts() -> list[dict]:
                 "password": lines[1]
             })
     
+    return accounts
+
+
+def load_apple_accounts() -> list[dict]:
+    """从 apple_email.txt 读取账号列表，格式同 Tidal：两行一组，空行分隔。"""
+    email_path = Path(APPLE_EMAIL_FILE)
+    if not email_path.exists():
+        return []
+
+    accounts = []
+    content = email_path.read_text(encoding="utf-8").strip()
+    if not content:
+        return []
+
+    blocks = content.split("\n\n")
+    for block in blocks:
+        lines = [line.strip() for line in block.strip().split("\n") if line.strip()]
+        if len(lines) >= 2:
+            accounts.append({
+                "email": lines[0],
+                "password": lines[1],
+            })
     return accounts
 
 
@@ -2561,9 +2591,16 @@ def run_tidal_delete_for_single_account(
 
 # ==================== Apple Music 集成功能 ====================
 
-def apple_human_delay(min_sec=0.3, max_sec=0.8):
-    """模拟人类操作的随机延迟"""
-    time.sleep(random.uniform(min_sec, max_sec))
+def apple_human_delay(min_sec=None, max_sec=None):
+    """模拟人类操作的随机延迟（默认用 APPLE_DELAY_*）"""
+    lo = APPLE_DELAY_MIN if min_sec is None else min_sec
+    hi = APPLE_DELAY_MAX if max_sec is None else max_sec
+    time.sleep(random.uniform(lo, hi))
+
+
+def apple_song_interval():
+    """歌与歌之间的间隔（约 2.5 秒）"""
+    time.sleep(random.uniform(APPLE_SONG_INTERVAL_MIN, APPLE_SONG_INTERVAL_MAX))
 
 
 def apple_human_typing(element, text, min_delay=0.02, max_delay=0.08):
@@ -2658,17 +2695,1005 @@ def init_apple_browser():
         return None
 
 
-def login_apple_music(driver):
-    """登录 Apple Music - 需要人工确认"""
+def _apple_save_debug_shot(driver, name: str) -> None:
+    try:
+        out = Path(APPLE_ASSETS_DIR)
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"{time.strftime('%H%M%S')}_{name}.png"
+        driver.save_screenshot(str(path))
+        print(f"    · 调试截图: {path.name}", flush=True)
+    except Exception as e:
+        print(f"    · 截图失败({name}): {e}", flush=True)
+
+
+def _apple_step(driver, name: str, detail: str = "") -> None:
+    """每一步立刻打日志并截图，便于对照界面。"""
+    msg = f"STEP {name}"
+    if detail:
+        msg += f" {detail}"
+    print(msg, flush=True)
+    try:
+        safe = re.sub(r"[^\w\-]+", "_", name)[:48]
+        _apple_save_debug_shot(driver, f"step_{safe}")
+    except Exception:
+        pass
+
+
+def _apple_norm_text(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip()).casefold()
+
+
+def _apple_text_matches(actual: str, keywords: list[str]) -> bool:
+    norm = _apple_norm_text(actual)
+    if not norm:
+        return False
+    for kw in keywords:
+        if _apple_norm_text(kw) in norm:
+            return True
+    return False
+
+
+def _apple_safe_click(driver, element) -> bool:
+    try:
+        driver.execute_script(
+            "arguments[0].scrollIntoView({block:'center', inline:'center'});", element
+        )
+    except Exception:
+        pass
+    try:
+        element.click()
+        return True
+    except Exception:
+        try:
+            driver.execute_script("arguments[0].click();", element)
+            return True
+        except Exception:
+            return False
+
+
+def _apple_set_input_value(driver, element, value: str) -> None:
+    try:
+        element.click()
+    except Exception:
+        pass
+    try:
+        element.clear()
+    except Exception:
+        pass
+    try:
+        driver.execute_script(
+            """
+            const el = arguments[0], val = arguments[1];
+            el.focus();
+            const proto = window.HTMLInputElement.prototype;
+            const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+            if (desc && desc.set) {
+              desc.set.call(el, '');
+              el.dispatchEvent(new Event('input', {bubbles:true}));
+              desc.set.call(el, val);
+            } else {
+              el.value = val;
+            }
+            el.dispatchEvent(new Event('input', {bubbles:true}));
+            el.dispatchEvent(new Event('change', {bubbles:true}));
+            el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true}));
+            """,
+            element,
+            value,
+        )
+    except Exception:
+        pass
+    try:
+        current = element.get_attribute("value") or ""
+        if current != value:
+            element.send_keys(Keys.CONTROL, "a")
+            element.send_keys(Keys.BACKSPACE)
+            for ch in value:
+                element.send_keys(ch)
+                time.sleep(0.02)
+    except Exception:
+        try:
+            element.send_keys(value)
+        except Exception:
+            pass
+
+
+def _apple_collect_frames(driver, max_depth: int = 3, max_frames: int = 16):
+    """深度优先收集可切入的 frame 路径（限制深度/数量，避免卡死）。"""
+    paths = [[]]
+    seen = 0
+
+    def walk(path, depth):
+        nonlocal seen
+        if depth >= max_depth or seen >= max_frames:
+            return
+        try:
+            frames = driver.find_elements(By.CSS_SELECTOR, "iframe")
+        except Exception:
+            return
+        for idx in range(min(len(frames), 8)):
+            if seen >= max_frames:
+                return
+            child = path + [idx]
+            try:
+                driver.switch_to.default_content()
+                ok = True
+                for i in child:
+                    frames_now = driver.find_elements(By.CSS_SELECTOR, "iframe")
+                    if i >= len(frames_now):
+                        ok = False
+                        break
+                    driver.switch_to.frame(frames_now[i])
+                if not ok:
+                    continue
+                paths.append(child)
+                seen += 1
+                walk(child, depth + 1)
+            except Exception:
+                continue
+        try:
+            driver.switch_to.default_content()
+            for i in path:
+                frames_now = driver.find_elements(By.CSS_SELECTOR, "iframe")
+                driver.switch_to.frame(frames_now[i])
+        except Exception:
+            try:
+                driver.switch_to.default_content()
+            except Exception:
+                pass
+
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    walk([], 0)
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    return paths
+
+
+def _apple_enter_frame_path(driver, path: list[int]) -> bool:
+    try:
+        driver.switch_to.default_content()
+        for i in path:
+            frames = driver.find_elements(By.CSS_SELECTOR, "iframe")
+            driver.switch_to.frame(frames[i])
+        return True
+    except Exception:
+        try:
+            driver.switch_to.default_content()
+        except Exception:
+            pass
+        return False
+
+
+def _apple_find_across_frames(driver, finder, *, prefer_auth: bool = False):
+    """
+    在主文档及嵌套 iframe 中查找元素。
+    finder(driver) -> WebElement | None
+    找到后停留在对应 frame；失败回到 default。
+    """
+    paths = _apple_collect_frames(driver)
+    if prefer_auth:
+        ranked = []
+        for path in paths:
+            score = 0
+            try:
+                if _apple_enter_frame_path(driver, path):
+                    # 粗判：有邮箱/密码输入或认证相关文案优先
+                    html = ""
+                    try:
+                        html = (driver.page_source or "")[:8000].lower()
+                    except Exception:
+                        pass
+                    if any(k in html for k in ("password", "account", "sign-in", "email", "電郵", "密码", "密碼", "驗證")):
+                        score += 5
+                    if path:  # 子 frame 优先于主文档的误匹配
+                        score += 1
+            except Exception:
+                pass
+            ranked.append((score, path))
+        paths = [p for _, p in sorted(ranked, key=lambda x: -x[0])]
+
+    for path in paths:
+        if not _apple_enter_frame_path(driver, path):
+            continue
+        try:
+            el = finder(driver)
+            if el is not None:
+                return el, path
+        except Exception:
+            continue
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    return None, None
+
+
+def _apple_visible_elements(driver, css: str):
+    out = []
+    try:
+        for el in driver.find_elements(By.CSS_SELECTOR, css):
+            try:
+                if el.is_displayed():
+                    out.append(el)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
+def _apple_find_clickable_by_texts(driver, texts: list[str], tags: str = "button,a,[role='button'],div,span"):
+    for el in _apple_visible_elements(driver, tags):
+        try:
+            label = " ".join(
+                filter(
+                    None,
+                    [
+                        el.text,
+                        el.get_attribute("aria-label"),
+                        el.get_attribute("value"),
+                        el.get_attribute("title"),
+                    ],
+                )
+            )
+            if _apple_text_matches(label, texts):
+                return el
+        except Exception:
+            continue
+    return None
+
+
+def _apple_is_logged_in(driver) -> bool:
+    """快速判定：无 Sign In，且侧栏出现资料库/账户（用 JS，避免扫全页按钮卡死）。"""
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    script = r"""
+    const visible = (el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      const st = window.getComputedStyle(el);
+      return r.width > 1 && r.height > 1 && st.visibility !== 'hidden' && st.display !== 'none';
+    };
+    const signIns = document.querySelectorAll("button[data-testid='sign-in-button']");
+    for (const b of signIns) { if (visible(b)) return false; }
+    // 侧栏文案：未登录通常没有「最近加入」
+    const root = document.querySelector('nav') || document.body;
+    const text = (root && root.innerText) ? root.innerText : '';
+    if (/最近加入|Recently Added|所有歌單|All Playlists|我的帳户|我的账户|My Account/.test(text)) {
+      return true;
+    }
+    // 账户按钮显示姓名时，页面上也常有资料库
+    const btns = document.querySelectorAll('button');
+    for (const b of btns) {
+      if (!visible(b)) continue;
+      const label = ((b.innerText||'') + ' ' + (b.getAttribute('aria-label')||'')).trim();
+      if (!label || label.length > 40) continue;
+      if (/^Sign In$|^登入$|^登录$/i.test(label)) return false;
+      if (/我的帳户|我的账户|My Account/i.test(label)) return true;
+    }
+    return false;
+    """
+    try:
+        return bool(driver.execute_script(script))
+    except Exception:
+        return False
+
+
+def _apple_click_auth_continues(driver, max_clicks: int = 6) -> int:
+    """登录后欢迎页 Continue——仅主文档，不扫 iframe。"""
+    clicked = 0
+    keywords = ["Continue", "繼續", "继续"]
+    for _ in range(max_clicks):
+        try:
+            driver.switch_to.default_content()
+        except Exception:
+            pass
+        el = _apple_find_clickable_by_texts(driver, keywords, tags="button")
+        if not el:
+            break
+        label = _apple_norm_text(el.text or el.get_attribute("aria-label") or "")
+        if any(x in label for x in ("try", "試用", "试用", "subscribe", "訂閱", "订阅")):
+            break
+        if _apple_safe_click(driver, el):
+            clicked += 1
+            print(f"    · 已点 Continue/繼續 ({clicked})", flush=True)
+            apple_human_delay(1.0, 1.8)
+        else:
+            break
+    return clicked
+
+
+def _apple_dismiss_geo_banners(driver, max_clicks: int = 4) -> int:
+    clicked = 0
+    for _ in range(max_clicks):
+        try:
+            driver.switch_to.default_content()
+            btns = driver.find_elements(
+                By.CSS_SELECTOR,
+                "div[data-testid='banner-container'] button[data-testid='select-button']",
+            )
+            visible = [b for b in btns if b.is_displayed()]
+            if not visible:
+                # 兜底：右下角 Continue / 繼續
+                fallback = _apple_find_clickable_by_texts(
+                    driver, ["Continue", "繼續", "继续"], tags="button"
+                )
+                if fallback and "try" not in _apple_norm_text(fallback.text or ""):
+                    # 避免点到试用按钮：仅点 banner 附近或纯 Continue
+                    parent_html = ""
+                    try:
+                        parent_html = (fallback.find_element(By.XPATH, "./ancestor::div[1]").text or "")
+                    except Exception:
+                        pass
+                    if "country" in parent_html.lower() or "國家" in parent_html or "国家" in parent_html or "地區" in parent_html or "地区" in parent_html or "香港" in parent_html or "location" in parent_html.lower():
+                        if _apple_safe_click(driver, fallback):
+                            clicked += 1
+                            apple_human_delay(0.8, 1.2)
+                            continue
+                break
+            if _apple_safe_click(driver, visible[0]):
+                clicked += 1
+                apple_human_delay(0.8, 1.2)
+            else:
+                break
+        except Exception:
+            break
+    return clicked
+
+
+def _apple_click_sign_in(driver) -> bool:
+    try:
+        driver.switch_to.default_content()
+        btns = driver.find_elements(By.CSS_SELECTOR, "button[data-testid='sign-in-button']")
+        for b in btns:
+            if b.is_displayed() and _apple_safe_click(driver, b):
+                print("    · 已点击 Sign In / 登入")
+                return True
+    except Exception:
+        pass
+    el = _apple_find_clickable_by_texts(
+        driver, ["Sign In", "Sign in", "登入", "登录"], tags="button"
+    )
+    if el and _apple_safe_click(driver, el):
+        print("    · 已点击 Sign In / 登入（文案匹配）")
+        return True
+    return False
+
+
+def _apple_find_modal_close_button(driver):
+    """网络抽风时空黑框左上角关闭按钮（主文档 + Shadow DOM）。"""
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    # JS 穿透 shadow，比纯 CSS 更稳
+    script = r"""
+    function allRoots(root, out) {
+      out.push(root);
+      const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (const el of nodes) {
+        if (el.shadowRoot) allRoots(el.shadowRoot, out);
+      }
+      return out;
+    }
+    const sels = [
+      "button[data-test='modal-close-button']",
+      "button.cc-modal__close-button",
+      "button[aria-label='Close']",
+      "button[aria-label='關閉']",
+      "button[aria-label='关闭']",
+      "#modal-header button",
+    ];
+    const roots = allRoots(document, []);
+    for (const root of roots) {
+      if (!root.querySelectorAll) continue;
+      for (const sel of sels) {
+        const list = root.querySelectorAll(sel);
+        for (const el of list) {
+          const r = el.getBoundingClientRect();
+          const st = window.getComputedStyle(el);
+          if (r.width > 2 && r.height > 2 && st.visibility !== 'hidden' && st.display !== 'none') {
+            return el;
+          }
+        }
+      }
+    }
+    return null;
+    """
+    try:
+        el = driver.execute_script(script)
+        if el is not None:
+            return el
+    except Exception:
+        pass
+    selectors = [
+        "button[data-test='modal-close-button']",
+        "button.cc-modal__close-button",
+        "button[aria-label='Close']",
+        "button[aria-label='關閉']",
+        "button[aria-label='关闭']",
+        "#modal-header button",
+        ".cc-modal__close-button",
+    ]
+    for css in selectors:
+        try:
+            for el in driver.find_elements(By.CSS_SELECTOR, css):
+                try:
+                    if el.is_displayed():
+                        return el
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return _apple_find_clickable_by_texts(
+        driver, ["Close", "關閉", "关闭"], tags="button"
+    )
+
+
+def _apple_js_blank_auth_modal_state(driver) -> dict:
+    """用 JS 判断空黑框：有模态壳/关闭钮，但没有可用登录表单。"""
+    script = r"""
+    function allRoots(root, out) {
+      out.push(root);
+      const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (const el of nodes) {
+        if (el.shadowRoot) allRoots(el.shadowRoot, out);
+      }
+      return out;
+    }
+    function visible(el) {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      const st = window.getComputedStyle(el);
+      return r.width > 2 && r.height > 2 && st.visibility !== 'hidden' && st.display !== 'none'
+        && st.opacity !== '0';
+    }
+    const roots = allRoots(document, []);
+    let hasClose = false;
+    let hasModalShell = false;
+    let hasAuthInput = false;
+    let hasAuthText = false;
+    let modalTextLen = 0;
+    const closeSels = [
+      "button[data-test='modal-close-button']",
+      "button.cc-modal__close-button",
+      "button[aria-label='Close']",
+      "button[aria-label='關閉']",
+      "button[aria-label='关闭']",
+    ];
+    const shellSels = [".cc-modal", ".cc-modal__modal", "[role='dialog']", "#modal-0", "#modal-header", ".cc-modal__body"];
+    for (const root of roots) {
+      if (!root.querySelectorAll) continue;
+      for (const sel of closeSels) {
+        root.querySelectorAll(sel).forEach(el => { if (visible(el)) hasClose = true; });
+      }
+      for (const sel of shellSels) {
+        root.querySelectorAll(sel).forEach(el => {
+          if (visible(el)) {
+            hasModalShell = true;
+            const t = (el.innerText || '').trim();
+            modalTextLen = Math.max(modalTextLen, t.length);
+          }
+        });
+      }
+      root.querySelectorAll('input, textarea').forEach(el => {
+        if (!visible(el)) return;
+        const type = (el.getAttribute('type') || '').toLowerCase();
+        const blob = [
+          type, el.name||'', el.id||'', el.placeholder||'', el.getAttribute('aria-label')||''
+        ].join(' ').toLowerCase();
+        if (type === 'password' || type === 'email' || blob.includes('email') || blob.includes('password')
+            || blob.includes('電郵') || blob.includes('密碼') || blob.includes('验证') || blob.includes('驗證')
+            || blob.includes('account') || type === 'tel' || type === 'text' || type === '') {
+          // 六位验证码也算
+          hasAuthInput = true;
+        }
+      });
+    }
+    const bodyText = (document.body && document.body.innerText || '');
+    const markers = ['以電郵繼續','Continue with Email','使用密碼登入','Sign In with Password',
+      '請檢查電郵','Check Your Email','使用 Apple 帳户登入','Sign in with Apple',
+      '重新傳送驗證碼','Resend','密碼','Password','電郵','Email','歡迎使用','Welcome to Apple',
+      '驗證碼','Verification'];
+    for (const m of markers) {
+      if (bodyText.includes(m)) { hasAuthText = true; break; }
+    }
+    // 空黑框：有关闭钮或模态壳，但几乎没有正文/表单
+    const blank = (hasClose || hasModalShell) && !hasAuthInput && (!hasAuthText || modalTextLen < 8);
+    return {hasClose, hasModalShell, hasAuthInput, hasAuthText, modalTextLen, blank};
+    """
+    try:
+        driver.switch_to.default_content()
+        return driver.execute_script(script) or {}
+    except Exception:
+        return {}
+
+
+def _apple_find_email_shallow(driver):
+    """
+    浅层找邮箱：主文档 + 第一层 iframe（不做深扫 / 不拉 page_source）。
+    返回 (element, frame_path|None)；找不到 (None, None)。
+    """
+    try:
+        driver.set_script_timeout(5)
+    except Exception:
+        pass
+    try:
+        driver.switch_to.default_content()
+        el = _apple_find_email_input(driver)
+        if el is not None:
+            return el, []
+    except Exception:
+        pass
+    try:
+        driver.switch_to.default_content()
+        frames = driver.find_elements(By.CSS_SELECTOR, "iframe")
+        for i, fr in enumerate(frames[:8]):
+            try:
+                driver.switch_to.default_content()
+                driver.switch_to.frame(fr)
+                el = _apple_find_email_input(driver)
+                if el is not None:
+                    return el, [i]
+            except Exception:
+                continue
+        driver.switch_to.default_content()
+    except Exception:
+        try:
+            driver.switch_to.default_content()
+        except Exception:
+            pass
+    return None, None
+
+
+def _apple_fill_email_fast(driver, email: str) -> bool:
+    """邮箱一出现就填：浅层 Selenium → 失败则 UIA/坐标粘贴。"""
+    _apple_step(driver, "fill_email_start")
+    # 输入前查黑框（快速 JS，避免 UIA 拖慢）
+    st = _apple_js_blank_auth_modal_state(driver)
+    if st.get("blank") and not st.get("hasAuthText"):
+        _apple_step(driver, "blank_before_fill", str(st))
+        _apple_close_blank_auth_modal(driver)
+        return False
+
+    el, path = _apple_find_email_shallow(driver)
+    if el is not None:
+        if path is not None:
+            _apple_enter_frame_path(driver, path)
+        _apple_set_input_value(driver, el, email)
+        got = ""
+        try:
+            got = el.get_attribute("value") or ""
+        except Exception:
+            pass
+        if email.lower() in got.lower() or "@" in got:
+            _apple_step(driver, "email_filled", f"selenium frame={path} value={got[:40]}")
+            return True
+        _apple_step(driver, "email_selenium_value_mismatch", repr(got[:40]))
+
+    # 坐标/UIA 兜底（HK 实测邮箱框约 800,442）
+    _apple_step(driver, "email_fill_coord_fallback")
+    try:
+        from apple_uia_login import paste_at, click_named, focus_apple_chrome, find_named_center
+        focus_apple_chrome()
+        pt = find_named_center(["電郵", "Email", "邮箱"], timeout=2.0) or (800, 442)
+        paste_at(pt[0], pt[1], email)
+        _apple_step(driver, "email_pasted_coord", str(pt))
+        return True
+    except Exception as e:
+        _apple_step(driver, "email_coord_fail", str(e))
+        return False
+
+
+def _apple_has_auth_email_ready(driver) -> bool:
+    """登录弹窗里是否已出现邮箱输入框（浅层查找，避免卡死）。"""
+    el, _ = _apple_find_email_shallow(driver)
+    if el is not None:
+        return True
+    # UIA 仅作短兜底
+    try:
+        from apple_uia_login import find_named_center
+        if find_named_center(["電郵", "Email"], timeout=0.5):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _apple_has_auth_password_or_code_ready() -> bool:
+    try:
+        from apple_uia_login import find_named_center
+        return bool(
+            find_named_center(
+                ["密碼", "Password", "使用密碼登入", "Sign In with Password", "驗證碼數字 1", "Verification Code"],
+                timeout=1.0,
+            )
+        )
+    except Exception:
+        return False
+
+
+def _apple_is_blank_auth_modal(driver) -> bool:
+    """空黑框：有关闭/模态壳，但没有邮箱/密码/验证码表单。验证码页绝不是黑框。"""
+    # 验证码 / 密码切换页 → 绝对不要关
+    try:
+        from apple_uia_login import find_named_center
+        if find_named_center(
+            [
+                "使用密碼登入",
+                "Sign In with Password",
+                "重新傳送驗證碼",
+                "Resend",
+                "驗證碼數字 1",
+                "請檢查電郵",
+                "密碼",
+                "Password",
+            ],
+            timeout=0.6,
+        ):
+            return False
+    except Exception:
+        pass
+
+    st = _apple_js_blank_auth_modal_state(driver)
+    if st.get("hasAuthText") and st.get("modalTextLen", 0) >= 8:
+        return False
+    if st.get("blank"):
+        try:
+            from apple_uia_login import find_named_center
+            if find_named_center(
+                ["電郵", "Email", "以電郵繼續", "Continue with Email", "使用密碼登入"],
+                timeout=0.6,
+            ):
+                return False
+        except Exception:
+            pass
+        return True
+    close_btn = _apple_find_modal_close_button(driver)
+    if not close_btn and not st.get("hasClose") and not st.get("hasModalShell"):
+        return False
+    if _apple_has_auth_email_ready(driver):
+        return False
+    if _apple_has_auth_password_or_code_ready():
+        return False
+    return bool(close_btn or st.get("hasClose") or st.get("hasModalShell"))
+
+
+def _apple_close_blank_auth_modal(driver) -> bool:
+    """关闭空黑框：Selenium → UIA → 固定坐标。"""
+    close_btn = _apple_find_modal_close_button(driver)
+    if close_btn:
+        if _apple_safe_click(driver, close_btn):
+            print("    · 已关闭空黑框登录弹窗", flush=True)
+            apple_human_delay(0.8, 1.2)
+            return True
+        try:
+            driver.execute_script("arguments[0].click();", close_btn)
+            print("    · 已关闭空黑框登录弹窗 (js)", flush=True)
+            apple_human_delay(0.8, 1.2)
+            return True
+        except Exception:
+            pass
+    try:
+        from apple_uia_login import click_named, click_xy
+        if click_named(["關閉", "Close", "关闭"], fallback_xy=(442, 231), timeout=2.0):
+            print("    · 已关闭空黑框登录弹窗 (uia/xy)", flush=True)
+            apple_human_delay(0.8, 1.2)
+            return True
+        click_xy(442, 231)
+        print("    · 已关闭空黑框登录弹窗 (xy)", flush=True)
+        apple_human_delay(0.8, 1.2)
+        return True
+    except Exception as e:
+        print(f"    · 关闭空黑框失败: {e}", flush=True)
+        return False
+
+
+def _apple_recover_blank_and_reopen_signin(driver, max_retries: int = 3) -> bool:
+    """关掉空黑框后重新点 Sign In，直到邮箱框出现。"""
+    print("STEP recover_blank_auth_modal", flush=True)
+    _apple_save_debug_shot(driver, "apple_blank_modal")
+    if not _apple_close_blank_auth_modal(driver):
+        print("✗ 空黑框关闭失败", flush=True)
+        return False
+    apple_human_delay(1.0, 1.5)
+    return _apple_open_sign_in_ready(driver, max_retries=max_retries)
+
+
+def _apple_open_sign_in_ready(driver, max_retries: int = 3, wait_sec: float = 25.0) -> bool:
+    """
+    点 Sign In 后轮询（不要死等满 20 秒）：
+    - 邮箱框一出现 → 立刻返回，马上填写
+    - 空黑框出现 → 关闭并重点 Sign In
+    """
+    for attempt in range(1, max_retries + 1):
+        if not _apple_click_sign_in(driver):
+            print(f"✗ 第 {attempt} 次未找到 Sign In / 登入", flush=True)
+            return False
+        _apple_step(driver, "signin_clicked", f"attempt={attempt}")
+        print(f"  轮询最多 {int(wait_sec)}s：邮箱出现就填；若变黑框则关闭重开...", flush=True)
+
+        deadline = time.time() + wait_sec
+        poll = 0
+        while time.time() < deadline:
+            poll += 1
+            # 先认邮箱（优先级最高，别被黑框检测拖慢）
+            if _apple_has_auth_email_ready(driver):
+                _apple_step(driver, "auth_modal_ok_email_ready", f"poll={poll}")
+                return True
+
+            # 黑框只用 JS 快判，避免每秒 UIA 扫一遍
+            st = _apple_js_blank_auth_modal_state(driver)
+            if st.get("blank") and not st.get("hasAuthText"):
+                _apple_step(driver, "blank_auth_modal", f"attempt={attempt} poll={poll} {st}")
+                if not _apple_close_blank_auth_modal(driver):
+                    print("✗ 空黑框关闭失败", flush=True)
+                    return False
+                apple_human_delay(0.8, 1.2)
+                break
+
+            if poll % 5 == 0:
+                _apple_step(driver, "auth_poll", f"n={poll} {st}")
+            time.sleep(0.5)
+        else:
+            st = _apple_js_blank_auth_modal_state(driver)
+            _apple_step(driver, "auth_wait_timeout", str(st))
+            if _apple_is_blank_auth_modal(driver):
+                _apple_close_blank_auth_modal(driver)
+                apple_human_delay(1.0, 1.5)
+            continue
+        continue
+
+    print("✗ Sign In 多次仍未出现可用登录弹窗", flush=True)
+    return False
+
+
+def _apple_js_find_input(driver, kind: str):
+    """
+    穿透 Shadow DOM 查找输入框。
+    kind: email | password
+    """
+    script = r"""
+    const kind = arguments[0];
+    function allRoots(root, out) {
+      out.push(root);
+      const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (const el of nodes) {
+        if (el.shadowRoot) allRoots(el.shadowRoot, out);
+      }
+      return out;
+    }
+    const roots = allRoots(document, []);
+    const inputs = [];
+    for (const root of roots) {
+      if (!root.querySelectorAll) continue;
+      root.querySelectorAll('input, textarea').forEach(el => inputs.push(el));
+    }
+    const visible = inputs.filter(el => {
+      const r = el.getBoundingClientRect();
+      const st = window.getComputedStyle(el);
+      return r.width > 2 && r.height > 2 && st.visibility !== 'hidden' && st.display !== 'none';
+    });
+    const score = (el) => {
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      const name = (el.getAttribute('name') || '').toLowerCase();
+      const id = (el.id || '').toLowerCase();
+      const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+      const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      const blob = [type, name, id, ac, ph, aria].join(' ');
+      let s = 0;
+      if (kind === 'password') {
+        if (type === 'password') s += 20;
+        if (blob.includes('password') || blob.includes('密碼') || blob.includes('密码')) s += 10;
+      } else {
+        if (type === 'email') s += 20;
+        if (type === 'password') s -= 50;
+        if (blob.includes('email') || blob.includes('account') || blob.includes('user')
+            || blob.includes('電郵') || blob.includes('邮箱') || blob.includes('郵箱')
+            || blob.includes('phone') || blob.includes('電話') || blob.includes('电话')) s += 12;
+        if (type === 'text' || type === 'tel' || type === '') s += 2;
+      }
+      return s;
+    };
+    let best = null, bestScore = 0;
+    for (const el of visible) {
+      const sc = score(el);
+      if (sc > bestScore) { best = el; bestScore = sc; }
+    }
+    return bestScore > 0 ? best : null;
+    """
+    try:
+        return driver.execute_script(script, kind)
+    except Exception:
+        return None
+
+
+def _apple_find_email_input(driver):
+    el = _apple_js_find_input(driver, "email")
+    if el is not None:
+        return el
+    selectors = [
+        "input[type='email']",
+        "input[name='accountName']",
+        "input#account_name_text_field",
+        "input[autocomplete='username']",
+        "input[type='text']",
+    ]
+    for css in selectors:
+        for cand in _apple_visible_elements(driver, css):
+            try:
+                itype = (cand.get_attribute("type") or "").lower()
+                name = (cand.get_attribute("name") or "").lower()
+                autocomplete = (cand.get_attribute("autocomplete") or "").lower()
+                placeholder = (cand.get_attribute("placeholder") or "").lower()
+                aria = (cand.get_attribute("aria-label") or "").lower()
+                blob = " ".join([itype, name, autocomplete, placeholder, aria])
+                if any(k in blob for k in ("email", "account", "user", "電郵", "邮箱", "郵箱", "电话", "電話", "phone")):
+                    return cand
+                if itype in ("email", "text") and "password" not in blob:
+                    return cand
+            except Exception:
+                continue
+    return None
+
+
+def _apple_find_password_input(driver):
+    el = _apple_js_find_input(driver, "password")
+    if el is not None:
+        return el
+    selectors = [
+        "input[type='password']",
+        "input#password_text_field",
+        "input[name='password']",
+        "input[autocomplete='current-password']",
+    ]
+    for css in selectors:
+        els = _apple_visible_elements(driver, css)
+        if els:
+            return els[0]
+    return None
+
+
+def _apple_js_click_by_texts(driver, texts: list[str]) -> bool:
+    """穿透 Shadow DOM 按文案点击按钮/链接。"""
+    script = r"""
+    const texts = arguments[0].map(t => (t || '').toLowerCase());
+    function allRoots(root, out) {
+      out.push(root);
+      const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (const el of nodes) {
+        if (el.shadowRoot) allRoots(el.shadowRoot, out);
+      }
+      return out;
+    }
+    function norm(s) { return (s || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+    const roots = allRoots(document, []);
+    const candidates = [];
+    for (const root of roots) {
+      if (!root.querySelectorAll) continue;
+      root.querySelectorAll('button,a,[role="button"],input[type="submit"],div,span').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return;
+        const label = norm([el.innerText, el.getAttribute('aria-label'), el.value, el.title].filter(Boolean).join(' '));
+        if (!label || label.length > 80) return;
+        for (const t of texts) {
+          if (t && label.includes(t)) { candidates.push(el); return; }
+        }
+      });
+    }
+    if (!candidates.length) return false;
+    // 优先较短文案（更像按钮本身）
+    candidates.sort((a,b) => ((a.innerText||'').length) - ((b.innerText||'').length));
+    const el = candidates[0];
+    el.scrollIntoView({block:'center'});
+    el.click();
+    return true;
+    """
+    try:
+        return bool(driver.execute_script(script, texts))
+    except Exception:
+        return False
+
+
+def _apple_switch_to_password_login(driver) -> bool:
+    keywords = [
+        "使用密碼登入",
+        "使用密码登录",
+        "Sign In with Password",
+        "Sign in with Password",
+        "Use Password",
+        "Log In with Password",
+        "Login with Password",
+    ]
+    # 先全 frame + Shadow
+    paths = _apple_collect_frames(driver)
+    for path in paths:
+        if not _apple_enter_frame_path(driver, path):
+            continue
+        if _apple_js_click_by_texts(driver, keywords):
+            print("    · 已切换为密码登录")
+            apple_human_delay(1.5, 2.5)
+            return True
+        el = _apple_find_clickable_by_texts(driver, keywords, tags="button,a,[role='button'],div,span")
+        if el and _apple_safe_click(driver, el):
+            print("    · 已切换为密码登录")
+            apple_human_delay(1.5, 2.5)
+            return True
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    return False
+
+
+def _apple_submit_auth(driver) -> bool:
+    keywords = ["Continue", "繼續", "继续", "Sign In", "Sign in", "登入", "登录", "Next", "下一步"]
+    if _apple_js_click_by_texts(driver, keywords):
+        return True
+    el = _apple_find_clickable_by_texts(driver, keywords, tags="button")
+    if el and _apple_safe_click(driver, el):
+        return True
+    try:
+        for btn in _apple_visible_elements(driver, "button"):
+            aria = (btn.get_attribute("aria-label") or "").lower()
+            text = (btn.text or "").strip()
+            if text:
+                continue
+            if any(k in aria for k in ("continue", "sign", "next", "submit", "登入", "继续", "繼續")):
+                if _apple_safe_click(driver, btn):
+                    return True
+        pwd = _apple_find_password_input(driver)
+        if pwd:
+            try:
+                parent = pwd.find_element(By.XPATH, "./ancestor::*[self::div or self::form][1]")
+                for btn in parent.find_elements(By.CSS_SELECTOR, "button"):
+                    if btn.is_displayed() and _apple_safe_click(driver, btn):
+                        return True
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return False
+
+
+def login_apple_music(
+    driver,
+    email: str | None = None,
+    password: str | None = None,
+    login_mode: str | None = None,
+) -> bool:
+    """
+    登录 Apple Music。
+    login_mode: auto=凭据自动登录；manual=浏览器内手动登录后输入 y。
+    默认读 APPLE_LOGIN_MODE；manual 或缺少凭据时走人工确认。
+    """
+    mode = (login_mode or APPLE_LOGIN_MODE or "auto").strip().lower()
+    if mode == "manual" or not email or not password:
+        print(f"Apple 登录模式: manual（请在浏览器完成登录后输入 y）", flush=True)
+        return login_apple_music_manual(driver)
+    print(f"Apple 登录模式: auto（{email}）", flush=True)
+    return login_apple_music_auto(driver, email, password)
+
+
+def login_apple_music_manual(driver) -> bool:
+    """登录 Apple Music - 人工确认（旧模式）"""
     print("正在访问 Apple Music...")
-    driver.get("https://music.apple.com")
+    driver.get(APPLE_HOME_URL)
     apple_human_delay(1, 2)
 
     print("\n请在浏览器中完成登录。")
     print("完成后输入 y 并按回车继续，输入 n 取消。\n")
-    
+
     deadline = time.time() + APPLE_LOGIN_CONFIRM_TIMEOUT
-    
+
     while True:
         remaining = max(0, int(deadline - time.time()))
         if remaining <= 0:
@@ -2680,15 +3705,308 @@ def login_apple_music(driver):
             f"是否已登录成功？(y/n) [剩余 {minutes:02d}:{seconds:02d}]: "
         ).strip().lower()
 
-        if user_input == 'y':
+        if user_input == "y":
             print("✓ 登录成功")
             return True
-        elif user_input == 'n':
+        if user_input == "n":
             print("✗ 登录失败")
             return False
-        else:
-            print("请输入 y 或 n")
-            continue
+        print("请输入 y 或 n")
+
+
+def _apple_uia_root_window(timeout: float = 8.0):
+    """定位 Apple Music Chrome 窗口（uiautomation）。"""
+    try:
+        import uiautomation as auto
+    except ImportError:
+        print("    · 未安装 uiautomation，跳过 UIA 登录辅助")
+        return None
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            for win in auto.GetRootControl().GetChildren():
+                try:
+                    name = win.Name or ""
+                except Exception:
+                    continue
+                if "Apple" in name and ("Music" in name or "音樂" in name or "音乐" in name):
+                    try:
+                        win.SetActive()
+                    except Exception:
+                        pass
+                    return win
+        except Exception:
+            pass
+        time.sleep(0.4)
+    return None
+
+
+def _apple_uia_find_control(root, control_type: str, names: list[str], timeout: float = 12.0):
+    """在窗口内按名称查找控件（兼容中英）。"""
+    try:
+        import uiautomation as auto
+    except ImportError:
+        return None
+
+    deadline = time.time() + timeout
+    wanted = [_apple_norm_text(n) for n in names if n]
+    while time.time() < deadline:
+        try:
+            if control_type == "edit":
+                walker = root.GetChildren()
+                # 深度搜索 Edit
+                stack = list(walker)
+                depth_guard = 0
+                while stack and depth_guard < 4000:
+                    depth_guard += 1
+                    ctrl = stack.pop(0)
+                    try:
+                        children = ctrl.GetChildren()
+                        stack.extend(children)
+                    except Exception:
+                        children = []
+                    try:
+                        ctype = ctrl.ControlTypeName
+                        cname = ctrl.Name or ""
+                    except Exception:
+                        continue
+                    if ctype != "EditControl":
+                        continue
+                    cn = _apple_norm_text(cname)
+                    if any(w and (w in cn or cn in w) for w in wanted) or (not cn and "password" in " ".join(wanted)):
+                        # 空名编辑框：若在找密码且 IsPassword
+                        try:
+                            if "password" in " ".join(wanted) or "密碼" in "".join(names) or "密码" in "".join(names):
+                                if getattr(ctrl, "IsPassword", False) or "password" in cn or "密碼" in cname or "密码" in cname:
+                                    return ctrl
+                            if cn:
+                                return ctrl
+                        except Exception:
+                            if cn:
+                                return ctrl
+                    if cn and any(w in cn for w in wanted):
+                        return ctrl
+            else:
+                stack = list(root.GetChildren())
+                depth_guard = 0
+                while stack and depth_guard < 4000:
+                    depth_guard += 1
+                    ctrl = stack.pop(0)
+                    try:
+                        stack.extend(ctrl.GetChildren())
+                    except Exception:
+                        pass
+                    try:
+                        ctype = ctrl.ControlTypeName
+                        cname = ctrl.Name or ""
+                    except Exception:
+                        continue
+                    if control_type == "button" and ctype not in ("ButtonControl", "HyperlinkControl"):
+                        # 也允许 Text/自定义被当成可点
+                        if ctype not in ("ButtonControl", "HyperlinkControl", "TextControl", "ListItemControl"):
+                            continue
+                    cn = _apple_norm_text(cname)
+                    if any(w and w == cn for w in wanted):
+                        return ctrl
+                    if any(w and w in cn and len(cn) < 40 for w in wanted):
+                        return ctrl
+        except Exception:
+            pass
+        time.sleep(0.35)
+    return None
+
+
+def _apple_uia_set_value(ctrl, value: str) -> bool:
+    """用 UIA ValuePattern 写入，绕过五笔输入法。"""
+    if ctrl is None:
+        return False
+    try:
+        pattern = ctrl.GetValuePattern()
+        if pattern:
+            pattern.SetValue(value)
+            return True
+    except Exception:
+        pass
+    try:
+        ctrl.Click()
+        time.sleep(0.15)
+        # 全选后粘贴
+        try:
+            import uiautomation as auto
+            auto.SendKeys("{Ctrl}a")
+            time.sleep(0.05)
+        except Exception:
+            pass
+        try:
+            import uiautomation as auto
+            auto.SetClipboardText(value)
+            auto.SendKeys("{Ctrl}v")
+            return True
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return False
+
+
+def _apple_uia_click(ctrl) -> bool:
+    if ctrl is None:
+        return False
+    try:
+        ctrl.Click()
+        return True
+    except Exception:
+        try:
+            rect = ctrl.BoundingRectangle
+            x = (rect.left + rect.right) // 2
+            y = (rect.top + rect.bottom) // 2
+            import uiautomation as auto
+            auto.Click(x, y)
+            return True
+        except Exception:
+            return False
+
+
+def _apple_uia_complete_login(email: str, password: str, timeout: float = 120.0) -> bool:
+    """备用：全坐标登录。"""
+    try:
+        from apple_uia_login import complete_apple_login
+    except Exception as e:
+        print(f"STEP uia_import_fail: {e}", flush=True)
+        return False
+    return complete_apple_login(email, password, timeout=timeout)
+
+
+def login_apple_music_auto(driver, email: str, password: str) -> bool:
+    """全自动登录：Selenium 填邮箱（已验证可用）+ 坐标完成密码/Continue。"""
+    print(f"正在自动登录 Apple Music: {email}", flush=True)
+    try:
+        try:
+            driver.set_script_timeout(8)
+        except Exception:
+            pass
+
+        driver.get(APPLE_HOME_URL)
+        apple_human_delay(2, 3)
+
+        geo_n = _apple_dismiss_geo_banners(driver)
+        if geo_n:
+            print(f"    · 已处理地区提示 {geo_n} 次", flush=True)
+
+        if _apple_is_logged_in(driver):
+            print("✓ 已处于登录状态", flush=True)
+            return True
+
+        # 全流程可重试：邮箱提交后 / 密码后若出空黑框，关闭并重开登录
+        for round_i in range(1, 4):
+            print(f"STEP login_round={round_i}", flush=True)
+            if round_i > 1:
+                if not _apple_open_sign_in_ready(driver, max_retries=3):
+                    print("✗ 重开登录弹窗失败", flush=True)
+                    _apple_save_debug_shot(driver, "apple_no_signin_retry")
+                    return False
+
+            if round_i == 1:
+                if not _apple_open_sign_in_ready(driver, max_retries=3):
+                    print("✗ 未打开可用的 Sign In / 登入 弹窗", flush=True)
+                    _apple_save_debug_shot(driver, "apple_no_signin")
+                    return False
+
+            # 1) 邮箱出现后立刻浅层填写（禁止深扫 frame）
+            email_ok = _apple_fill_email_fast(driver, email)
+            if not email_ok:
+                _apple_step(driver, "email_fill_failed_retry_round")
+                if _apple_is_blank_auth_modal(driver):
+                    _apple_close_blank_auth_modal(driver)
+                if _apple_uia_complete_login(email, password):
+                    _apple_step(driver, "uia_full_login_done")
+                else:
+                    _apple_step(driver, "uia_full_login_fail")
+                    continue
+            else:
+                el, path = _apple_find_email_shallow(driver)
+                if path is not None:
+                    _apple_enter_frame_path(driver, path)
+                if not _apple_submit_auth(driver):
+                    _apple_step(driver, "email_submit_js_fail_try_coord")
+                    try:
+                        from apple_uia_login import click_named, click_xy
+                        if not click_named(["繼續", "Continue"], fallback_xy=(800, 645), timeout=2.0):
+                            click_xy(800, 645)
+                        _apple_step(driver, "email_submit_coord")
+                    except Exception as e:
+                        _apple_step(driver, "email_submit_coord_fail", str(e))
+                else:
+                    _apple_step(driver, "email_submitted")
+                # 邮箱提交后直接进密码阶段（验证码页点「使用密碼登入」），不做 UIA 预检以免卡死
+                apple_human_delay(1.2, 1.8)
+                try:
+                    from apple_uia_login import complete_password_phase, focus_apple_chrome
+                    focus_apple_chrome()
+                    _apple_step(driver, "password_phase_start")
+                    pwd_ok = complete_password_phase(password)
+                    _apple_step(driver, "password_phase_end", f"ok={pwd_ok}")
+                    if not pwd_ok:
+                        apple_human_delay(1.0, 1.5)
+                        continue
+                except Exception as e:
+                    _apple_step(driver, "password_phase_fail", str(e))
+                    return False
+
+                time.sleep(1.5)
+                _apple_step(driver, "after_password_check")
+                # 密码后若已登录，跳过黑框逻辑
+                if _apple_is_logged_in(driver):
+                    _apple_step(driver, "LOGIN_OK")
+                    print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
+                    print("  等待 20 秒后继续原加歌流程...", flush=True)
+                    time.sleep(20)
+                    return True
+
+            # 3) 检测左下角账户态；成功后固定等 20 秒（等同人工确认 Y）
+            _apple_dismiss_geo_banners(driver, max_clicks=2)
+            for i in range(20):
+                if _apple_is_blank_auth_modal(driver):
+                    _apple_step(driver, "blank_modal_during_login_wait")
+                    _apple_close_blank_auth_modal(driver)
+                    break
+                if _apple_is_logged_in(driver):
+                    _apple_step(driver, "LOGIN_OK")
+                    print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
+                    print("  等待 20 秒后继续原加歌流程...", flush=True)
+                    time.sleep(20)
+                    return True
+                if i in (2, 5, 8):
+                    try:
+                        from apple_uia_login import click_named, XY as _XY, click_xy
+                        if not click_named(["繼續", "Continue"], timeout=0.8):
+                            click_xy(*_XY["welcome_continue"])
+                    except Exception:
+                        pass
+                apple_human_delay(1.0, 1.3)
+
+            if _apple_is_logged_in(driver):
+                _apple_step(driver, "LOGIN_OK")
+                print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
+                print("  等待 20 秒后继续原加歌流程...", flush=True)
+                time.sleep(20)
+                return True
+
+            _apple_step(driver, "login_round_fail", f"round={round_i}")
+            if _apple_is_blank_auth_modal(driver):
+                _apple_close_blank_auth_modal(driver)
+            apple_human_delay(1.0, 1.5)
+
+        print("✗ Apple Music 自动登录后未检测到登录态", flush=True)
+        _apple_save_debug_shot(driver, "apple_login_not_detected")
+        return False
+    except Exception as e:
+        print(f"✗ Apple Music 自动登录失败: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        _apple_save_debug_shot(driver, "apple_login_error")
+        return False
 
 
 # 可选：白名单直链（当前不用；需要时填专辑名 -> URL）
@@ -3362,7 +4680,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                             apple_move_to_element(driver, add_to_playlist)
                             apple_human_delay(0.3, 0.6)
                             add_to_playlist.click()
-                            apple_human_delay(1, 2)
+                            apple_human_delay(0.35, 0.6)
                         except:
                             print("    ! 未找到 Add to Playlist 选项")
                             continue
@@ -3378,11 +4696,11 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                                 while time.time() < deadline and playlist_option is None:
                                     playlist_option = find_apple_playlist_menu_option(driver, playlist_name)
                                     if playlist_option is None:
-                                        time.sleep(0.35)
+                                        time.sleep(0.25)
                                 if playlist_option is None:
                                     raise TimeoutError(f"菜单中未找到播放列表: {playlist_name}")
                                 apple_move_to_element(driver, playlist_option)
-                                apple_human_delay(0.3, 0.6)
+                                apple_human_delay(0.25, 0.45)
                                 try:
                                     playlist_option.click()
                                 except Exception:
@@ -3417,15 +4735,15 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                                                     more_btn.click()
                                                 except Exception:
                                                     driver.execute_script("arguments[0].click();", more_btn)
-                                                apple_human_delay(1, 2)
+                                                apple_human_delay(0.35, 0.6)
                                                 add_to_playlist = WebDriverWait(driver, 5).until(
                                                     EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
                                                 )
                                                 add_to_playlist.click()
-                                                apple_human_delay(1, 2)
+                                                apple_human_delay(0.35, 0.6)
                                     except Exception:
                                         pass
-                                    apple_human_delay(1, 2)
+                                    apple_human_delay(0.5, 0.8)
                                 else:
                                     print(f"    ! 播放列表未找到，跳过歌曲 {idx+1}")
                                     if retry_attempt == max_retry_attempts - 1:
@@ -3451,22 +4769,23 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                     
                     added_count += 1
                     song_added = True
-                    apple_human_delay(2, 4)
+                    apple_song_interval()
                     
                 except Exception as e:
                     error_msg = str(e)
                     if "intercepted" in error_msg.lower():
-                        apple_human_delay(2, 3)
+                        apple_human_delay(0.8, 1.2)
                         print(f"    ? 歌曲 {idx+1} 点击被拦截，可能已添加成功（计入统计）")
                         added_count += 1
                         song_added = True
+                        apple_song_interval()
                     elif attempt == max_attempts - 1:
                         print(f"    ! 歌曲 {idx+1} 添加失败: {error_msg[:50]}")
                     try:
                         ActionChains(driver).send_keys(Keys.ESCAPE).perform()
                     except:
                         pass
-                    apple_human_delay(1, 2)
+                    apple_human_delay(0.4, 0.7)
         
         print(f"  ✓ 已添加 {added_count} 首歌曲")
         return added_count
@@ -3476,13 +4795,29 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
         return 0
 
 
-def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count_min: int, track_count_max: int, base_dir: Path = None):
+def process_apple_music_playlist(
+    txt_path: Path,
+    playlist_name: str,
+    track_count_min: int,
+    track_count_max: int,
+    base_dir: Path = None,
+    *,
+    email: str | None = None,
+    password: str | None = None,
+    max_albums: int | None = None,
+    auto_close: bool = False,
+    login_mode: str | None = None,
+):
     """处理 Apple Music 播放列表添加流程 - 支持失败重试和自动补充"""
     # 解析专辑列表
     albums = parse_album_list_from_txt(txt_path)
     if not albums:
         print("✗ 未从 txt 文件中解析到专辑信息")
         return False
+
+    if max_albums is not None and max_albums > 0:
+        albums = albums[:max_albums]
+        print(f"\n⚠ 验证模式：仅处理前 {len(albums)} 张专辑")
     
     print(f"\n解析到 {len(albums)} 张专辑待添加")
     print(f"将使用播放列表名称: {playlist_name}")
@@ -3520,7 +4855,9 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
     
     try:
         # 登录
-        if not login_apple_music(driver):
+        if not login_apple_music(
+            driver, email=email, password=password, login_mode=login_mode
+        ):
             print("登录失败，退出")
             return False
         
@@ -3616,7 +4953,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
             apple_human_delay(1, 2)
         
         # ===== 失败专辑重试逻辑（最多1次） =====
-        if failed_albums:
+        if failed_albums and max_albums is None:
             print(f"\n{'='*60}")
             print(f"⚠ 有 {len(failed_albums)} 张专辑添加失败，尝试重试...")
             for idx, item in enumerate(failed_albums, 1):
@@ -3669,7 +5006,7 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         
         # ===== 补充缺失歌曲逻辑 =====
         missing_count = expected_total - total_added
-        if missing_count > 0 and base_dir:
+        if missing_count > 0 and base_dir and max_albums is None:
             print(f"\n{'='*60}")
             print(f"⚠ 预期 {expected_total} 首，实际 {total_added} 首，缺少 {missing_count} 首")
             print(f"正在从 other_artists.json 补充...")
@@ -3794,11 +5131,14 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
         
     finally:
         if driver:
-            print("\n浏览器保持打开状态...")
-            try:
-                input("按 Enter 关闭浏览器...")
-            except EOFError:
-                print("  (无交互输入，自动关闭浏览器)")
+            if auto_close:
+                print("\n自动关闭浏览器...")
+            else:
+                print("\n浏览器保持打开状态...")
+                try:
+                    input("按 Enter 关闭浏览器...")
+                except EOFError:
+                    print("  (无交互输入，自动关闭浏览器)")
             try:
                 stop_browser_keep_alive()
             except Exception:
@@ -3807,6 +5147,102 @@ def process_apple_music_playlist(txt_path: Path, playlist_name: str, track_count
                 driver.quit()
             except Exception:
                 pass
+
+
+def run_apple_for_single_account(
+    account_info: dict,
+    account_index: int,
+    total_accounts: int,
+    base_dir: Path,
+    args,
+) -> bool:
+    """为单个 Apple 账号执行完整播单添加：新开浏览器 → 自动登录 → 添加 → 关闭。"""
+    email = account_info["email"]
+    password = account_info["password"]
+
+    print(f"\n{'='*60}")
+    print(f"处理 Apple 账号 [{account_index + 1}/{total_accounts}]: {email}")
+    print(f"{'='*60}")
+
+    try:
+        platform_file = PLATFORM_FILES.get("A")
+        main_artists_path = base_dir / platform_file
+        other_artists_path = base_dir / OTHER_ARTISTS_FILE
+
+        main_artists = load_json_data(main_artists_path)
+        other_artists = load_json_data(other_artists_path)
+
+        history = load_history()
+        rng = secrets.SystemRandom()
+
+        main_category = "A"
+        other_category = "Other"
+
+        main_history_counts, main_recent_combos = get_category_history_data(main_category, history)
+        other_history_counts, other_recent_combos = get_category_history_data(other_category, history)
+
+        other_items = flatten_albums(other_artists)
+        main_items = flatten_albums(main_artists)
+
+        part1 = weighted_sample(other_items, other_history_counts, 1, rng, other_recent_combos, unique_artist=True)
+        part2 = weighted_sample(main_items, main_history_counts, args.Count, rng, main_recent_combos, unique_artist=True)
+
+        part1_artists = {item.split(" - ", 1)[0] for item in part1}
+        other_items_filtered = [item for item in other_items if item.split(" - ", 1)[0] not in part1_artists]
+        part3 = weighted_sample(other_items_filtered, other_history_counts, 4, rng, other_recent_combos, unique_artist=True)
+
+        final_list = part1 + part2 + part3
+
+        update_history(part1 + part3, other_category, history)
+        update_history(part2, main_category, history)
+        save_history(history)
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        output_filename = f"A+{timestamp}.txt"
+        output_path = base_dir / output_filename
+
+        output_lines = []
+        for item in final_list:
+            artist, album = split_artist_album(item)
+            output_lines.append(format_output_item(artist, album))
+        output_path.write_text("\n".join(output_lines), encoding="utf-8")
+
+        print(f"已生成播放列表文件：{output_filename}")
+        print(f"  总计: {len(final_list)} 首")
+
+        playlist_name = claim_next_playlist_name()
+        if not playlist_name:
+            print("✗ 无可用的播放列表名称")
+            return False
+
+        max_albums = getattr(args, "apple_max_albums", None)
+        if max_albums is None:
+            max_albums = APPLE_MAX_ALBUMS
+
+        print(f"\n开始添加歌曲到 Apple Music 播放列表...")
+        result = process_apple_music_playlist(
+            output_path,
+            playlist_name,
+            APPLE_TRACK_COUNT_MIN,
+            APPLE_TRACK_COUNT_MAX,
+            base_dir,
+            email=email,
+            password=password,
+            max_albums=max_albums,
+            auto_close=True,
+            login_mode=getattr(args, "apple_login_mode", None) or APPLE_LOGIN_MODE,
+        )
+        if result:
+            print(f"\n✓ 账号 {email} 处理完成")
+            return True
+        print(f"\n✗ 账号 {email} 处理失败")
+        return False
+    except Exception as e:
+        print(f"✗ 账号 {email} 处理出错: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 
 # ==================== Qobuz 集成功能 ====================
 
@@ -4829,6 +6265,18 @@ def main():
         default=None,
         help=f"Tidal 登录方式，默认 {TIDAL_LOGIN_MODE}（auto=全自动浏览器）"
     )
+    parser.add_argument(
+        "--apple-max-albums",
+        type=int,
+        default=None,
+        help="Apple 每个账号最多处理专辑数（验证用，例如 2）；默认全量",
+    )
+    parser.add_argument(
+        "--apple-login-mode",
+        choices=["auto", "manual"],
+        default=None,
+        help=f"Apple 登录方式，默认 {APPLE_LOGIN_MODE}（auto=读 apple_email.txt 自动登录；manual=浏览器手动登录后输入 y）",
+    )
     args = parser.parse_args()
 
     log_file = setup_logging(args.Platform)
@@ -4884,15 +6332,140 @@ def main():
         print()
     
     # ===== Apple Music 预检查（如果启用） =====
+    apple_accounts = []
     if apple_enabled:
         if not SELENIUM_AVAILABLE:
             print("✗ 错误：未安装 selenium，请运行: pip install selenium")
             return
-        
+
+        apple_login_mode = (getattr(args, "apple_login_mode", None) or APPLE_LOGIN_MODE or "auto").strip().lower()
         print("="*60)
-        print("Apple Music 播放列表自动添加工具")
+        if apple_login_mode == "manual":
+            print("Apple Music 播放列表添加工具（手动登录模式）")
+        else:
+            print("Apple Music 播放列表自动添加工具（多账号自动化）")
         print("="*60)
+        print(f"登录模式: {apple_login_mode}")
+
+        if apple_login_mode == "manual":
+            # 手动登录：不读账号文件，单次跑列表后人工确认 y
+            platform_file = PLATFORM_FILES.get("A")
+            main_artists_path = base_dir / platform_file
+            other_artists_path = base_dir / OTHER_ARTISTS_FILE
+            main_artists = load_json_data(main_artists_path)
+            other_artists = load_json_data(other_artists_path)
+            history = load_history()
+            rng = secrets.SystemRandom()
+            main_history_counts, main_recent_combos = get_category_history_data("A", history)
+            other_history_counts, other_recent_combos = get_category_history_data("Other", history)
+            other_items = flatten_albums(other_artists)
+            main_items = flatten_albums(main_artists)
+            part1 = weighted_sample(other_items, other_history_counts, 1, rng, other_recent_combos, unique_artist=True)
+            part2 = weighted_sample(main_items, main_history_counts, args.Count, rng, main_recent_combos, unique_artist=True)
+            part1_artists = {item.split(" - ", 1)[0] for item in part1}
+            other_items_filtered = [item for item in other_items if item.split(" - ", 1)[0] not in part1_artists]
+            part3 = weighted_sample(other_items_filtered, other_history_counts, 4, rng, other_recent_combos, unique_artist=True)
+            final_list = part1 + part2 + part3
+            update_history(part1 + part3, "Other", history)
+            update_history(part2, "A", history)
+            save_history(history)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            output_filename = f"A+{timestamp}.txt"
+            output_path = base_dir / output_filename
+            output_lines = []
+            for item in final_list:
+                artist, album = split_artist_album(item)
+                output_lines.append(format_output_item(artist, album))
+            output_path.write_text("\n".join(output_lines), encoding="utf-8")
+            print(f"已生成播放列表文件：{output_filename}")
+            print(f"  总计: {len(final_list)} 首")
+            playlist_name = claim_next_playlist_name()
+            if not playlist_name:
+                print("✗ 无可用的播放列表名称")
+                return
+            max_albums = getattr(args, "apple_max_albums", None)
+            if max_albums is None:
+                max_albums = APPLE_MAX_ALBUMS
+            print(f"\n开始添加歌曲到 Apple Music 播放列表...")
+            ok = process_apple_music_playlist(
+                output_path,
+                playlist_name,
+                APPLE_TRACK_COUNT_MIN,
+                APPLE_TRACK_COUNT_MAX,
+                base_dir,
+                email=None,
+                password=None,
+                max_albums=max_albums,
+                auto_close=False,
+                login_mode="manual",
+            )
+            if ok:
+                print("\n✓ Apple Music（手动登录）处理完成")
+            else:
+                print("\n✗ Apple Music（手动登录）处理失败")
+            return
+
+        apple_accounts = load_apple_accounts()
+        if not apple_accounts:
+            print(f"\n✗ 未找到 Apple 账号数据！")
+            print(f"  请在 {APPLE_EMAIL_FILE} 文件中添加账号信息，格式如下：")
+            print(f"  邮箱")
+            print(f"  密码")
+            print(f"  （空行分隔不同账号）")
+            print(f"  或将 APPLE_LOGIN_MODE / --apple-login-mode 设为 manual 使用手动登录")
+            return
+
+        print(f"\n✓ 找到 {len(apple_accounts)} 个 Apple 账号")
+        for i, acc in enumerate(apple_accounts):
+            print(f"  [{i+1}] {acc['email']}")
+        if getattr(args, "apple_max_albums", None):
+            print(f"  验证限制：每个账号最多处理 {args.apple_max_albums} 张专辑")
         print()
+
+        print(f"\n{'='*60}")
+        print(f"开始 Apple 多账号自动化处理（共 {len(apple_accounts)} 个账号）")
+        print(f"{'='*60}")
+
+        success_count = 0
+        success_accounts = []
+        failed_accounts = []
+        for i, account in enumerate(apple_accounts):
+            success = run_apple_for_single_account(
+                account, i, len(apple_accounts), base_dir, args
+            )
+            if success:
+                success_count += 1
+                success_accounts.append(account["email"])
+            else:
+                failed_accounts.append(account["email"])
+
+            if i < len(apple_accounts) - 1:
+                print(f"\n等待 3 秒后处理下一个账号...")
+                time.sleep(3)
+
+        print(f"\n{'='*60}")
+        print(f"Apple 多账号处理完成！")
+        print(f"  成功: {success_count}/{len(apple_accounts)} 个账号")
+        print(f"  成功账号: {', '.join(success_accounts) if success_accounts else '无'}")
+        print(f"  失败账号: {', '.join(failed_accounts) if failed_accounts else '无'}")
+        print(f"{'='*60}")
+
+        elapsed_time = time.time() - start_time
+        hours = int(elapsed_time // 3600)
+        minutes = int((elapsed_time % 3600) // 60)
+        seconds = int(elapsed_time % 60)
+        print(f"\n{'='*60}")
+        print(f"程序运行完成！")
+        if hours > 0:
+            print(f"总耗时: {hours}小时 {minutes}分钟 {seconds}秒")
+        elif minutes > 0:
+            print(f"总耗时: {minutes}分钟 {seconds}秒")
+        else:
+            print(f"总耗时: {seconds}秒")
+        print(f"日志已保存: {log_file}")
+        finalize_run_log(log_file)
+        print(f"{'='*60}")
+        return
 
     # ===== Qobuz 预检查（如果启用） =====
     if qobuz_enabled:
@@ -5087,26 +6660,6 @@ def main():
     print(f"3. Other (4首)")
     print(f"总计: {len(final_list)} 首")
     print(f"输出文件：{output_path.name}")
-    
-    # ===== 9. Apple Music 播放列表添加（如果启用） =====
-    if apple_enabled:
-        # 获取播放列表名称（选定即标记已用）
-        playlist_name = claim_next_playlist_name()
-        if not playlist_name:
-            print("✗ 无可用的播放列表名称")
-            return
-        
-        print(f"\n{'='*60}")
-        print("开始添加歌曲到 Apple Music 播放列表...")
-        print(f"{'='*60}")
-        
-        process_apple_music_playlist(
-            output_path,
-            playlist_name,
-            APPLE_TRACK_COUNT_MIN,
-            APPLE_TRACK_COUNT_MAX,
-            base_dir
-        )
     
     # ===== 10. Qobuz 播放列表添加（如果启用） =====
     if qobuz_enabled:
