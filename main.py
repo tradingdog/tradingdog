@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.71"  # 修复：按账号地区切店面（港hk/美us）；加歌失败则把 URL 改成目标店面再重试
-# 更新内容：APPLE_REGION_STOREFRONT；登录后 ensure 目标店面；加歌 0 首时 URL 重写重试
+APP_VERSION = "0.1.72"  # 修复：登录后「歡迎使用 Apple Music」弹窗点繼續，避免挡住搜索
+# 更新内容：_apple_dismiss_welcome_modal；ensure 店面后/搜索前清欢迎弹窗
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -3028,28 +3028,68 @@ def _apple_is_logged_in(driver) -> bool:
         return False
 
 
-def _apple_click_auth_continues(driver, max_clicks: int = 6) -> int:
-    """登录后欢迎页 Continue——仅主文档，不扫 iframe。"""
+def _apple_welcome_modal_present(driver) -> bool:
+    """登录后「歡迎使用 Apple Music / Welcome to Apple Music」全屏欢迎弹窗。"""
+    try:
+        driver.switch_to.default_content()
+        return bool(driver.execute_script("""
+            const t = (document.body && document.body.innerText) || '';
+            return /歡迎使用\\s*Apple\\s*Music|Welcome to Apple Music/i.test(t);
+        """))
+    except Exception:
+        return False
+
+
+def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
+    """仅当识别到欢迎弹窗时才点红色「繼續 / Continue」；未识别则不点。"""
     clicked = 0
-    keywords = ["Continue", "繼續", "继续"]
     for _ in range(max_clicks):
         try:
             driver.switch_to.default_content()
         except Exception:
             pass
-        el = _apple_find_clickable_by_texts(driver, keywords, tags="button")
-        if not el:
-            break
-        label = _apple_norm_text(el.text or el.get_attribute("aria-label") or "")
-        if any(x in label for x in ("try", "試用", "试用", "subscribe", "訂閱", "订阅")):
-            break
-        if _apple_safe_click(driver, el):
-            clicked += 1
-            print(f"    · 已点 Continue/繼續 ({clicked})", flush=True)
-            apple_human_delay(1.0, 1.8)
-        else:
-            break
+        if not _apple_welcome_modal_present(driver):
+            return clicked
+        el = None
+        try:
+            el = driver.execute_script("""
+                const isContinue = (s) => {
+                  const t = (s || '').replace(/\\s+/g, ' ').trim();
+                  return t === 'Continue' || t === '繼續' || t === '继续';
+                };
+                const nodes = Array.from(document.querySelectorAll('button, [role="button"]'));
+                for (const b of nodes) {
+                  const r = b.getBoundingClientRect();
+                  if (r.width < 40 || r.height < 20 || r.bottom < 0 || r.top > innerHeight) continue;
+                  const label = (b.innerText || b.getAttribute('aria-label') || '').trim();
+                  if (isContinue(label)) return b;
+                }
+                return null;
+            """)
+        except Exception:
+            el = None
+        if el is None:
+            # 未找到继续按钮：不盲点，直接返回
+            print("    · 识别到欢迎弹窗但未找到「繼續」按钮，跳过", flush=True)
+            return clicked
+        ok = _apple_safe_click(driver, el)
+        if not ok:
+            try:
+                driver.execute_script("arguments[0].click();", el)
+                ok = True
+            except Exception:
+                ok = False
+        if not ok:
+            return clicked
+        clicked += 1
+        print(f"    · 已识别欢迎弹窗并点击 繼續 ({clicked})", flush=True)
+        apple_human_delay(1.2, 2.0)
     return clicked
+
+
+def _apple_click_auth_continues(driver, max_clicks: int = 6) -> int:
+    """登录后若出现欢迎弹窗则点 Continue；没有就不点。"""
+    return _apple_dismiss_welcome_modal(driver, max_clicks=min(3, max_clicks))
 
 
 def _apple_geo_banner_present(driver) -> bool:
@@ -3190,6 +3230,10 @@ def _apple_ensure_storefront(driver, storefront: str = None) -> bool:
     n = _apple_dismiss_geo_banners(driver, max_clicks=3)
     if n:
         apple_human_delay(1.5, 2.5)
+    # 新号常见：欢迎弹窗盖住页面，必须先点繼續再搜歌
+    w = _apple_dismiss_welcome_modal(driver, max_clicks=3)
+    if w:
+        apple_human_delay(1.0, 1.5)
     url = ""
     try:
         url = driver.current_url or ""
@@ -3197,6 +3241,8 @@ def _apple_ensure_storefront(driver, storefront: str = None) -> bool:
         pass
     if f"/{code}/" in url or url.rstrip("/").endswith(f"/{code}"):
         print(f"    · 店面已是 {code}: {url}", flush=True)
+        # 店面已对时仍再清一次欢迎窗（可能刚弹出）
+        _apple_dismiss_welcome_modal(driver, max_clicks=2)
         return True
     # 仍在其它店面：强制进目标首页
     try:
@@ -3205,6 +3251,7 @@ def _apple_ensure_storefront(driver, storefront: str = None) -> bool:
         driver.get(target)
         apple_human_delay(2.0, 3.0)
         _apple_dismiss_geo_banners(driver, max_clicks=2)
+        _apple_dismiss_welcome_modal(driver, max_clicks=2)
         apple_human_delay(1.0, 1.5)
         url2 = driver.current_url or ""
         ok = f"/{code}/" in url2 or url2.rstrip("/").endswith(f"/{code}")
@@ -4574,6 +4621,10 @@ def search_album_on_apple(driver, artist_name, album_name):
     """
     print(f"搜索专辑: {album_name} (艺人: {artist_name})")
 
+    # 搜索前清欢迎弹窗，否则搜索框永远出不来
+    if _apple_welcome_modal_present(driver):
+        _apple_dismiss_welcome_modal(driver, max_clicks=3)
+
     direct_url = APPLE_DIRECT_ALBUM_URLS.get((album_name or "").strip().lower())
     if direct_url:
         print(f"  使用直链绕过搜索（避免点击被拦截）: {direct_url}")
@@ -4692,6 +4743,9 @@ def click_apple_home(driver):
 
 def click_apple_search(driver):
     """点击 Apple Music 左侧搜索入口，并等待新版顶部搜索框出现。"""
+    if _apple_welcome_modal_present(driver):
+        _apple_dismiss_welcome_modal(driver, max_clicks=3)
+
     search_selectors = [
         (By.XPATH, "//a[contains(@href, '/search') and (@data-testid='search' or .//span[contains(@class, 'navigation-item__label')]) ]"),
         (By.XPATH, "//span[contains(@class, 'navigation-item__label') and (contains(text(), 'Search') or contains(text(), '搜索') or contains(text(), '搜尋') or contains(text(), 'Suche'))]/ancestor::a[1]"),
