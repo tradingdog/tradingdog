@@ -22,7 +22,7 @@ XY = {
     "password_switch": (654, 601),
     "password": (800, 515),
     "password_submit": (1013, 525),
-    "welcome_continue": (800, 514),
+    "welcome_continue": (800, 600),  # 歡迎使用 Apple Music 红钮「繼續」
     "appleid_email": (800, 459),
     "appleid_arrow": (1013, 459),
     "modal_close": (442, 231),
