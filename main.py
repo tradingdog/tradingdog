@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.76"  # 修复：欢迎窗仅识别到「繼續」才点，去掉盲点坐标
-# 更新内容：偶发欢迎窗——找到繼續/Continue 才点；文案在但无按钮则跳过
+APP_VERSION = "0.1.77"  # 修复：加歌前强制前置 Chrome，避免后台窗导致菜单点不到
+# 更新内容：每张专辑/加歌前 focus Apple Chrome；欢迎窗仅识别到繼續才点
 
 
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
@@ -4897,6 +4897,14 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
         print(f"  第一张专辑，创建播放列表并添加 {track_count} 首歌曲...")
     else:
         print(f"  添加 {track_count} 首歌曲到播放列表 '{playlist_name}'...")
+
+    # Chrome 若在后台，右键菜单/Add to Playlist 常点不到——加歌前强制前置
+    try:
+        from apple_uia_login import focus_apple_chrome
+        if focus_apple_chrome():
+            print("    · 已前置 Apple Chrome 窗口", flush=True)
+    except Exception:
+        pass
     
     try:
         # 获取专辑中的所有歌曲行
@@ -5292,6 +5300,12 @@ def process_apple_music_playlist(
             processed_albums.add(f"{artist_name} - {album_name}".lower())
             
             print(f"\n[{i+1}/{len(albums)}] 处理: {artist_name} - {album_name}")
+
+            try:
+                from apple_uia_login import focus_apple_chrome
+                focus_apple_chrome()
+            except Exception:
+                pass
             
             # 搜索专辑，获取专辑URL
             album_url, search_fail_reason = search_album_on_apple(driver, artist_name, album_name)

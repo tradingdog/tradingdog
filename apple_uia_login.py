@@ -99,26 +99,51 @@ def paste_at(x: int, y: int, text: str) -> None:
 
 
 def focus_apple_chrome() -> bool:
+    """把 Apple Music 的 Chrome 窗提到前台（避免后台时点击/菜单失效）。"""
     try:
         import uiautomation as auto
+        user32 = ctypes.windll.user32
         root = auto.GetRootControl()
         for win in root.GetChildren():
             try:
                 name = win.Name or ""
             except Exception:
                 continue
-            if "Apple" in name and "Chrome" in name:
+            # 标题常见：Apple Music / music.apple.com + Google Chrome
+            if "Chrome" not in name:
+                continue
+            if not ("Apple" in name or "music.apple.com" in name.lower()):
+                continue
+            try:
+                hwnd = win.NativeWindowHandle
+                if not hwnd:
+                    continue
+                if user32.IsIconic(hwnd):
+                    user32.ShowWindow(hwnd, SW_RESTORE)
+                else:
+                    user32.ShowWindow(hwnd, 5)  # SW_SHOW
+                # AttachThreadInput 提高 SetForegroundWindow 成功率
                 try:
-                    hwnd = win.NativeWindowHandle
-                    if hwnd:
-                        user32 = ctypes.windll.user32
-                        if user32.IsIconic(hwnd):
-                            user32.ShowWindow(hwnd, SW_RESTORE)
-                        user32.SetForegroundWindow(hwnd)
-                        time.sleep(0.2)
-                        return True
+                    fg = user32.GetForegroundWindow()
+                    cur_tid = user32.GetWindowThreadProcessId(hwnd, None)
+                    fg_tid = user32.GetWindowThreadProcessId(fg, None) if fg else 0
+                    my_tid = ctypes.windll.kernel32.GetCurrentThreadId()
+                    if fg_tid and fg_tid != my_tid:
+                        user32.AttachThreadInput(my_tid, fg_tid, True)
+                    if cur_tid and cur_tid != my_tid:
+                        user32.AttachThreadInput(my_tid, cur_tid, True)
+                    user32.BringWindowToTop(hwnd)
+                    user32.SetForegroundWindow(hwnd)
+                    if fg_tid and fg_tid != my_tid:
+                        user32.AttachThreadInput(my_tid, fg_tid, False)
+                    if cur_tid and cur_tid != my_tid:
+                        user32.AttachThreadInput(my_tid, cur_tid, False)
                 except Exception:
-                    pass
+                    user32.SetForegroundWindow(hwnd)
+                time.sleep(0.25)
+                return True
+            except Exception:
+                pass
     except Exception:
         pass
     return False
