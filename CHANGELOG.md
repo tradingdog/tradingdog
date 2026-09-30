@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.71
+- 修复：按账号地区切换 Apple Music 店面（港号 `hk`、美号 `us` 等）；登录后 `ensure` 目标店面
+- 新增：加歌报错（0 首/无添加菜单）时把当前网址切成目标店面再重试；`apple_email.txt` 支持第三行地区
+
+## v0.1.70
+- 修复：登录后底部地区条（香港 + Continue）被误当成空黑框关掉，导致一直停在 `/us/`、菜单无「Add to Playlist」
+- 新增：`LOGIN_OK` 后强制确认香港店面（点 Continue，必要时打开 `/hk/`）；加歌菜单补充「加入播放列表 / 新增播放列表」文案
+
 ## v0.1.69
 - 新增：Apple 登录双模式——默认 `APPLE_LOGIN_MODE=auto`（读 `apple_email.txt` 全自动）；可在自定义里改 `manual`，或命令行 `--apple-login-mode manual` 回退为浏览器手动登录后输入 `y`
 - 优化：加歌间隔约 2.5 秒（`APPLE_SONG_INTERVAL_MIN/MAX`），缩短菜单内多余等待，提高效率

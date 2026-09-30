@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.69"  # 新增：Apple 登录 auto/manual；加歌间隔约 2.5 秒
-# 更新内容：默认自动登录；自定义 APPLE_LOGIN_MODE=manual 可回退人工确认 Y；歌间约 2.5s
+APP_VERSION = "0.1.71"  # 修复：按账号地区切店面（港hk/美us）；加歌失败则把 URL 改成目标店面再重试
+# 更新内容：APPLE_REGION_STOREFRONT；登录后 ensure 目标店面；加歌 0 首时 URL 重写重试
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -364,6 +364,19 @@ APPLE_HOME_URL = "https://music.apple.com"
 APPLE_LOGIN_TIMEOUT = 180        # 自动登录最长等待（秒）
 APPLE_ASSETS_DIR = "apple_assets"  # 登录调试截图目录
 APPLE_MAX_ALBUMS = None           # 每账号最多处理专辑数；None=全量（可用 --apple-max-albums 覆盖）
+# 飞书「地区」/账号第三行 → Apple Music URL 店面码（港号 hk、美号 us …）
+APPLE_REGION_STOREFRONT = {
+    "香港": "hk", "港": "hk", "hk": "hk", "hongkong": "hk", "hong kong": "hk",
+    "美国": "us", "美": "us", "us": "us", "usa": "us", "united states": "us",
+    "英国": "gb", "uk": "gb", "gb": "gb",
+    "日本": "jp", "jp": "jp",
+    "台湾": "tw", "台灣": "tw", "tw": "tw",
+    "新加坡": "sg", "sg": "sg",
+    "澳洲": "au", "澳大利亚": "au", "au": "au",
+    "加拿大": "ca", "ca": "ca",
+}
+APPLE_DEFAULT_STOREFRONT = "hk"  # 未指定地区时默认香港（本批 A24-A28 均为港号）
+
 
 # Qobuz 集成配置
 QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
@@ -528,7 +541,13 @@ def load_tidal_accounts() -> list[dict]:
 
 
 def load_apple_accounts() -> list[dict]:
-    """从 apple_email.txt 读取账号列表，格式同 Tidal：两行一组，空行分隔。"""
+    """从 apple_email.txt 读取账号列表。
+
+    格式（空行分隔账号）：
+      邮箱
+      密码
+      地区   # 可选：香港/美国/hk/us …；缺省用 APPLE_DEFAULT_STOREFRONT
+    """
     email_path = Path(APPLE_EMAIL_FILE)
     if not email_path.exists():
         return []
@@ -542,11 +561,34 @@ def load_apple_accounts() -> list[dict]:
     for block in blocks:
         lines = [line.strip() for line in block.strip().split("\n") if line.strip()]
         if len(lines) >= 2:
+            region = lines[2] if len(lines) >= 3 else ""
             accounts.append({
                 "email": lines[0],
                 "password": lines[1],
+                "region": region,
+                "storefront": apple_region_to_storefront(region),
             })
     return accounts
+
+
+def apple_region_to_storefront(region: str | None) -> str:
+    """把飞书/账号地区文案映射为 music.apple.com/{code}/ 店面码。"""
+    key = (region or "").strip().lower().replace("區", "").replace("区", "")
+    if not key:
+        return APPLE_DEFAULT_STOREFRONT
+    # 直接命中
+    for name, code in APPLE_REGION_STOREFRONT.items():
+        if key == name.lower() or key == code.lower():
+            return code
+    # 包含命中（如「美国区」）
+    for name, code in APPLE_REGION_STOREFRONT.items():
+        if name.lower() in key or code.lower() == key:
+            return code
+    # 已是两字母店面码
+    if len(key) == 2 and key.isalpha():
+        return key
+    return APPLE_DEFAULT_STOREFRONT
+
 
 
 def load_tidal_delete_list() -> list[dict]:
@@ -3010,42 +3052,216 @@ def _apple_click_auth_continues(driver, max_clicks: int = 6) -> int:
     return clicked
 
 
+def _apple_geo_banner_present(driver) -> bool:
+    """底部地区条：Choose another country / 香港 + Continue。"""
+    try:
+        driver.switch_to.default_content()
+        body = (driver.execute_script("return document.body && document.body.innerText || ''") or "")
+    except Exception:
+        return False
+    low = body.lower()
+    has_hint = (
+        "choose another country" in low
+        or "content specific to your location" in low
+        or "選擇其他國家" in body
+        or "选择其他国家" in body
+        or "查看特定於你所在位置" in body
+        or "查看特定于你所在位置" in body
+    )
+    has_hk = "香港" in body or "hong kong" in low
+    return bool(has_hint or (has_hk and ("continue" in low or "繼續" in body or "继续" in body)))
+
+
 def _apple_dismiss_geo_banners(driver, max_clicks: int = 4) -> int:
+    """点底部地区条红色 Continue（默认常为 us，需切到香港才有加歌菜单）。"""
     clicked = 0
     for _ in range(max_clicks):
         try:
             driver.switch_to.default_content()
+            # 1) 官方 banner select-button
             btns = driver.find_elements(
                 By.CSS_SELECTOR,
-                "div[data-testid='banner-container'] button[data-testid='select-button']",
+                "div[data-testid='banner-container'] button[data-testid='select-button'], "
+                "div[data-testid='banner-container'] button",
             )
             visible = [b for b in btns if b.is_displayed()]
-            if not visible:
-                # 兜底：右下角 Continue / 繼續
+            target = None
+            for b in visible:
+                t = _apple_norm_text(b.text or "")
+                if t in ("continue", "繼續", "继续") or "continue" in t:
+                    target = b
+                    break
+            if target is None and visible:
+                # banner 内唯一主按钮
+                target = visible[0]
+
+            # 2) JS：找含 country/香港 文案的底栏里的 Continue
+            if target is None:
+                target = driver.execute_script(
+                    r"""
+                    const needles = ['choose another country', 'content specific to your location',
+                      '選擇其他國家', '选择其他国家', '香港', 'hong kong'];
+                    const isVisible = (el) => {
+                      const r = el.getBoundingClientRect();
+                      const st = getComputedStyle(el);
+                      return r.width > 2 && r.height > 2 && st.visibility !== 'hidden'
+                        && st.display !== 'none' && st.opacity !== '0';
+                    };
+                    const nodes = Array.from(document.querySelectorAll('div,section,aside,footer'));
+                    let bar = null;
+                    for (const n of nodes) {
+                      if (!isVisible(n)) continue;
+                      const t = (n.innerText || '').toLowerCase();
+                      if (!needles.some(k => t.includes(k.toLowerCase()))) continue;
+                      const r = n.getBoundingClientRect();
+                      // 偏底部的横条
+                      if (r.top < window.innerHeight * 0.55) continue;
+                      if (r.height > 220 || r.width < window.innerWidth * 0.35) continue;
+                      bar = n;
+                      break;
+                    }
+                    if (!bar) return null;
+                    const buttons = Array.from(bar.querySelectorAll('button'));
+                    for (const b of buttons) {
+                      if (!isVisible(b)) continue;
+                      const t = (b.innerText || '').trim().toLowerCase();
+                      if (t === 'continue' || t === '繼續' || t === '继续' || t.includes('continue')) return b;
+                    }
+                    return buttons.find(isVisible) || null;
+                    """
+                )
+
+            # 3) 文案兜底
+            if target is None:
                 fallback = _apple_find_clickable_by_texts(
                     driver, ["Continue", "繼續", "继续"], tags="button"
                 )
                 if fallback and "try" not in _apple_norm_text(fallback.text or ""):
-                    # 避免点到试用按钮：仅点 banner 附近或纯 Continue
-                    parent_html = ""
+                    parent_txt = ""
                     try:
-                        parent_html = (fallback.find_element(By.XPATH, "./ancestor::div[1]").text or "")
+                        parent_txt = (
+                            fallback.find_element(By.XPATH, "./ancestor::div[contains(@data-testid,'banner') or position()=1]").text
+                            or ""
+                        )
                     except Exception:
-                        pass
-                    if "country" in parent_html.lower() or "國家" in parent_html or "国家" in parent_html or "地區" in parent_html or "地区" in parent_html or "香港" in parent_html or "location" in parent_html.lower():
-                        if _apple_safe_click(driver, fallback):
-                            clicked += 1
-                            apple_human_delay(0.8, 1.2)
-                            continue
+                        try:
+                            parent_txt = fallback.find_element(By.XPATH, "./ancestor::div[2]").text or ""
+                        except Exception:
+                            parent_txt = ""
+                    blob = parent_txt.lower()
+                    if (
+                        "country" in blob
+                        or "location" in blob
+                        or "國家" in parent_txt
+                        or "国家" in parent_txt
+                        or "地區" in parent_txt
+                        or "地区" in parent_txt
+                        or "香港" in parent_txt
+                        or _apple_geo_banner_present(driver)
+                    ):
+                        target = fallback
+
+            if target is None:
                 break
-            if _apple_safe_click(driver, visible[0]):
+            if _apple_safe_click(driver, target):
                 clicked += 1
-                apple_human_delay(0.8, 1.2)
-            else:
-                break
+                print("    · 已点击地区条 Continue（切到所选国家/地区）", flush=True)
+                apple_human_delay(1.2, 2.0)
+                # 点完后若仍有条再点；没有则结束
+                if not _apple_geo_banner_present(driver):
+                    break
+                continue
+            break
         except Exception:
             break
     return clicked
+
+
+def _apple_ensure_storefront(driver, storefront: str = None) -> bool:
+    """登录后确保目标店面：先点地区 Continue，必要时强制打开 /{code}/。
+
+    港号 hk、美号 us；storefront 缺省用 APPLE_DEFAULT_STOREFRONT。
+    """
+    code = (storefront or APPLE_DEFAULT_STOREFRONT).strip().lower() or APPLE_DEFAULT_STOREFRONT
+    try:
+        driver.switch_to.default_content()
+    except Exception:
+        pass
+    n = _apple_dismiss_geo_banners(driver, max_clicks=3)
+    if n:
+        apple_human_delay(1.5, 2.5)
+    url = ""
+    try:
+        url = driver.current_url or ""
+    except Exception:
+        pass
+    if f"/{code}/" in url or url.rstrip("/").endswith(f"/{code}"):
+        print(f"    · 店面已是 {code}: {url}", flush=True)
+        return True
+    # 仍在其它店面：强制进目标首页
+    try:
+        target = f"https://music.apple.com/{code}"
+        print(f"    · 当前店面非 {code}（{url or 'unknown'}），打开 {target}", flush=True)
+        driver.get(target)
+        apple_human_delay(2.0, 3.0)
+        _apple_dismiss_geo_banners(driver, max_clicks=2)
+        apple_human_delay(1.0, 1.5)
+        url2 = driver.current_url or ""
+        ok = f"/{code}/" in url2 or url2.rstrip("/").endswith(f"/{code}")
+        print(f"    · 跳转后 URL: {url2} ({'OK' if ok else f'仍非 {code}'})", flush=True)
+        return ok
+    except Exception as e:
+        print(f"    · 强制店面 {code} 失败: {e}", flush=True)
+        return False
+
+
+def _apple_ensure_hk_storefront(driver) -> bool:
+    """兼容旧调用：默认香港。"""
+    return _apple_ensure_storefront(driver, "hk")
+
+
+def _apple_rewrite_url_storefront(url: str, storefront: str) -> str:
+    """把 music.apple.com/{旧码}/... 改成目标店面码。"""
+    code = (storefront or APPLE_DEFAULT_STOREFRONT).strip().lower()
+    if not url:
+        return f"https://music.apple.com/{code}"
+    import re as _re
+    new_url, n = _re.subn(
+        r"(https?://music\.apple\.com/)([a-z]{2})(/|$)",
+        rf"\1{code}\3",
+        url,
+        count=1,
+        flags=_re.I,
+    )
+    if n:
+        return new_url
+    if "music.apple.com" in url:
+        return f"https://music.apple.com/{code}/home"
+    return url
+
+
+def _apple_switch_url_to_storefront(driver, storefront: str) -> bool:
+    """加歌报错（无添加菜单）时：把当前网址切到目标店面后刷新。"""
+    code = (storefront or APPLE_DEFAULT_STOREFRONT).strip().lower()
+    try:
+        cur = driver.current_url or ""
+    except Exception:
+        cur = ""
+    new_url = _apple_rewrite_url_storefront(cur, code)
+    if new_url == cur and f"/{code}/" in (cur or ""):
+        print(f"    · URL 已是 /{code}/，无需再切: {cur}", flush=True)
+        return True
+    try:
+        print(f"    · 加歌失败疑似店面不对，切换 URL: {cur} → {new_url}", flush=True)
+        driver.get(new_url)
+        apple_human_delay(2.0, 3.0)
+        _apple_dismiss_geo_banners(driver, max_clicks=2)
+        apple_human_delay(1.0, 1.5)
+        return True
+    except Exception as e:
+        print(f"    · 切换店面 URL 失败: {e}", flush=True)
+        return False
+
 
 
 def _apple_click_sign_in(driver) -> bool:
@@ -3322,6 +3538,9 @@ def _apple_has_auth_password_or_code_ready() -> bool:
 
 def _apple_is_blank_auth_modal(driver) -> bool:
     """空黑框：有关闭/模态壳，但没有邮箱/密码/验证码表单。验证码页绝不是黑框。"""
+    # 底部地区条（香港+Continue）绝不能当空黑框关掉，否则会卡在 /us/ 无加歌菜单
+    if _apple_geo_banner_present(driver):
+        return False
     # 验证码 / 密码切换页 → 绝对不要关
     try:
         from apple_uia_login import find_named_center
@@ -3669,18 +3888,24 @@ def login_apple_music(
     email: str | None = None,
     password: str | None = None,
     login_mode: str | None = None,
+    storefront: str | None = None,
 ) -> bool:
     """
     登录 Apple Music。
     login_mode: auto=凭据自动登录；manual=浏览器内手动登录后输入 y。
+    storefront: 目标店面码 hk/us/…；登录成功后切到该店面。
     默认读 APPLE_LOGIN_MODE；manual 或缺少凭据时走人工确认。
     """
     mode = (login_mode or APPLE_LOGIN_MODE or "auto").strip().lower()
+    sf = (storefront or APPLE_DEFAULT_STOREFRONT).strip().lower()
     if mode == "manual" or not email or not password:
         print(f"Apple 登录模式: manual（请在浏览器完成登录后输入 y）", flush=True)
-        return login_apple_music_manual(driver)
-    print(f"Apple 登录模式: auto（{email}）", flush=True)
-    return login_apple_music_auto(driver, email, password)
+        ok = login_apple_music_manual(driver)
+        if ok:
+            _apple_ensure_storefront(driver, sf)
+        return ok
+    print(f"Apple 登录模式: auto（{email}，店面 {sf}）", flush=True)
+    return login_apple_music_auto(driver, email, password, storefront=sf)
 
 
 def login_apple_music_manual(driver) -> bool:
@@ -3878,8 +4103,9 @@ def _apple_uia_complete_login(email: str, password: str, timeout: float = 120.0)
     return complete_apple_login(email, password, timeout=timeout)
 
 
-def login_apple_music_auto(driver, email: str, password: str) -> bool:
+def login_apple_music_auto(driver, email: str, password: str, storefront: str | None = None) -> bool:
     """全自动登录：Selenium 填邮箱（已验证可用）+ 坐标完成密码/Continue。"""
+    sf = (storefront or APPLE_DEFAULT_STOREFRONT).strip().lower()
     print(f"正在自动登录 Apple Music: {email}", flush=True)
     try:
         try:
@@ -3896,6 +4122,7 @@ def login_apple_music_auto(driver, email: str, password: str) -> bool:
 
         if _apple_is_logged_in(driver):
             print("✓ 已处于登录状态", flush=True)
+            _apple_ensure_storefront(driver, sf)
             return True
 
         # 全流程可重试：邮箱提交后 / 密码后若出空黑框，关闭并重开登录
@@ -3960,13 +4187,17 @@ def login_apple_music_auto(driver, email: str, password: str) -> bool:
                 if _apple_is_logged_in(driver):
                     _apple_step(driver, "LOGIN_OK")
                     print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
+                    _apple_ensure_storefront(driver, sf)
                     print("  等待 20 秒后继续原加歌流程...", flush=True)
                     time.sleep(20)
                     return True
 
             # 3) 检测左下角账户态；成功后固定等 20 秒（等同人工确认 Y）
+            # 先处理地区条，再判断空黑框（避免把地区 Continue 误关）
             _apple_dismiss_geo_banners(driver, max_clicks=2)
             for i in range(20):
+                if _apple_geo_banner_present(driver):
+                    _apple_dismiss_geo_banners(driver, max_clicks=2)
                 if _apple_is_blank_auth_modal(driver):
                     _apple_step(driver, "blank_modal_during_login_wait")
                     _apple_close_blank_auth_modal(driver)
@@ -3974,6 +4205,7 @@ def login_apple_music_auto(driver, email: str, password: str) -> bool:
                 if _apple_is_logged_in(driver):
                     _apple_step(driver, "LOGIN_OK")
                     print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
+                    _apple_ensure_storefront(driver, sf)
                     print("  等待 20 秒后继续原加歌流程...", flush=True)
                     time.sleep(20)
                     return True
@@ -3989,6 +4221,7 @@ def login_apple_music_auto(driver, email: str, password: str) -> bool:
             if _apple_is_logged_in(driver):
                 _apple_step(driver, "LOGIN_OK")
                 print("✓ Apple Music 自动登录成功（已出现账户入口）", flush=True)
+                _apple_ensure_storefront(driver, sf)
                 print("  等待 20 秒后继续原加歌流程...", flush=True)
                 time.sleep(20)
                 return True
@@ -4599,7 +4832,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                         try:
                             # 先尝试直接点击主菜单中的"New Playlist"（新账号情况）
                             new_playlist = WebDriverWait(driver, 3).until(
-                                EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '新播放清單') or contains(text(), '新建播放列表') or contains(text(), 'New Playlist') or contains(text(), 'Neue Playlist'))]"))
+                                EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '新播放清單') or contains(text(), '新建播放列表') or contains(text(), '新增播放列表') or contains(text(), 'New Playlist') or contains(text(), 'Neue Playlist'))]"))
                             )
                             apple_move_to_element(driver, new_playlist)
                             apple_human_delay(0.3, 0.6)
@@ -4610,7 +4843,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                             # 如果直接点击失败，尝试先点击"Add to Playlist"再点击"New Playlist"
                             try:
                                 add_to_playlist = WebDriverWait(driver, 3).until(
-                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
+                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '加入播放列表') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
                                 )
                                 apple_move_to_element(driver, add_to_playlist)
                                 apple_human_delay(0.3, 0.6)
@@ -4619,7 +4852,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                                 apple_human_delay(1, 2)
                                 
                                 new_playlist = WebDriverWait(driver, 5).until(
-                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '新播放清單') or contains(text(), '新建播放列表') or contains(text(), 'New Playlist') or contains(text(), 'Neue Playlist'))]"))
+                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '新播放清單') or contains(text(), '新建播放列表') or contains(text(), '新增播放列表') or contains(text(), 'New Playlist') or contains(text(), 'Neue Playlist'))]"))
                                 )
                                 apple_move_to_element(driver, new_playlist)
                                 apple_human_delay(0.3, 0.6)
@@ -4675,7 +4908,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                         # 非第一首歌曲，需要先点击"Add to Playlist"再选择播放列表
                         try:
                             add_to_playlist = WebDriverWait(driver, 5).until(
-                                EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
+                                EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '加入播放列表') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
                             )
                             apple_move_to_element(driver, add_to_playlist)
                             apple_human_delay(0.3, 0.6)
@@ -4737,7 +4970,7 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                                                     driver.execute_script("arguments[0].click();", more_btn)
                                                 apple_human_delay(0.35, 0.6)
                                                 add_to_playlist = WebDriverWait(driver, 5).until(
-                                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
+                                                    EC.element_to_be_clickable((By.XPATH, "//span[contains(@class, 'contextual-menu-item__option-text') and (contains(text(), '加入播放清單') or contains(text(), '加入播放列表') or contains(text(), '添加到播放列表') or contains(text(), 'Add to Playlist') or contains(text(), 'Zur Playlist'))]"))
                                                 )
                                                 add_to_playlist.click()
                                                 apple_human_delay(0.35, 0.6)
@@ -4807,8 +5040,10 @@ def process_apple_music_playlist(
     max_albums: int | None = None,
     auto_close: bool = False,
     login_mode: str | None = None,
+    storefront: str | None = None,
 ):
     """处理 Apple Music 播放列表添加流程 - 支持失败重试和自动补充"""
+    sf = (storefront or APPLE_DEFAULT_STOREFRONT).strip().lower()
     # 解析专辑列表
     albums = parse_album_list_from_txt(txt_path)
     if not albums:
@@ -4821,6 +5056,7 @@ def process_apple_music_playlist(
     
     print(f"\n解析到 {len(albums)} 张专辑待添加")
     print(f"将使用播放列表名称: {playlist_name}")
+    print(f"目标店面: /{sf}/")
     # 选定后立即占用，避免进程中断/关浏览器异常导致下次仍复用同名
     mark_playlist_name_used(playlist_name)
     
@@ -4840,6 +5076,7 @@ def process_apple_music_playlist(
     # 记录已处理的专辑（用于补充时排除）
     processed_albums = set()
     source_index = load_artist_album_source_index("A", base_dir)
+    storefront_retried = False  # 加歌失败后是否已做过 URL 店面切换
     
     def _record_failed_album(artist, album, track_count, reason, stage="主流程"):
         source = classify_album_source(artist, album, source_index)
@@ -4856,7 +5093,7 @@ def process_apple_music_playlist(
     try:
         # 登录
         if not login_apple_music(
-            driver, email=email, password=password, login_mode=login_mode
+            driver, email=email, password=password, login_mode=login_mode, storefront=sf
         ):
             print("登录失败，退出")
             return False
@@ -4892,6 +5129,31 @@ def process_apple_music_playlist(
                 # 添加歌曲
                 is_first = not playlist_created
                 added = add_songs_to_apple_playlist(driver, current_playlist_name, track_count, is_first_album=is_first)
+
+                # 加歌 0 首且尚未切过店面：疑似店面不对 → URL 改成 /{sf}/ 后重搜重加本张
+                if added == 0 and not storefront_retried:
+                    cur_url = ""
+                    try:
+                        cur_url = driver.current_url or ""
+                    except Exception:
+                        pass
+                    if f"/{sf}/" not in cur_url:
+                        print(f"  ⚠ 加歌 0 首且 URL 非 /{sf}/（{cur_url}），切换店面后重试本张...", flush=True)
+                        storefront_retried = True
+                        if _apple_switch_url_to_storefront(driver, sf):
+                            # 不计入失败，重搜本张
+                            continue
+                    else:
+                        # 已在目标店面仍 0 首：也强制刷新一次目标首页再重试（用户图1路径）
+                        print(f"  ⚠ 加歌 0 首，强制刷新 /{sf}/ 后重试本张...", flush=True)
+                        storefront_retried = True
+                        try:
+                            driver.get(f"https://music.apple.com/{sf}/home")
+                            apple_human_delay(2.0, 3.0)
+                            _apple_dismiss_geo_banners(driver, max_clicks=2)
+                        except Exception:
+                            pass
+                        continue
                 
                 # 如果返回-1，表示创建了播放列表并跳转了页面
                 if added == -1:
@@ -5159,9 +5421,12 @@ def run_apple_for_single_account(
     """为单个 Apple 账号执行完整播单添加：新开浏览器 → 自动登录 → 添加 → 关闭。"""
     email = account_info["email"]
     password = account_info["password"]
+    storefront = account_info.get("storefront") or apple_region_to_storefront(
+        account_info.get("region")
+    )
 
     print(f"\n{'='*60}")
-    print(f"处理 Apple 账号 [{account_index + 1}/{total_accounts}]: {email}")
+    print(f"处理 Apple 账号 [{account_index + 1}/{total_accounts}]: {email}（店面 /{storefront}/）")
     print(f"{'='*60}")
 
     try:
@@ -5231,6 +5496,7 @@ def run_apple_for_single_account(
             max_albums=max_albums,
             auto_close=True,
             login_mode=getattr(args, "apple_login_mode", None) or APPLE_LOGIN_MODE,
+            storefront=storefront,
         )
         if result:
             print(f"\n✓ 账号 {email} 处理完成")
@@ -6417,7 +6683,8 @@ def main():
 
         print(f"\n✓ 找到 {len(apple_accounts)} 个 Apple 账号")
         for i, acc in enumerate(apple_accounts):
-            print(f"  [{i+1}] {acc['email']}")
+            sf = acc.get("storefront") or apple_region_to_storefront(acc.get("region"))
+            print(f"  [{i+1}] {acc['email']}  /{sf}/")
         if getattr(args, "apple_max_albums", None):
             print(f"  验证限制：每个账号最多处理 {args.apple_max_albums} 张专辑")
         print()
