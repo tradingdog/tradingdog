@@ -306,8 +306,8 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.72"  # 修复：登录后「歡迎使用 Apple Music」弹窗点繼續，避免挡住搜索
-# 更新内容：_apple_dismiss_welcome_modal；ensure 店面后/搜索前清欢迎弹窗
+APP_VERSION = "0.1.73"  # 修复：欢迎弹窗勿当空黑框关掉；仅识别到才点繼續
+# 更新内容：_apple_is_blank_auth_modal 排除欢迎窗；登录后/搜索前按需点繼續
 DEFAULT_ALBUM_COUNT = 18         # 中间部分从主库抽取的专辑数量
 HISTORY_FILE = ".album_history.json"
 MAX_RECENT_COMBINATIONS = 50     # 记录最近生成的组合数量，用于避免重复
@@ -3585,6 +3585,9 @@ def _apple_has_auth_password_or_code_ready() -> bool:
 
 def _apple_is_blank_auth_modal(driver) -> bool:
     """空黑框：有关闭/模态壳，但没有邮箱/密码/验证码表单。验证码页绝不是黑框。"""
+    # 欢迎弹窗（歡迎使用 Apple Music）绝不能当空黑框关掉，应点「繼續」
+    if _apple_welcome_modal_present(driver):
+        return False
     # 底部地区条（香港+Continue）绝不能当空黑框关掉，否则会卡在 /us/ 无加歌菜单
     if _apple_geo_banner_present(driver):
         return False
@@ -4230,6 +4233,9 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
 
                 time.sleep(1.5)
                 _apple_step(driver, "after_password_check")
+                # 偶发欢迎弹窗：仅识别到才点繼續
+                _apple_dismiss_welcome_modal(driver, max_clicks=2)
+                _apple_dismiss_geo_banners(driver, max_clicks=2)
                 # 密码后若已登录，跳过黑框逻辑
                 if _apple_is_logged_in(driver):
                     _apple_step(driver, "LOGIN_OK")
@@ -4240,9 +4246,12 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                     return True
 
             # 3) 检测左下角账户态；成功后固定等 20 秒（等同人工确认 Y）
-            # 先处理地区条，再判断空黑框（避免把地区 Continue 误关）
+            # 先处理欢迎弹窗/地区条，再判断空黑框（避免误关欢迎窗）
+            _apple_dismiss_welcome_modal(driver, max_clicks=2)
             _apple_dismiss_geo_banners(driver, max_clicks=2)
             for i in range(20):
+                if _apple_welcome_modal_present(driver):
+                    _apple_dismiss_welcome_modal(driver, max_clicks=2)
                 if _apple_geo_banner_present(driver):
                     _apple_dismiss_geo_banners(driver, max_clicks=2)
                 if _apple_is_blank_auth_modal(driver):
@@ -4257,12 +4266,9 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                     time.sleep(20)
                     return True
                 if i in (2, 5, 8):
-                    try:
-                        from apple_uia_login import click_named, XY as _XY, click_xy
-                        if not click_named(["繼續", "Continue"], timeout=0.8):
-                            click_xy(*_XY["welcome_continue"])
-                    except Exception:
-                        pass
+                    # 仅欢迎弹窗出现时点繼續；否则不盲点
+                    if _apple_welcome_modal_present(driver):
+                        _apple_dismiss_welcome_modal(driver, max_clicks=1)
                 apple_human_delay(1.0, 1.3)
 
             if _apple_is_logged_in(driver):
