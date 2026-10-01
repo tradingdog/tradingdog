@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.85"  # 数据：other_artists 删除加歌失败艺人 Gabriel Yared、Trevor Kowalski
+APP_VERSION = "0.1.86"  # 优化：Apple 加歌歌间间隔改为 1.2–1.8 秒
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -356,8 +356,8 @@ APPLE_TRACK_COUNT_MIN = 12       # 每张专辑添加的最小歌曲数量
 APPLE_TRACK_COUNT_MAX = 18       # 每张专辑添加的最大歌曲数量
 APPLE_DELAY_MIN = 0.3            # 一般操作间隔最小延迟（秒）
 APPLE_DELAY_MAX = 0.6            # 一般操作间隔最大延迟（秒）
-APPLE_SONG_INTERVAL_MIN = 2.2    # 歌与歌之间间隔最小（秒），约 2.5s
-APPLE_SONG_INTERVAL_MAX = 2.8    # 歌与歌之间间隔最大（秒）
+APPLE_SONG_INTERVAL_MIN = 1.2    # 歌与歌之间间隔最小（秒）
+APPLE_SONG_INTERVAL_MAX = 1.8    # 歌与歌之间间隔最大（秒）
 APPLE_LOGIN_MODE = "auto"        # Apple 登录：auto=读 apple_email.txt 全自动；manual=浏览器内手动登录后输入 y
 APPLE_LOGIN_CONFIRM_TIMEOUT = 1800  # Apple Music 手动登录确认最长等待时间（秒）
 APPLE_SEARCH_PANEL_WAIT_SECONDS = 10  # 点击左侧搜索入口后等待顶部搜索框出现（秒）
