@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.80"  # 修复：欢迎窗仅在可见标题块时判定，避免残留文案反复点繼續
+APP_VERSION = "0.1.84"  # 修复：邮箱码页先 Selenium 切密码再 UIA；避免固定坐标误点
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -2993,7 +2993,10 @@ def _apple_find_clickable_by_texts(driver, texts: list[str], tags: str = "button
 
 
 def _apple_is_logged_in(driver) -> bool:
-    """快速判定：无 Sign In，且侧栏出现资料库/账户（用 JS，避免扫全页按钮卡死）。"""
+    """快速判定：无 Sign In，且侧栏出现资料库/账户名（用 JS，避免扫全页按钮卡死）。
+
+    美区 New 页侧栏常只有 Search/Home/New/Radio + 账户姓名，未必有「最近加入」。
+    """
     try:
         driver.switch_to.default_content()
     except Exception:
@@ -3010,17 +3013,32 @@ def _apple_is_logged_in(driver) -> bool:
     // 侧栏文案：未登录通常没有「最近加入」
     const root = document.querySelector('nav') || document.body;
     const text = (root && root.innerText) ? root.innerText : '';
-    if (/最近加入|Recently Added|所有歌單|All Playlists|我的帳户|我的账户|My Account/.test(text)) {
+    if (/最近加入|Recently Added|所有歌單|All Playlists|我的帳户|我的账户|My Account|资料库|資料庫|Library/.test(text)) {
       return true;
     }
-    // 账户按钮显示姓名时，页面上也常有资料库
-    const btns = document.querySelectorAll('button');
+    // 账户按钮显示姓名 / Account；美区左下常直接显示显示名（如 Claire Jones）
+    const btns = document.querySelectorAll('button, [role="button"], a');
     for (const b of btns) {
       if (!visible(b)) continue;
       const label = ((b.innerText||'') + ' ' + (b.getAttribute('aria-label')||'')).trim();
-      if (!label || label.length > 40) continue;
+      if (!label || label.length > 48) continue;
       if (/^Sign In$|^登入$|^登录$/i.test(label)) return false;
-      if (/我的帳户|我的账户|My Account/i.test(label)) return true;
+      if (/我的帳户|我的账户|My Account|Account Settings|账户设置|帳戶設定/i.test(label)) return true;
+      // 左下角显示名：2~4 个词、不含导航词，且页面无 Sign In 按钮
+      if (/^[A-Za-z][A-Za-z.'\\-]*(?:\\s+[A-Za-z][A-Za-z.'\\-]*){0,3}$/.test(label)
+          && !/Search|Home|Radio|Browse|New|Listen|Open|Try|Continue|Sign/i.test(label)) {
+        const r = b.getBoundingClientRect();
+        if (r.bottom > window.innerHeight * 0.72 && r.left < 280) return true;
+      }
+    }
+    // Open in Music + 无 Sign In：多半已登录
+    if (/Open in Music|在“音乐”中打开|在「音樂」中打開/i.test(text || document.body.innerText || '')) {
+      const anySign = Array.from(document.querySelectorAll('button')).some(b => {
+        if (!visible(b)) return false;
+        const t = ((b.innerText||'') + (b.getAttribute('aria-label')||'')).trim();
+        return /^Sign In$|^登入$|^登录$/i.test(t);
+      });
+      if (!anySign) return true;
     }
     return false;
     """
@@ -3081,7 +3099,8 @@ def _apple_find_welcome_continue_el(driver):
         return driver.execute_script("""
             const isContinue = (s) => {
               const t = (s || '').replace(/[\\s\\u00a0\\u3000]+/g, ' ').trim();
-              return t === 'Continue' || t === '繼續' || t === '继续';
+              return t === 'Continue' || t === '繼續' || t === '继续'
+                || t === 'Start Listening' || t === '开始聆听' || t === '開始聆聽';
             };
             const ownText = (el) => {
               let t = '';
@@ -3102,7 +3121,7 @@ def _apple_find_welcome_continue_el(driver):
                 const own = ownText(b);
                 const ok = isContinue(own) || isContinue(aria)
                   || isContinue(deep)
-                  || (deep.length <= 16 && /^(繼續|继续|Continue)$/m.test(deep.split('\\n')[0].trim()));
+                  || (deep.length <= 24 && /^(繼續|继续|Continue|Start Listening|开始聆听|開始聆聽)$/m.test(deep.split('\\n')[0].trim()));
                 if (!ok) return;
                 candidates.push({el: b, area: r.width * r.height, y: r.top});
               } catch (e) {}
@@ -3155,19 +3174,33 @@ def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
             try:
                 from apple_uia_login import click_named, focus_apple_chrome, click_xy, XY as _XY
                 focus_apple_chrome()
-                if click_named(["繼續", "继续", "Continue"], timeout=2.5):
+                if click_named(["Continue", "繼續", "继续", "开始聆听", "Start Listening"], timeout=2.5):
                     clicked += 1
-                    print(f"    · 已识别「繼續」并点击 (UIA, {clicked})", flush=True)
+                    print(f"    · 已识别 Continue/繼續 并点击 (UIA, {clicked})", flush=True)
                     apple_human_delay(1.2, 2.0)
                     continue
-                # 已确认欢迎标题在、且搜索会被挡住：坐标点红钮（非盲点其它 Continue）
-                click_xy(*_XY.get("welcome_continue", (800, 600)))
+                # 美区英文欢迎窗红钮约在弹窗底部中央；多 Y 试探并验证是否消失
+                hit = False
+                for xy in (
+                    _XY.get("welcome_continue", (800, 620)),
+                    (800, 600),
+                    (800, 640),
+                    (800, 580),
+                    (790, 625),
+                ):
+                    click_xy(*xy)
+                    apple_human_delay(0.5, 0.8)
+                    if not _apple_welcome_modal_present(driver):
+                        hit = True
+                        print(f"    · 坐标点击欢迎窗 Continue 成功 {xy}", flush=True)
+                        break
                 clicked += 1
-                print(f"    · 已识别欢迎窗标题，坐标点击「繼續」({clicked})", flush=True)
-                apple_human_delay(1.2, 2.0)
+                if not hit:
+                    print(f"    · 已识别欢迎窗标题，坐标尝试点击 Continue({clicked})", flush=True)
+                apple_human_delay(1.0, 1.5)
                 continue
             except Exception as e:
-                print(f"    · 欢迎窗在但点击「繼續」失败: {e}", flush=True)
+                print(f"    · 欢迎窗在但点击 Continue 失败: {e}", flush=True)
                 return clicked
         ok = _apple_safe_click(driver, el)
         if not ok:
@@ -3180,17 +3213,17 @@ def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
             try:
                 from apple_uia_login import click_named, focus_apple_chrome
                 focus_apple_chrome()
-                if click_named(["繼續", "继续", "Continue"], timeout=2.0):
+                if click_named(["Continue", "繼續", "继续", "开始聆听", "Start Listening"], timeout=2.0):
                     clicked += 1
-                    print(f"    · 已识别「繼續」并点击 (UIA, {clicked})", flush=True)
+                    print(f"    · 已识别 Continue/繼續 并点击 (UIA, {clicked})", flush=True)
                     apple_human_delay(1.2, 2.0)
                     continue
             except Exception:
                 pass
-            print("    · 识别到「繼續」但点击失败，跳过", flush=True)
+            print("    · 识别到 Continue 但点击失败，跳过", flush=True)
             return clicked
         clicked += 1
-        print(f"    · 已识别「繼續」并点击 ({clicked})", flush=True)
+        print(f"    · 已识别 Continue/繼續 并点击 ({clicked})", flush=True)
         apple_human_delay(1.2, 2.0)
     return clicked
 
@@ -4006,6 +4039,7 @@ def _apple_switch_to_password_login(driver) -> bool:
         "使用密码登录",
         "Sign In with Password",
         "Sign in with Password",
+        "Sign in with password",  # 美区邮箱验证码页实测文案
         "Use Password",
         "Log In with Password",
         "Login with Password",
@@ -4306,8 +4340,26 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
         # 全流程可重试：邮箱提交后 / 密码后若出空黑框，关闭并重开登录
         for round_i in range(1, 4):
             print(f"STEP login_round={round_i}", flush=True)
+            _apple_dismiss_welcome_modal(driver, max_clicks=2)
+            if _apple_is_logged_in(driver):
+                _apple_step(driver, "LOGIN_OK", f"already_round={round_i}")
+                print("✓ Apple Music 自动登录成功（轮次中已检测到登录）", flush=True)
+                _apple_ensure_storefront(driver, sf)
+                print("  等待 20 秒后继续原加歌流程...", flush=True)
+                time.sleep(20)
+                _apple_dismiss_welcome_modal(driver, max_clicks=2)
+                return True
             if round_i > 1:
                 if not _apple_open_sign_in_ready(driver, max_retries=3):
+                    # 可能已登录导致没有 Sign In 按钮
+                    if _apple_is_logged_in(driver):
+                        _apple_step(driver, "LOGIN_OK", "no_signin_but_logged_in")
+                        print("✓ Apple Music 自动登录成功（无 Sign In 且已登录）", flush=True)
+                        _apple_ensure_storefront(driver, sf)
+                        print("  等待 20 秒后继续原加歌流程...", flush=True)
+                        time.sleep(20)
+                        _apple_dismiss_welcome_modal(driver, max_clicks=2)
+                        return True
                     print("✗ 重开登录弹窗失败", flush=True)
                     _apple_save_debug_shot(driver, "apple_no_signin_retry")
                     return False
@@ -4344,14 +4396,38 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                         _apple_step(driver, "email_submit_coord_fail", str(e))
                 else:
                     _apple_step(driver, "email_submitted")
-                # 邮箱提交后直接进密码阶段（验证码页点「使用密碼登入」），不做 UIA 预检以免卡死
+                # 邮箱提交后：先用 Selenium 点「Sign in with password」（美区 UIA 常扫不到 iframe）
                 apple_human_delay(1.2, 1.8)
+                try:
+                    if _apple_switch_to_password_login(driver):
+                        _apple_step(driver, "selenium_switch_password_ok")
+                    else:
+                        _apple_step(driver, "selenium_switch_password_miss")
+                except Exception as e:
+                    _apple_step(driver, "selenium_switch_password_err", str(e))
                 try:
                     from apple_uia_login import complete_password_phase, focus_apple_chrome
                     focus_apple_chrome()
                     _apple_step(driver, "password_phase_start")
                     pwd_ok = complete_password_phase(password)
                     _apple_step(driver, "password_phase_end", f"ok={pwd_ok}")
+                    if not pwd_ok:
+                        # Selenium 再补一次：若已有密码框则直接填
+                        try:
+                            if _apple_find_password_input(driver):
+                                _apple_step(driver, "selenium_password_fallback")
+                                el = _apple_find_password_input(driver)
+                                if el:
+                                    el.clear()
+                                    el.send_keys(password)
+                                    _apple_submit_auth(driver)
+                                    apple_human_delay(2.0, 3.0)
+                                    pwd_ok = _apple_is_logged_in(driver) or (
+                                        not _apple_find_password_input(driver)
+                                        and _apple_welcome_modal_present(driver)
+                                    )
+                        except Exception as e2:
+                            _apple_step(driver, "selenium_password_fallback_fail", str(e2))
                     if not pwd_ok:
                         apple_human_delay(1.0, 1.5)
                         continue

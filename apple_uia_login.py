@@ -166,6 +166,7 @@ def find_named_center(names: list[str], timeout: float = 3.0) -> tuple[int, int]
         return None
 
     deadline = time.time() + timeout
+    names_l = [n.lower() for n in names if n]
     while time.time() < deadline:
         try:
             root = auto.GetRootControl()
@@ -176,24 +177,48 @@ def find_named_center(names: list[str], timeout: float = 3.0) -> tuple[int, int]
                     wname = win.Name or ""
                 except Exception:
                     continue
-                if "Apple" not in wname or "Chrome" not in wname:
+                if "Chrome" not in wname:
                     continue
+                if not ("Apple" in wname or "music.apple.com" in wname.lower()):
+                    continue
+                # 精确 Name 匹配
                 for want in names:
                     if time.time() >= deadline:
                         return None
-                    for ctype in ("ButtonControl", "HyperlinkControl", "EditControl"):
+                    for ctype in ("ButtonControl", "HyperlinkControl", "EditControl", "TextControl"):
                         if time.time() >= deadline:
                             return None
                         try:
                             factory = getattr(auto, ctype)
-                            # searchDepth 过大在 Chrome 上会卡死级慢
-                            ctrl = factory(searchFromControl=win, Name=want, searchDepth=12)
+                            ctrl = factory(searchFromControl=win, Name=want, searchDepth=18)
                             if ctrl.Exists(0.05, 0.02):
                                 pt = _control_center(ctrl)
                                 if pt:
                                     return pt
                         except Exception:
                             continue
+                # 兜底：遍历按钮/链接，包含匹配（解决「Sign in with password」搜不到）
+                try:
+                    for ctrl, _depth in auto.WalkControl(win, maxDepth=18):
+                        if time.time() >= deadline:
+                            return None
+                        try:
+                            ctype = ctrl.ControlTypeName or ""
+                            if ctype not in ("ButtonControl", "HyperlinkControl", "EditControl"):
+                                continue
+                            cname = (ctrl.Name or "").strip()
+                            if not cname:
+                                continue
+                            cl = cname.lower()
+                            for want in names_l:
+                                if cl == want or want in cl:
+                                    pt = _control_center(ctrl)
+                                    if pt:
+                                        return pt
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
         except Exception:
             pass
         time.sleep(0.25)
@@ -232,39 +257,60 @@ def complete_password_phase(password: str) -> bool:
     """邮箱提交后：验证码页 → 点「使用密碼登入」→ 填密码 → 提交。
 
     注意：验证码页也有关闭钮，绝不能当黑框关掉。
+    美区实测文案：「Sign in with password」（password 全小写）。
     """
     _log("STEP coord_password_phase")
     switch_to_english_ime()
     focus_apple_chrome()
     time.sleep(1.2)
 
-    switch_names = ["使用密碼登入", "Sign In with Password"]
-    pwd_names = ["密碼", "Password"]
+    switch_names = [
+        "使用密碼登入",
+        "使用密码登录",
+        "Sign In with Password",
+        "Sign in with Password",
+        "Sign in with password",
+    ]
+    code_page_names = ["Resend code", "Resend", "重新发送", "重新傳送"]
+    pwd_names = ["密碼", "Password", "密码"]
 
     for attempt in range(1, 4):
         focus_apple_chrome()
         switch_to_english_ime()
-        if find_named_center(pwd_names, timeout=0.8):
+        on_pwd = find_named_center(pwd_names, timeout=0.8) is not None
+        # 验证码页：有 Resend / Sign in with password，尚无真正密码框
+        on_code = find_named_center(code_page_names + switch_names, timeout=0.8) is not None
+        if on_pwd and not on_code:
             _log(f"STEP already_on_password_page attempt={attempt}")
         else:
-            pt = find_named_center(switch_names, timeout=2.0)
+            pt = find_named_center(switch_names, timeout=2.5)
             if pt:
                 click_xy(*pt)
                 _log(f"STEP coord_switch_password uia {pt} attempt={attempt}")
             else:
-                click_xy(*XY["password_switch"])
-                _log(f"STEP coord_switch_password xy attempt={attempt}")
+                # 相对「Resend code」下方点密码入口，避免固定坐标点到 6 位码框
+                resend = find_named_center(code_page_names, timeout=1.0)
+                if resend:
+                    click_xy(resend[0] + 28, resend[1] + 37)
+                    _log(f"STEP coord_switch_password near_resend {resend} attempt={attempt}")
+                else:
+                    _log(f"STEP coord_switch_password miss attempt={attempt}")
+                    continue
             time.sleep(2.0)
 
         focus_apple_chrome()
         switch_to_english_ime()
-        pwd_pt = find_named_center(pwd_names, timeout=2.5) or XY["password"]
+        # 必须真的看到 Password 控件，禁止盲贴到 6 位码框
+        pwd_pt = find_named_center(pwd_names, timeout=3.0)
+        if not pwd_pt:
+            _log(f"STEP password_field_missing retry={attempt}")
+            continue
         paste_at(pwd_pt[0], pwd_pt[1], password)
         _log(f"STEP coord_password_pasted {pwd_pt} attempt={attempt}")
         time.sleep(0.35)
 
-        submit_pt = find_named_center(["登入", "Sign In"], timeout=1.0)
-        if submit_pt and abs(submit_pt[1] - pwd_pt[1]) < 80 and submit_pt[0] > pwd_pt[0]:
+        submit_pt = find_named_center(["登入", "Sign In", "Continue", "繼續", "继续"], timeout=1.2)
+        if submit_pt and abs(submit_pt[1] - pwd_pt[1]) < 100 and submit_pt[0] > pwd_pt[0] - 20:
             click_xy(*submit_pt)
             _log(f"STEP coord_password_submit uia {submit_pt}")
         else:
@@ -273,10 +319,13 @@ def complete_password_phase(password: str) -> bool:
         time.sleep(3.0)
 
         # 仍停在验证码页说明密码未生效，重试切换
-        if find_named_center(switch_names, timeout=0.8):
+        if find_named_center(code_page_names + switch_names, timeout=0.8):
             _log(f"STEP password_still_on_code_page retry={attempt}")
             continue
         break
+    else:
+        _log("STEP coord_password_phase_fail still_on_code")
+        return False
 
     for i in range(3):
         if wait_named(["我的帳户", "我的账户", "My Account"], timeout=0.6):
@@ -292,6 +341,10 @@ def complete_password_phase(password: str) -> bool:
             break
 
     _log("STEP coord_password_phase_done")
+    # 若仍停在邮箱验证码页，判失败（禁止假成功）
+    if find_named_center(code_page_names + switch_names, timeout=0.6):
+        _log("STEP coord_password_phase_still_code")
+        return False
     return True
 
 
