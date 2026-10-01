@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.84"  # 修复：邮箱码页先 Selenium 切密码再 UIA；避免固定坐标误点
+APP_VERSION = "0.1.85"  # 数据：other_artists 删除加歌失败艺人 Gabriel Yared、Trevor Kowalski
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -322,7 +322,7 @@ WEIGHT_DECAY_POWER = 4           # 权重衰减的幂次
 # Tidal 集成配置
 TIDAL_MODE = 1                   # Tidal 模式：1=新增播放列表，2=删除指定艺人专辑歌曲
 TIDAL_TRACK_COUNT_MIN = 12       # 每张专辑添加的最小歌曲数量
-TIDAL_TRACK_COUNT_MAX = 16       # 每张专辑添加的最大歌曲数量
+TIDAL_TRACK_COUNT_MAX = 18       # 每张专辑添加的最大歌曲数量
 TIDAL_DELAY_MIN = 0.5            # 操作间隔最小延迟（秒）
 TIDAL_DELAY_MAX = 1            # 操作间隔最大延迟（秒）
 TIDAL_CREDENTIALS_FILE = ".tidal_credentials.json"  # Tidal 登录凭据保存文件
@@ -381,8 +381,8 @@ APPLE_DEFAULT_STOREFRONT = "hk"  # 未指定地区时默认香港（本批 A24-A
 
 
 # Qobuz 集成配置
-QOBUZ_TRACK_COUNT_MIN = 10       # 每张专辑添加的最小歌曲数量
-QOBUZ_TRACK_COUNT_MAX = 14       # 每张专辑添加的最大歌曲数量
+QOBUZ_TRACK_COUNT_MIN = 12       # 每张专辑添加的最小歌曲数量
+QOBUZ_TRACK_COUNT_MAX = 18       # 每张专辑添加的最大歌曲数量
 QOBUZ_DELAY_MIN = 0.3            # 操作间隔最小延迟（秒）
 QOBUZ_DELAY_MAX = 0.8            # 操作间隔最大延迟（秒）
 QOBUZ_LOGIN_URL = "https://play.qobuz.com/login"  # Qobuz 登录页
