@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.86"  # 优化：Apple 加歌歌间间隔改为 1.2–1.8 秒
+APP_VERSION = "0.1.87"  # 新增：Apple 同地区多账号多路逐增加歌脚本（可调条数/模式）
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
