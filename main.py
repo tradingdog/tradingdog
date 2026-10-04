@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.90"  # 修复：验证码页禁止扫 iframe，先截图点密码登录
+APP_VERSION = "0.1.91"  # 修复：美区新建歌单默认名 Ocean，必须改名并点 Create 才算建成
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -5092,6 +5092,106 @@ def click_apple_search(driver):
     return False
 
 
+def _apple_complete_new_playlist_dialog(driver, playlist_name: str) -> bool:
+    """美区新建歌单弹窗默认名常是 Ocean。必须改成目标名并点 Create，且弹窗消失才算成功。"""
+    name_input = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.CSS_SELECTOR, "input.playlist-title, dialog input[type='text'], [role='dialog'] input[type='text']")
+        )
+    )
+    try:
+        name_input.click()
+    except Exception:
+        driver.execute_script("arguments[0].focus(); arguments[0].click();", name_input)
+    apple_human_delay(0.15, 0.3)
+    try:
+        name_input.send_keys(Keys.CONTROL, "a")
+        name_input.send_keys(Keys.BACKSPACE)
+    except Exception:
+        pass
+    driver.execute_script(
+        """
+        const el = arguments[0], v = arguments[1];
+        el.focus();
+        const proto = window.HTMLInputElement ? window.HTMLInputElement.prototype : null;
+        const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
+        if (desc && desc.set) { desc.set.call(el, v); }
+        else { el.value = v; }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        """,
+        name_input,
+        playlist_name,
+    )
+    try:
+        name_input.send_keys(Keys.CONTROL, "a")
+        apple_human_typing(name_input, playlist_name)
+    except Exception:
+        pass
+    actual = (name_input.get_attribute("value") or "").strip()
+    if normalize_playlist_name(actual) != normalize_playlist_name(playlist_name):
+        print(f"    ! 歌单名未写入（当前={actual!r} 目标={playlist_name!r}）", flush=True)
+        _apple_save_debug_shot(driver, "playlist_name_not_set")
+        return False
+    print(f"    · 歌单名已写入: {actual}", flush=True)
+
+    try:
+        public_checkbox = driver.find_element(By.CSS_SELECTOR, "input.public-checkbox, dialog input[type='checkbox']")
+        if not public_checkbox.is_selected():
+            driver.execute_script("arguments[0].click();", public_checkbox)
+            print("    ✓ 已勾选公开选项", flush=True)
+    except Exception as e:
+        print(f"    ! 勾选公开选项失败: {e}", flush=True)
+
+    create_btn = None
+    for el in driver.find_elements(By.CSS_SELECTOR, "dialog button, [role='dialog'] button"):
+        try:
+            label = (el.text or el.get_attribute("aria-label") or "").strip()
+        except Exception:
+            continue
+        if label in ("Create", "建立", "创建", "Create Playlist"):
+            create_btn = el
+            break
+    if create_btn is None:
+        try:
+            create_btn = driver.find_element(By.CSS_SELECTOR, "dialog form button[type='submit'], [role='dialog'] button[type='submit']")
+        except Exception:
+            create_btn = None
+    if create_btn is None:
+        print("    ! 未找到 Create/建立 按钮", flush=True)
+        _apple_save_debug_shot(driver, "playlist_create_btn_missing")
+        return False
+    try:
+        apple_move_to_element(driver, create_btn)
+        create_btn.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", create_btn)
+    print("    ✓ 已点击建立按钮", flush=True)
+
+    gone = False
+    deadline = time.time() + 12
+    while time.time() < deadline:
+        still = driver.find_elements(By.CSS_SELECTOR, "input.playlist-title, dialog input[type='text']")
+        visible = False
+        for el in still:
+            try:
+                if el.is_displayed():
+                    visible = True
+                    break
+            except Exception:
+                pass
+        if not visible:
+            gone = True
+            break
+        time.sleep(0.35)
+    if not gone:
+        print("    ! 新建歌单弹窗未关闭，Create 未生效", flush=True)
+        _apple_save_debug_shot(driver, "playlist_dialog_still_open")
+        return False
+    _apple_save_debug_shot(driver, "playlist_created")
+    return True
+
+
 def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_album=False):
     """从当前专辑页面添加歌曲到播放列表"""
     if is_first_album:
@@ -5102,7 +5202,12 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
     # Chrome 若在后台，右键菜单/Add to Playlist 常点不到——加歌前强制前置
     try:
         from apple_uia_login import focus_apple_chrome
-        if focus_apple_chrome():
+        hint = ""
+        try:
+            hint = driver.title or ""
+        except Exception:
+            pass
+        if focus_apple_chrome(hint):
             print("    · 已前置 Apple Chrome 窗口", flush=True)
     except Exception:
         pass
@@ -5246,38 +5351,10 @@ def add_songs_to_apple_playlist(driver, playlist_name, track_count, is_first_alb
                             continue
                         
                         apple_human_delay(1, 2)
-                        
-                        # 输入播放列表名称
-                        name_input = WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "input.playlist-title"))
-                        )
-                        name_input.clear()
-                        apple_human_typing(name_input, playlist_name)
-                        apple_human_delay(0.3, 0.5)
-                        
-                        # 勾选公开checkbox
-                        try:
-                            public_checkbox = WebDriverWait(driver, 5).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "input.public-checkbox"))
-                            )
-                            if not public_checkbox.is_selected():
-                                driver.execute_script("arguments[0].click();", public_checkbox)
-                                apple_human_delay(0.3, 0.5)
-                                print("    ✓ 已勾选公开选项")
-                        except Exception as e:
-                            print(f"    ! 勾选公开选项失败: {e}")
-                        
-                        apple_human_delay(0.3, 0.5)
-                        
-                        # 点击"建立"按钮
-                        create_btn = WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, "dialog form button[type='submit']"))
-                        )
-                        apple_move_to_element(driver, create_btn)
-                        apple_human_delay(0.3, 0.6)
-                        create_btn.click()
-                        print("    ✓ 已点击建立按钮")
-                        
+                        if not _apple_complete_new_playlist_dialog(driver, playlist_name):
+                            print("    ! 新建播放列表失败（名称/Create）", flush=True)
+                            continue
+
                         print(f"    ✓ 播放列表创建成功，已添加第 {idx+1} 首")
                         print("    等待15秒让页面跳转完成...")
                         apple_human_delay(14, 16)

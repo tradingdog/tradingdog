@@ -142,22 +142,38 @@ def paste_at(x: int, y: int, text: str) -> None:
     time.sleep(0.4)
 
 
-def focus_apple_chrome() -> bool:
-    """把 Apple Music 的 Chrome 窗提到前台（避免后台时点击/菜单失效）。"""
+def focus_apple_chrome(title_hint: str = "") -> bool:
+    """把当前加歌用的 Chrome 提到前台。优先匹配 driver 标题，避免点到别的 Apple 窗。"""
+    hint = (title_hint or "").strip().casefold()
     try:
         import uiautomation as auto
         user32 = ctypes.windll.user32
         root = auto.GetRootControl()
+        scored: list[tuple[int, object]] = []
         for win in root.GetChildren():
             try:
                 name = win.Name or ""
             except Exception:
                 continue
-            # 标题常见：Apple Music / music.apple.com + Google Chrome
             if "Chrome" not in name:
                 continue
-            if not ("Apple" in name or "music.apple.com" in name.lower()):
+            nl = name.casefold()
+            if not (
+                "apple" in nl
+                or "music.apple.com" in nl
+                or "album" in nl
+                or "playlist" in nl
+                or (hint and hint[:24] and hint[:24] in nl)
+            ):
                 continue
+            score = 0
+            if hint and hint[:18] in nl:
+                score += 10
+            if "apple music" in nl:
+                score += 2
+            scored.append((score, win))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        for _score, win in scored:
             try:
                 hwnd = win.NativeWindowHandle
                 if not hwnd:
