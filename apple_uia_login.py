@@ -319,6 +319,7 @@ def complete_password_phase(password: str) -> bool:
     pwd_names = ["密碼", "Password", "密码"]
 
     for attempt in range(1, 4):
+        vis = None
         focus_apple_chrome()
         switch_to_english_ime()
         on_pwd = find_named_center(pwd_names, timeout=0.8) is not None
@@ -327,35 +328,45 @@ def complete_password_phase(password: str) -> bool:
         if on_pwd and not on_code:
             _log(f"STEP already_on_password_page attempt={attempt}")
         else:
-            pt = find_named_center(switch_names, timeout=2.5)
+            pt = find_named_center(switch_names, timeout=1.2)
             if pt:
                 click_xy(*pt)
                 _log(f"STEP coord_switch_password uia {pt} attempt={attempt}")
+                time.sleep(1.6)
             else:
-                # 相对「Resend code」下方点密码入口，避免固定坐标点到 6 位码框
-                resend = find_named_center(code_page_names, timeout=1.0)
+                resend = find_named_center(code_page_names, timeout=0.8)
                 if resend:
                     click_xy(resend[0] + 28, resend[1] + 37)
                     _log(f"STEP coord_switch_password near_resend {resend} attempt={attempt}")
+                    time.sleep(1.6)
                 else:
                     vis = click_sign_in_with_password_visual()
-                    if not vis:
-                        _log(f"STEP coord_switch_password miss attempt={attempt}")
-                        continue
-            time.sleep(2.0)
+                    if vis:
+                        time.sleep(1.8)
+                    else:
+                        _log(f"STEP assume_password_xy attempt={attempt}")
+                        time.sleep(0.4)
 
         focus_apple_chrome()
         switch_to_english_ime()
-        # 必须真的看到 Password 控件，禁止盲贴到 6 位码框
-        pwd_pt = find_named_center(pwd_names, timeout=3.0)
+        # iframe 里 Password 控件 UIA 经常扫不到；蓝字消失后再用坐标粘贴
+        pwd_pt = find_named_center(pwd_names, timeout=1.8)
         if not pwd_pt:
-            _log(f"STEP password_field_missing retry={attempt}")
-            continue
+            still_code = find_named_center(code_page_names + switch_names, timeout=0.5)
+            if still_code:
+                _log(f"STEP password_field_missing retry={attempt}")
+                continue
+            pwd_pt = XY["password"]
+            _log(f"STEP password_field_xy {pwd_pt} attempt={attempt}")
         paste_at(pwd_pt[0], pwd_pt[1], password)
         _log(f"STEP coord_password_pasted {pwd_pt} attempt={attempt}")
         time.sleep(0.35)
 
         submit_pt = find_named_center(["登入", "Sign In", "Continue", "繼續", "继续"], timeout=1.2)
+        # 左侧栏红色 Sign In（x 很小）不是弹窗提交钮
+        if submit_pt and submit_pt[0] < 280:
+            _log(f"STEP ignore_sidebar_signin {submit_pt}")
+            submit_pt = None
         if submit_pt and abs(submit_pt[1] - pwd_pt[1]) < 100 and submit_pt[0] > pwd_pt[0] - 20:
             click_xy(*submit_pt)
             _log(f"STEP coord_password_submit uia {submit_pt}")

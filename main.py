@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.89"  # 修复：美区验证码页用截图匹配点 Sign in with password
+APP_VERSION = "0.1.90"  # 修复：验证码页禁止扫 iframe，先截图点密码登录
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -4458,15 +4458,23 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                         _apple_step(driver, "email_submit_coord_fail", str(e))
                 else:
                     _apple_step(driver, "email_submitted")
-                # 邮箱提交后：先用 Selenium 点「Sign in with password」（美区 UIA 常扫不到 iframe）
-                apple_human_delay(1.2, 1.8)
+                # 邮箱提交后验证码页：禁止扫 iframe（idmsa 会卡死数分钟）。先截图点蓝字。
+                time.sleep(1.6)
                 try:
-                    if _apple_switch_to_password_login(driver):
-                        _apple_step(driver, "selenium_switch_password_ok")
+                    from apple_uia_login import click_sign_in_with_password_visual, focus_apple_chrome
+                    focus_apple_chrome()
+                    vis = None
+                    for _try in range(10):
+                        vis = click_sign_in_with_password_visual()
+                        if vis:
+                            break
+                        time.sleep(0.45)
+                    if vis:
+                        _apple_step(driver, "visual_switch_password_ok", str(vis))
                     else:
-                        _apple_step(driver, "selenium_switch_password_miss")
+                        _apple_step(driver, "visual_switch_password_miss")
                 except Exception as e:
-                    _apple_step(driver, "selenium_switch_password_err", str(e))
+                    _apple_step(driver, "visual_switch_password_err", str(e))
                 try:
                     from apple_uia_login import complete_password_phase, focus_apple_chrome
                     focus_apple_chrome()
