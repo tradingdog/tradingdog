@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.91"  # 修复：美区新建歌单默认名 Ocean，必须改名并点 Create 才算建成
+APP_VERSION = "0.1.92"  # 修复：新建歌单名不要 JS+键盘各写一次变成 Mountain EchoMountain Echo
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -5123,12 +5123,15 @@ def _apple_complete_new_playlist_dialog(driver, playlist_name: str) -> bool:
         name_input,
         playlist_name,
     )
-    try:
-        name_input.send_keys(Keys.CONTROL, "a")
-        apple_human_typing(name_input, playlist_name)
-    except Exception:
-        pass
     actual = (name_input.get_attribute("value") or "").strip()
+    if normalize_playlist_name(actual) != normalize_playlist_name(playlist_name):
+        try:
+            name_input.send_keys(Keys.CONTROL, "a")
+            name_input.send_keys(Keys.BACKSPACE)
+            apple_human_typing(name_input, playlist_name)
+        except Exception:
+            pass
+        actual = (name_input.get_attribute("value") or "").strip()
     if normalize_playlist_name(actual) != normalize_playlist_name(playlist_name):
         print(f"    ! 歌单名未写入（当前={actual!r} 目标={playlist_name!r}）", flush=True)
         _apple_save_debug_shot(driver, "playlist_name_not_set")
