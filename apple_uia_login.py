@@ -57,6 +57,50 @@ def click_xy(x: int, y: int) -> None:
     time.sleep(0.15)
 
 
+def click_sign_in_with_password_visual() -> tuple[int, int] | None:
+    """全屏模板匹配「Sign in with password」。UIA/iframe 常扫不到这条蓝字。"""
+    from pathlib import Path
+
+    import numpy as np
+
+    try:
+        import cv2
+    except Exception as e:
+        _log(f"STEP visual_password_link no_cv2 {e}")
+        return None
+
+    tpl_path = Path(__file__).resolve().parent / "apple_assets" / "tpl_sign_in_with_password.png"
+    if not tpl_path.exists():
+        _log("STEP visual_password_link no_tpl")
+        return None
+    tpl = cv2.imread(str(tpl_path))
+    if tpl is None:
+        return None
+    shot = None
+    try:
+        import mss
+        with mss.mss() as sct:
+            mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+            shot = cv2.cvtColor(np.array(sct.grab(mon)), cv2.COLOR_BGRA2BGR)
+    except Exception:
+        try:
+            import pyautogui
+            shot = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            _log(f"STEP visual_password_link grab_fail {e}")
+            return None
+    res = cv2.matchTemplate(shot, tpl, cv2.TM_CCOEFF_NORMED)
+    _minv, maxv, _minl, maxl = cv2.minMaxLoc(res)
+    if maxv < 0.72:
+        _log(f"STEP visual_password_link miss score={maxv:.3f}")
+        return None
+    h, w = tpl.shape[:2]
+    cx, cy = int(maxl[0] + w / 2), int(maxl[1] + h / 2)
+    click_xy(cx, cy)
+    _log(f"STEP visual_password_link ({cx},{cy}) score={maxv:.3f}")
+    return (cx, cy)
+
+
 def _key(vk: int, up: bool = False) -> None:
     flags = KEYEVENTF_KEYUP if up else 0
     ctypes.windll.user32.keybd_event(vk, 0, flags, 0)
@@ -294,8 +338,10 @@ def complete_password_phase(password: str) -> bool:
                     click_xy(resend[0] + 28, resend[1] + 37)
                     _log(f"STEP coord_switch_password near_resend {resend} attempt={attempt}")
                 else:
-                    _log(f"STEP coord_switch_password miss attempt={attempt}")
-                    continue
+                    vis = click_sign_in_with_password_visual()
+                    if not vis:
+                        _log(f"STEP coord_switch_password miss attempt={attempt}")
+                        continue
             time.sleep(2.0)
 
         focus_apple_chrome()

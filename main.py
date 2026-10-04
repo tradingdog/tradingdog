@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.88"  # 修复：美区登录验证码页点不到 Sign in with password
+APP_VERSION = "0.1.89"  # 修复：美区验证码页用截图匹配点 Sign in with password
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
