@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.87"  # 新增：Apple 同地区多账号多路逐增加歌脚本（可调条数/模式）
+APP_VERSION = "0.1.88"  # 修复：美区登录验证码页点不到 Sign in with password
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -4033,7 +4033,44 @@ def _apple_js_click_by_texts(driver, texts: list[str]) -> bool:
         return False
 
 
-def _apple_switch_to_password_login(driver) -> bool:
+def _apple_js_click_password_link(driver) -> bool:
+    """验证码页「Sign in with password」常在 idmsa iframe 里，且父节点文案可能超过 80 字。"""
+    script = r"""
+    const needles = ['sign in with password', '使用密码登录', '使用密碼登入', 'use password'];
+    function walk(root, out) {
+      out.push(root);
+      const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (const el of nodes) {
+        if (el.shadowRoot) walk(el.shadowRoot, out);
+      }
+      return out;
+    }
+    function norm(s) { return (s || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+    const roots = walk(document, []);
+    for (const root of roots) {
+      if (!root.querySelectorAll) continue;
+      const els = root.querySelectorAll('a,button,[role="button"],span,div,p');
+      for (const el of els) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 4 || r.height < 4) continue;
+        const label = norm(el.textContent);
+        if (!label || label.length > 48) continue;
+        if (needles.some(t => label.includes(t))) {
+          el.click();
+          return label;
+        }
+      }
+    }
+    return '';
+    """
+    try:
+        hit = driver.execute_script(script)
+        return bool(hit)
+    except Exception:
+        return False
+
+
+def _apple_switch_to_password_login(driver, timeout: float = 12.0) -> bool:
     keywords = [
         "使用密碼登入",
         "使用密码登录",
@@ -4044,20 +4081,45 @@ def _apple_switch_to_password_login(driver) -> bool:
         "Log In with Password",
         "Login with Password",
     ]
-    # 先全 frame + Shadow
-    paths = _apple_collect_frames(driver)
-    for path in paths:
-        if not _apple_enter_frame_path(driver, path):
-            continue
-        if _apple_js_click_by_texts(driver, keywords):
-            print("    · 已切换为密码登录")
-            apple_human_delay(1.5, 2.5)
-            return True
-        el = _apple_find_clickable_by_texts(driver, keywords, tags="button,a,[role='button'],div,span")
-        if el and _apple_safe_click(driver, el):
-            print("    · 已切换为密码登录")
-            apple_human_delay(1.5, 2.5)
-            return True
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            driver.switch_to.default_content()
+        except Exception:
+            pass
+        iframe_count = 0
+        try:
+            iframe_count = len(driver.find_elements(By.CSS_SELECTOR, "iframe"))
+        except Exception:
+            iframe_count = 0
+        for idx in range(-1, iframe_count):
+            try:
+                driver.switch_to.default_content()
+                if idx >= 0:
+                    frames = driver.find_elements(By.CSS_SELECTOR, "iframe")
+                    if idx >= len(frames):
+                        continue
+                    driver.switch_to.frame(frames[idx])
+            except Exception:
+                continue
+            if _apple_js_click_password_link(driver) or _apple_js_click_by_texts(driver, keywords):
+                print("    · 已切换为密码登录")
+                apple_human_delay(1.5, 2.5)
+                try:
+                    driver.switch_to.default_content()
+                except Exception:
+                    pass
+                return True
+            el = _apple_find_clickable_by_texts(driver, keywords, tags="button,a,[role='button'],div,span")
+            if el and _apple_safe_click(driver, el):
+                print("    · 已切换为密码登录")
+                apple_human_delay(1.5, 2.5)
+                try:
+                    driver.switch_to.default_content()
+                except Exception:
+                    pass
+                return True
+        time.sleep(0.6)
     try:
         driver.switch_to.default_content()
     except Exception:
