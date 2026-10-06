@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.93"  # 数据：清空苹果/Tidal 加歌专辑历史与临时曲目 txt
+APP_VERSION = "0.1.94"  # 规则：多号 Apple 加歌必须逐增串行，写入 alwaysApply 规则
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
