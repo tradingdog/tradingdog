@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.95"  # 数据：三平台艺人库加入 Idony Bramblett / Parcel Shelf Light
+APP_VERSION = "0.1.105"  # 修复：欢迎窗只点宽按钮「繼續」，点不中就关窗，不再盲点
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -3114,16 +3114,19 @@ def _apple_find_welcome_continue_el(driver):
             const candidates = [];
             const pushEl = (b) => {
               try {
+                const tag = (b.tagName || '').toUpperCase();
+                const role = (b.getAttribute('role') || '').toLowerCase();
+                if (tag !== 'BUTTON' && role !== 'button' && tag !== 'A') return;
                 const r = b.getBoundingClientRect();
-                if (r.width < 40 || r.height < 20 || r.bottom < 0 || r.top > innerHeight) return;
+                // 红色「繼續」是一条宽按钮，不要点到正文里带同樣字的小块
+                if (r.width < 120 || r.height < 32 || r.height > 90) return;
+                if (r.bottom < 0 || r.top > innerHeight) return;
                 const aria = (b.getAttribute('aria-label') || '').replace(/[\\s\\u00a0\\u3000]+/g, ' ').trim();
                 const deep = (b.innerText || b.textContent || '').replace(/[\\s\\u00a0\\u3000]+/g, ' ').trim();
                 const own = ownText(b);
-                const ok = isContinue(own) || isContinue(aria)
-                  || isContinue(deep)
-                  || (deep.length <= 24 && /^(繼續|继续|Continue|Start Listening|开始聆听|開始聆聽)$/m.test(deep.split('\\n')[0].trim()));
+                const ok = isContinue(own) || isContinue(aria) || isContinue(deep.split('\\n')[0]);
                 if (!ok) return;
-                candidates.push({el: b, area: r.width * r.height, y: r.top});
+                candidates.push({el: b, area: r.width * r.height, y: r.top, x: r.left + r.width / 2, cy: r.top + r.height / 2});
               } catch (e) {}
             };
             const walk = (root, depth) => {
@@ -3149,7 +3152,9 @@ def _apple_find_welcome_continue_el(driver):
             const small = candidates.filter(c => c.area < 80000);
             const pool = small.length ? small : candidates;
             pool.sort((a, b) => b.y - a.y); // 偏下方的红钮
-            return pool[0].el;
+            const hit = pool[0];
+            try { hit.el.click(); } catch (e) {}
+            return {clicked: true, x: hit.x, y: hit.cy};
         """)
     except Exception:
         return None
@@ -3166,37 +3171,70 @@ def _apple_dismiss_welcome_modal(driver, max_clicks: int = 2) -> int:
         if not _apple_welcome_modal_present(driver):
             return clicked
         el = _apple_find_welcome_continue_el(driver)
+        if isinstance(el, dict) and el.get("clicked"):
+            try:
+                _apple_cdp_click_xy(driver, float(el["x"]), float(el["y"]))
+            except Exception:
+                pass
+            clicked += 1
+            print(
+                f"    · 已在页面内点击欢迎窗繼續 ({el.get('x')},{el.get('y')})",
+                flush=True,
+            )
+            apple_human_delay(1.2, 2.0)
+            if not _apple_welcome_modal_present(driver):
+                return clicked
+            continue
         if el is None:
             # 等一下再找（红钮有时晚于标题渲染）
             apple_human_delay(0.8, 1.2)
             el = _apple_find_welcome_continue_el(driver)
-        if el is None:
-            try:
-                from apple_uia_login import click_named, focus_apple_chrome, click_xy, XY as _XY
-                focus_apple_chrome()
-                if click_named(["Continue", "繼續", "继续", "开始聆听", "Start Listening"], timeout=2.5):
-                    clicked += 1
-                    print(f"    · 已识别 Continue/繼續 并点击 (UIA, {clicked})", flush=True)
-                    apple_human_delay(1.2, 2.0)
-                    continue
-                # 美区英文欢迎窗红钮约在弹窗底部中央；多 Y 试探并验证是否消失
-                hit = False
-                for xy in (
-                    _XY.get("welcome_continue", (800, 620)),
-                    (800, 600),
-                    (800, 640),
-                    (800, 580),
-                    (790, 625),
-                ):
-                    click_xy(*xy)
-                    apple_human_delay(0.5, 0.8)
-                    if not _apple_welcome_modal_present(driver):
-                        hit = True
-                        print(f"    · 坐标点击欢迎窗 Continue 成功 {xy}", flush=True)
-                        break
+            if isinstance(el, dict) and el.get("clicked"):
+                try:
+                    _apple_cdp_click_xy(driver, float(el["x"]), float(el["y"]))
+                except Exception:
+                    pass
                 clicked += 1
-                if not hit:
-                    print(f"    · 已识别欢迎窗标题，坐标尝试点击 Continue({clicked})", flush=True)
+                print(
+                    f"    · 已在页面内点击欢迎窗繼續 ({el.get('x')},{el.get('y')})",
+                    flush=True,
+                )
+                apple_human_delay(1.2, 2.0)
+                if not _apple_welcome_modal_present(driver):
+                    return clicked
+                continue
+        if el is None:
+            # 只点本浏览器视口。禁止 win32 屏幕坐标，否则会点到另一路正在加歌的窗。
+            try:
+                pt = driver.execute_script(
+                    r"""
+                    const re = /^(繼續|继续|Continue|Start Listening|开始聆听|開始聆聽)$/;
+                    const vis = (el) => {
+                      const r = el.getBoundingClientRect();
+                      return r.width > 40 && r.height > 20 && r.top >= 0 && r.bottom <= innerHeight + 5;
+                    };
+                    const buttons = [...document.querySelectorAll('button')].filter(vis);
+                    for (const b of buttons) {
+                      const t = (b.innerText || '').replace(/\s+/g, ' ').trim();
+                      if (re.test(t)) {
+                        const r = b.getBoundingClientRect();
+                        return {x: r.left + r.width / 2, y: r.top + r.height / 2, t};
+                      }
+                    }
+                    return null;
+                    """
+                )
+                if pt:
+                    _apple_cdp_click_xy(driver, pt["x"], pt["y"])
+                    print(f"    · 欢迎窗 CDP 点击 {pt.get('t')} ({pt['x']:.0f},{pt['y']:.0f})", flush=True)
+                else:
+                    close_btn = _apple_find_modal_close_button(driver)
+                    if close_btn and _apple_safe_click(driver, close_btn):
+                        print("    · 欢迎窗未找到繼續，已点关闭", flush=True)
+                    else:
+                        print("    · 欢迎窗未找到繼續，跳过盲点", flush=True)
+                        return clicked
+                clicked += 1
                 apple_human_delay(1.0, 1.5)
                 continue
             except Exception as e:
@@ -3233,15 +3271,54 @@ def _apple_click_auth_continues(driver, max_clicks: int = 6) -> int:
     return _apple_dismiss_welcome_modal(driver, max_clicks=min(3, max_clicks))
 
 
-def _apple_geo_banner_present(driver) -> bool:
-    """底部地区条：Choose another country / 香港 + Continue。"""
+def _apple_page_text(driver) -> str:
     try:
         driver.switch_to.default_content()
-        body = (driver.execute_script("return document.body && document.body.innerText || ''") or "")
+        return driver.execute_script("return (document.body && document.body.innerText) || ''") or ""
     except Exception:
+        return ""
+
+
+def _apple_country_picker_open(driver) -> bool:
+    """「請選擇國家或地區」大列表。只能关，不能点国家名。"""
+    body = _apple_page_text(driver)
+    return any(
+        x in body
+        for x in (
+            "請選擇國家或地區",
+            "请选择国家或地区",
+            "Choose a Country or Region",
+            "Choose Country or Region",
+        )
+    )
+
+
+def _apple_close_country_picker(driver) -> bool:
+    if not _apple_country_picker_open(driver):
         return False
+    close_btn = _apple_find_modal_close_button(driver)
+    if close_btn and _apple_safe_click(driver, close_btn):
+        print("    · 已关闭国家/地区列表（未选国家）", flush=True)
+        apple_human_delay(0.6, 1.0)
+        return True
+    try:
+        if close_btn:
+            driver.execute_script("arguments[0].click();", close_btn)
+            print("    · 已关闭国家/地区列表（未选国家）", flush=True)
+            apple_human_delay(0.6, 1.0)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _apple_geo_banner_present(driver) -> bool:
+    """底部地区条：必须是「选择其他国家 / 查看你所在位置」横幅，不能只凭页面里有香港和繼續。"""
+    if _apple_country_picker_open(driver):
+        return False
+    body = _apple_page_text(driver)
     low = body.lower()
-    has_hint = (
+    return bool(
         "choose another country" in low
         or "content specific to your location" in low
         or "選擇其他國家" in body
@@ -3249,12 +3326,25 @@ def _apple_geo_banner_present(driver) -> bool:
         or "查看特定於你所在位置" in body
         or "查看特定于你所在位置" in body
     )
-    has_hk = "香港" in body or "hong kong" in low
-    return bool(has_hint or (has_hk and ("continue" in low or "繼續" in body or "继续" in body)))
 
 
 def _apple_dismiss_geo_banners(driver, max_clicks: int = 4) -> int:
-    """点底部地区条红色 Continue（默认常为 us，需切到香港才有加歌菜单）。"""
+    """点底部地区条红色 Continue。国家列表打开时只关不选；登录弹窗期间不点。"""
+    if _apple_country_picker_open(driver):
+        _apple_close_country_picker(driver)
+        return 0
+    body = _apple_page_text(driver)
+    if any(
+        x in body
+        for x in (
+            "使用密碼登入",
+            "使用密码登录",
+            "Sign in with password",
+            "以電郵繼續",
+            "Continue with Email",
+        )
+    ):
+        return 0
     clicked = 0
     for _ in range(max_clicks):
         try:
@@ -3281,7 +3371,7 @@ def _apple_dismiss_geo_banners(driver, max_clicks: int = 4) -> int:
                 target = driver.execute_script(
                     r"""
                     const needles = ['choose another country', 'content specific to your location',
-                      '選擇其他國家', '选择其他国家', '香港', 'hong kong'];
+                      '選擇其他國家', '选择其他国家', '查看特定於你所在位置', '查看特定于你所在位置'];
                     const isVisible = (el) => {
                       const r = el.getBoundingClientRect();
                       const st = getComputedStyle(el);
@@ -3331,14 +3421,12 @@ def _apple_dismiss_geo_banners(driver, max_clicks: int = 4) -> int:
                             parent_txt = ""
                     blob = parent_txt.lower()
                     if (
-                        "country" in blob
-                        or "location" in blob
-                        or "國家" in parent_txt
-                        or "国家" in parent_txt
-                        or "地區" in parent_txt
-                        or "地区" in parent_txt
-                        or "香港" in parent_txt
-                        or _apple_geo_banner_present(driver)
+                        "choose another country" in blob
+                        or "content specific to your location" in blob
+                        or "選擇其他國家" in parent_txt
+                        or "选择其他国家" in parent_txt
+                        or "查看特定於你所在位置" in parent_txt
+                        or "查看特定于你所在位置" in parent_txt
                     ):
                         target = fallback
 
@@ -3468,6 +3556,31 @@ def _apple_click_sign_in(driver) -> bool:
     if el and _apple_safe_click(driver, el):
         print("    · 已点击 Sign In / 登入（文案匹配）")
         return True
+    try:
+        pt = driver.execute_script(
+            r"""
+            const re = /^(Sign In|登入|登录)$/i;
+            const vis = (el) => {
+              const r = el.getBoundingClientRect();
+              return r.width > 20 && r.height > 16 && r.bottom > 0 && r.top < innerHeight;
+            };
+            for (const b of document.querySelectorAll('button,a,[role="button"]')) {
+              if (!vis(b)) continue;
+              const t = (b.innerText || b.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+              if (re.test(t)) {
+                const r = b.getBoundingClientRect();
+                return {x: r.left + r.width / 2, y: r.top + r.height / 2};
+              }
+            }
+            return null;
+            """
+        )
+        if pt:
+            _apple_cdp_click_xy(driver, pt["x"], pt["y"])
+            print("    · 已点击 Sign In / 登入（CDP）")
+            return True
+    except Exception:
+        pass
     return False
 
 
@@ -3846,7 +3959,10 @@ def _apple_open_sign_in_ready(driver, max_retries: int = 3, wait_sec: float = 25
     for attempt in range(1, max_retries + 1):
         if not _apple_click_sign_in(driver):
             print(f"✗ 第 {attempt} 次未找到 Sign In / 登入", flush=True)
-            return False
+            if attempt >= max_retries:
+                return False
+            time.sleep(2.0)
+            continue
         _apple_step(driver, "signin_clicked", f"attempt={attempt}")
         print(f"  轮询最多 {int(wait_sec)}s：邮箱出现就填；若变黑框则关闭重开...", flush=True)
 
@@ -3990,6 +4106,190 @@ def _apple_find_password_input(driver):
         if els:
             return els[0]
     return None
+
+
+def _apple_find_password_shallow(driver):
+    """找密码框：主文档 + 一层/二层 iframe（idmsa 常见嵌套）。返回 (element, frame_path|None)。"""
+    try:
+        driver.set_script_timeout(5)
+    except Exception:
+        pass
+    try:
+        driver.switch_to.default_content()
+        el = _apple_find_password_input(driver)
+        if el is not None:
+            return el, []
+    except Exception:
+        pass
+    try:
+        driver.switch_to.default_content()
+        frames = driver.find_elements(By.CSS_SELECTOR, "iframe")
+        for i, fr in enumerate(frames[:8]):
+            try:
+                driver.switch_to.default_content()
+                driver.switch_to.frame(fr)
+                el = _apple_find_password_input(driver)
+                if el is not None:
+                    return el, [i]
+                # 二层嵌套
+                nested = driver.find_elements(By.CSS_SELECTOR, "iframe")
+                for j, fr2 in enumerate(nested[:6]):
+                    try:
+                        driver.switch_to.default_content()
+                        driver.switch_to.frame(frames[i])
+                        driver.switch_to.frame(fr2)
+                        el = _apple_find_password_input(driver)
+                        if el is not None:
+                            return el, [i, j]
+                    except Exception:
+                        continue
+            except Exception as e:
+                if i == 0:
+                    try:
+                        _apple_step(driver, "password_frame0_err", str(e)[:80])
+                    except Exception:
+                        pass
+                continue
+        driver.switch_to.default_content()
+    except Exception:
+        try:
+            driver.switch_to.default_content()
+        except Exception:
+            pass
+    return None, None
+
+
+def _apple_cdp_click_xy(driver, x: float, y: float) -> None:
+    for typ in ("mouseMoved", "mousePressed", "mouseReleased"):
+        driver.execute_cdp_cmd(
+            "Input.dispatchMouseEvent",
+            {
+                "type": typ,
+                "x": float(x),
+                "y": float(y),
+                "button": "left",
+                "clickCount": 1 if typ != "mouseMoved" else 0,
+            },
+        )
+
+
+def _apple_fill_password_cdp(driver, password: str) -> bool:
+    """视口内点密码框 + CDP insertText（不经系统剪贴板，避免多窗抢焦点）。"""
+    # 港繁密码行约在弹窗中部；先点框再全选写入
+    for x, y in ((800, 530), (800, 515), (780, 540)):
+        try:
+            _apple_cdp_click_xy(driver, x, y)
+            time.sleep(0.2)
+            # Ctrl+A
+            driver.execute_cdp_cmd(
+                "Input.dispatchKeyEvent",
+                {
+                    "type": "keyDown",
+                    "modifiers": 2,
+                    "key": "a",
+                    "code": "KeyA",
+                    "windowsVirtualKeyCode": 65,
+                },
+            )
+            driver.execute_cdp_cmd(
+                "Input.dispatchKeyEvent",
+                {
+                    "type": "keyUp",
+                    "modifiers": 2,
+                    "key": "a",
+                    "code": "KeyA",
+                    "windowsVirtualKeyCode": 65,
+                },
+            )
+            time.sleep(0.05)
+            driver.execute_cdp_cmd("Input.insertText", {"text": password})
+            _apple_step(driver, "cdp_password_inserted", f"at=({x},{y})")
+            time.sleep(0.35)
+            _apple_cdp_click_xy(driver, 1010, 525)
+            _apple_step(driver, "cdp_password_submit", f"at=(1010,525)")
+            apple_human_delay(2.0, 3.0)
+            return True
+        except Exception as e:
+            _apple_step(driver, "cdp_password_fail", f"({x},{y}) {e}")
+    return False
+
+
+def _apple_fill_password_selenium(driver, password: str) -> bool:
+    """密码框出现后：Selenium 填密 → 失败则 CDP insertText；不依赖 OS 剪贴板。"""
+    el, path = None, None
+    for i in range(16):
+        el, path = _apple_find_password_shallow(driver)
+        if el is not None:
+            break
+        if i in (0, 5, 10, 15):
+            try:
+                driver.switch_to.default_content()
+                n = len(driver.find_elements(By.CSS_SELECTOR, "iframe"))
+                types = driver.execute_script(
+                    "return [...document.querySelectorAll('input')].map("
+                    "e => (e.type||'')+':'+(e.name||e.id||'').slice(0,20));"
+                )
+                _apple_step(driver, "password_search", f"try={i} iframes={n} inputs={types}")
+            except Exception as e:
+                _apple_step(driver, "password_search_err", str(e))
+        time.sleep(0.4)
+    if el is not None:
+        if path is not None:
+            _apple_enter_frame_path(driver, path)
+        _apple_set_input_value(driver, el, password)
+        got = ""
+        try:
+            got = el.get_attribute("value") or ""
+        except Exception:
+            pass
+        if len(got) >= 4:
+            _apple_step(driver, "selenium_password_filled", f"frame={path} len={len(got)}")
+            if not _apple_submit_auth(driver):
+                try:
+                    _apple_cdp_click_xy(driver, 1010, 525)
+                    _apple_step(driver, "selenium_password_submit_cdp")
+                except Exception as e:
+                    _apple_step(driver, "selenium_password_submit_fail", str(e))
+                    return False
+            else:
+                _apple_step(driver, "selenium_password_submitted")
+            apple_human_delay(2.0, 3.0)
+            return True
+        _apple_step(driver, "selenium_password_value_short", repr(got[:8]))
+    else:
+        _apple_step(driver, "selenium_password_not_found")
+    # 跨域 iframe：UIA 取密码 Edit 屏幕坐标再粘贴（真屏幕点，不吃 ClientToScreen 误差）
+    try:
+        from apple_uia_login import (
+            find_password_edit_center,
+            paste_at,
+            focus_apple_chrome,
+            click_xy,
+            XY,
+        )
+        focus_apple_chrome()
+        pt = find_password_edit_center(timeout=3.5)
+        if pt:
+            paste_at(pt[0], pt[1], password)
+            _apple_step(driver, "uia_password_pasted", str(pt))
+            time.sleep(0.35)
+            # 提交：优先同排右侧箭头区域
+            click_xy(pt[0] + 210, pt[1])
+            _apple_step(driver, "uia_password_submit", f"({pt[0]+210},{pt[1]})")
+            apple_human_delay(2.0, 3.0)
+            if _apple_is_logged_in(driver) or _apple_welcome_modal_present(driver):
+                return True
+            # 再点一次固定提交坐标兜底
+            click_xy(*XY["password_submit"])
+            apple_human_delay(1.5, 2.5)
+            if _apple_is_logged_in(driver) or _apple_welcome_modal_present(driver):
+                return True
+        else:
+            _apple_step(driver, "uia_password_edit_miss")
+    except Exception as e:
+        _apple_step(driver, "uia_password_fail", str(e))
+    # 最后 CDP insertText（对 OOPIF 可能无效，仅兜底）
+    return _apple_fill_password_cdp(driver, password)
 
 
 def _apple_js_click_by_texts(driver, texts: list[str]) -> bool:
@@ -4402,6 +4702,8 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
         # 全流程可重试：邮箱提交后 / 密码后若出空黑框，关闭并重开登录
         for round_i in range(1, 4):
             print(f"STEP login_round={round_i}", flush=True)
+            if _apple_country_picker_open(driver):
+                _apple_close_country_picker(driver)
             _apple_dismiss_welcome_modal(driver, max_clicks=2)
             if _apple_is_logged_in(driver):
                 _apple_step(driver, "LOGIN_OK", f"already_round={round_i}")
@@ -4458,46 +4760,64 @@ def login_apple_music_auto(driver, email: str, password: str, storefront: str | 
                         _apple_step(driver, "email_submit_coord_fail", str(e))
                 else:
                     _apple_step(driver, "email_submitted")
-                # 邮箱提交后验证码页：禁止扫 iframe（idmsa 会卡死数分钟）。先截图点蓝字。
+                # 邮箱提交后常进验证码页：须点「使用密碼登入」。港繁文案模板常 miss，
+                # 禁止只靠英文截图；视觉失败后立刻走 JS/Selenium 点蓝字（限超时，勿全树盲扫）。
                 time.sleep(1.6)
+                switched = False
                 try:
                     from apple_uia_login import click_sign_in_with_password_visual, focus_apple_chrome
                     focus_apple_chrome()
                     vis = None
-                    for _try in range(10):
-                        vis = click_sign_in_with_password_visual()
+                    # 邮箱提交后红钮会转圈，验证码页晚几秒才出现。要等到蓝字出来再点。
+                    deadline_vis = time.time() + 25
+                    while time.time() < deadline_vis and not vis:
+                        vis = click_sign_in_with_password_visual(driver)
                         if vis:
                             break
-                        time.sleep(0.45)
+                        time.sleep(0.8)
                     if vis:
                         _apple_step(driver, "visual_switch_password_ok", str(vis))
+                        switched = True
                     else:
                         _apple_step(driver, "visual_switch_password_miss")
                 except Exception as e:
                     _apple_step(driver, "visual_switch_password_err", str(e))
+                if not switched:
+                    try:
+                        if _apple_switch_to_password_login(driver, timeout=8.0):
+                            _apple_step(driver, "js_switch_password_ok")
+                            switched = True
+                        else:
+                            _apple_step(driver, "js_switch_password_miss")
+                            vis2 = click_sign_in_with_password_visual(driver)
+                            if vis2:
+                                _apple_step(driver, "visual_switch_password_retry", str(vis2))
+                                switched = True
+                    except Exception as e:
+                        _apple_step(driver, "js_switch_password_err", str(e))
                 try:
                     from apple_uia_login import complete_password_phase, focus_apple_chrome
                     focus_apple_chrome()
                     _apple_step(driver, "password_phase_start")
-                    pwd_ok = complete_password_phase(password)
-                    _apple_step(driver, "password_phase_end", f"ok={pwd_ok}")
-                    if not pwd_ok:
-                        # Selenium 再补一次：若已有密码框则直接填
-                        try:
-                            if _apple_find_password_input(driver):
-                                _apple_step(driver, "selenium_password_fallback")
-                                el = _apple_find_password_input(driver)
-                                if el:
-                                    el.clear()
-                                    el.send_keys(password)
-                                    _apple_submit_auth(driver)
-                                    apple_human_delay(2.0, 3.0)
-                                    pwd_ok = _apple_is_logged_in(driver) or (
-                                        not _apple_find_password_input(driver)
-                                        and _apple_welcome_modal_present(driver)
-                                    )
-                        except Exception as e2:
-                            _apple_step(driver, "selenium_password_fallback_fail", str(e2))
+                    # 已切到密码页时优先 Selenium 填密（嵌套 iframe [0,0]）
+                    pwd_ok = False
+                    filled = _apple_fill_password_selenium(driver, password)
+                    if filled:
+                        # 提交后常转圈数秒，禁止立刻走坐标重试（会点坏加载中弹窗）
+                        for wi in range(25):
+                            if _apple_country_picker_open(driver):
+                                _apple_close_country_picker(driver)
+                            if _apple_is_logged_in(driver) or _apple_welcome_modal_present(driver):
+                                pwd_ok = True
+                                break
+                            _apple_dismiss_welcome_modal(driver, max_clicks=1)
+                            if wi in (0, 5, 10, 15, 20):
+                                _apple_step(driver, "password_wait_login", f"t={wi}s")
+                            time.sleep(1.0)
+                        _apple_step(driver, "password_phase_end", f"ok={pwd_ok} via=selenium")
+                    if not filled:
+                        pwd_ok = complete_password_phase(password, driver=driver)
+                        _apple_step(driver, "password_phase_end", f"ok={pwd_ok} via=coord")
                     if not pwd_ok:
                         apple_human_delay(1.0, 1.5)
                         continue

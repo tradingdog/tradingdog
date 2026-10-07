@@ -57,8 +57,62 @@ def click_xy(x: int, y: int) -> None:
     time.sleep(0.15)
 
 
-def click_sign_in_with_password_visual() -> tuple[int, int] | None:
-    """全屏模板匹配「Sign in with password」。UIA/iframe 常扫不到这条蓝字。"""
+def _chrome_client_origin() -> tuple[int, int] | None:
+    """Chrome 客户区左上角屏幕坐标（Selenium 截图原点）。
+
+    注意：部分环境下 ClientToScreen(0,0) 会错误返回 (0,0)；
+    要用 WindowRect/ClientRect 推标题栏高度（实测约 +80~100）。
+    """
+    try:
+        import win32gui
+    except Exception:
+        return None
+
+    def _enum():
+        out = []
+
+        def cb(hwnd, _):
+            if not win32gui.IsWindowVisible(hwnd):
+                return True
+            title = win32gui.GetWindowText(hwnd) or ""
+            # 优先网页播放器标题
+            if "Chrome" in title and (
+                "Apple" in title
+                or "music.apple.com" in title.lower()
+                or "網頁播放器" in title
+                or "Web Player" in title
+            ):
+                out.append(hwnd)
+            return True
+
+        win32gui.EnumWindows(cb, None)
+        return out
+
+    hwnds = _enum()
+    if not hwnds:
+        return None
+    hwnd = hwnds[0]
+    try:
+        wr = win32gui.GetWindowRect(hwnd)  # screen LTRB
+        cr = win32gui.GetClientRect(hwnd)  # client 0,0,w,h
+        pt = win32gui.ClientToScreen(hwnd, (0, 0))
+        client_w, client_h = cr[2] - cr[0], cr[3] - cr[1]
+        win_w, win_h = wr[2] - wr[0], wr[3] - wr[1]
+        # ClientToScreen 异常为 (0,0) 时，用非客户区高度推算
+        if pt == (0, 0) and wr[1] <= 0:
+            border_x = max(0, (win_w - client_w) // 2)
+            border_y = max(0, win_h - client_h - border_x)
+            return (wr[0] + border_x, wr[1] + border_y)
+        return pt
+    except Exception:
+        return None
+
+
+def click_sign_in_with_password_visual(driver=None) -> tuple[int, int] | None:
+    """模板匹配「使用密碼登入 / Sign in with password」。
+
+    优先用 Selenium 视口截图 + Chrome 客户区原点换算（调试图 1600×765 ≠ 全屏坐标）。
+    """
     from pathlib import Path
 
     import numpy as np
@@ -69,36 +123,89 @@ def click_sign_in_with_password_visual() -> tuple[int, int] | None:
         _log(f"STEP visual_password_link no_cv2 {e}")
         return None
 
-    tpl_path = Path(__file__).resolve().parent / "apple_assets" / "tpl_sign_in_with_password.png"
-    if not tpl_path.exists():
+    assets = Path(__file__).resolve().parent / "apple_assets"
+    tpl_paths = [
+        assets / "tpl_sign_in_with_password_zh.png",
+        assets / "tpl_sign_in_with_password.png",
+    ]
+    tpls = []
+    for p in tpl_paths:
+        if p.exists():
+            t = cv2.imread(str(p))
+            if t is not None:
+                tpls.append((p.name, t))
+    if not tpls:
         _log("STEP visual_password_link no_tpl")
         return None
-    tpl = cv2.imread(str(tpl_path))
-    if tpl is None:
-        return None
+
     shot = None
-    try:
-        import mss
-        with mss.mss() as sct:
-            mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
-            shot = cv2.cvtColor(np.array(sct.grab(mon)), cv2.COLOR_BGRA2BGR)
-    except Exception:
+    origin = None  # 视口原点；None 表示 shot 已是全屏
+    if driver is not None:
         try:
-            import pyautogui
-            shot = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+            import base64
+
+            png = driver.get_screenshot_as_png()
+            arr = np.frombuffer(png, dtype=np.uint8)
+            shot = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            origin = _chrome_client_origin()
+        except Exception as e:
+            _log(f"STEP visual_password_link driver_shot_fail {e}")
+            shot = None
+    if shot is None:
+        try:
+            import mss
+
+            with mss.mss() as sct:
+                mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+                shot = cv2.cvtColor(np.array(sct.grab(mon)), cv2.COLOR_BGRA2BGR)
+            origin = (0, 0)
         except Exception as e:
             _log(f"STEP visual_password_link grab_fail {e}")
             return None
-    res = cv2.matchTemplate(shot, tpl, cv2.TM_CCOEFF_NORMED)
-    _minv, maxv, _minl, maxl = cv2.minMaxLoc(res)
-    if maxv < 0.72:
-        _log(f"STEP visual_password_link miss score={maxv:.3f}")
+
+    best = None  # (score, cx, cy, name)
+    for name, tpl in tpls:
+        if shot.shape[0] < tpl.shape[0] or shot.shape[1] < tpl.shape[1]:
+            continue
+        res = cv2.matchTemplate(shot, tpl, cv2.TM_CCOEFF_NORMED)
+        _minv, maxv, _minl, maxl = cv2.minMaxLoc(res)
+        h, w = tpl.shape[:2]
+        cx, cy = int(maxl[0] + w / 2), int(maxl[1] + h / 2)
+        if best is None or maxv > best[0]:
+            best = (maxv, cx, cy, name)
+    if best is None or best[0] < 0.55:
+        _log(f"STEP visual_password_link miss score={best[0] if best else 0:.3f}")
         return None
-    h, w = tpl.shape[:2]
-    cx, cy = int(maxl[0] + w / 2), int(maxl[1] + h / 2)
-    click_xy(cx, cy)
-    _log(f"STEP visual_password_link ({cx},{cy}) score={maxv:.3f}")
-    return (cx, cy)
+    maxv, cx, cy, name = best
+    # 优先 CDP 视口点击（不受虚拟桌面/错误 ClientToScreen 影响）
+    if driver is not None:
+        try:
+            for typ in ("mouseMoved", "mousePressed", "mouseReleased"):
+                driver.execute_cdp_cmd(
+                    "Input.dispatchMouseEvent",
+                    {
+                        "type": typ,
+                        "x": float(cx),
+                        "y": float(cy),
+                        "button": "left",
+                        "clickCount": 1 if typ != "mouseMoved" else 0,
+                    },
+                )
+            _log(
+                f"STEP visual_password_link_cdp ({cx},{cy}) score={maxv:.3f} tpl={name}"
+            )
+            return (cx, cy)
+        except Exception as e:
+            _log(f"STEP visual_password_link_cdp_fail {e}")
+    if origin and origin != (0, 0):
+        sx, sy = origin[0] + cx, origin[1] + cy
+    else:
+        # ClientToScreen 常误报 (0,0)：用实测密码切换全屏坐标兜底
+        sx, sy = XY["password_switch"]
+    focus_apple_chrome()
+    click_xy(sx, sy)
+    _log(f"STEP visual_password_link ({sx},{sy}) score={maxv:.3f} tpl={name} origin={origin}")
+    return (sx, sy)
 
 
 def _key(vk: int, up: bool = False) -> None:
@@ -219,6 +326,77 @@ def _control_center(ctrl) -> tuple[int, int] | None:
         return None
 
 
+def find_password_edit_center(timeout: float = 4.0) -> tuple[int, int] | None:
+    """UIA 找密码 Edit 控件中心（屏幕坐标）。优先 IsPassword / 名稱含密碼。"""
+    try:
+        import uiautomation as auto
+    except Exception:
+        return None
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            root = auto.GetRootControl()
+            for win in root.GetChildren():
+                try:
+                    wname = win.Name or ""
+                except Exception:
+                    continue
+                if "Chrome" not in wname:
+                    continue
+                if not (
+                    "Apple" in wname
+                    or "music.apple.com" in wname.lower()
+                    or "網頁播放器" in wname
+                    or "Web Player" in wname
+                ):
+                    continue
+                try:
+                    for ctrl, _depth in auto.WalkControl(win, maxDepth=22):
+                        if time.time() >= deadline:
+                            return None
+                        try:
+                            if (ctrl.ControlTypeName or "") != "EditControl":
+                                continue
+                            cname = (ctrl.Name or "").strip()
+                            is_pwd = False
+                            try:
+                                is_pwd = bool(ctrl.GetPattern(auto.PatternId.ValuePattern) and False)
+                            except Exception:
+                                pass
+                            try:
+                                # uiautomation: IsPassword 属性
+                                is_pwd = bool(getattr(ctrl, "IsPassword", False)) or is_pwd
+                            except Exception:
+                                pass
+                            try:
+                                aa = ctrl.GetLegacyIAccessiblePattern()
+                                if aa and "password" in (
+                                    (aa.CurrentDescription or "") + (aa.CurrentName or "")
+                                ).lower():
+                                    is_pwd = True
+                            except Exception:
+                                pass
+                            cl = cname.lower()
+                            if (
+                                is_pwd
+                                or "密碼" in cname
+                                or "密码" in cname
+                                or "password" in cl
+                            ):
+                                pt = _control_center(ctrl)
+                                if pt and pt[0] > 300:
+                                    _log(f"STEP uia_password_edit {pt} name={cname!r}")
+                                    return pt
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        time.sleep(0.2)
+    return None
+
+
 def find_named_center(names: list[str], timeout: float = 3.0) -> tuple[int, int] | None:
     try:
         import uiautomation as auto
@@ -313,7 +491,7 @@ def close_blank_modal_xy() -> bool:
     return True
 
 
-def complete_password_phase(password: str) -> bool:
+def complete_password_phase(password: str, driver=None) -> bool:
     """邮箱提交后：验证码页 → 点「使用密碼登入」→ 填密码 → 提交。
 
     注意：验证码页也有关闭钮，绝不能当黑框关掉。
@@ -352,30 +530,113 @@ def complete_password_phase(password: str) -> bool:
             else:
                 resend = find_named_center(code_page_names, timeout=0.8)
                 if resend:
-                    click_xy(resend[0] + 28, resend[1] + 37)
+                    # 「使用密碼登入」在「重新傳送驗證碼」正下方（港繁实测约 +38px）
+                    click_xy(resend[0], resend[1] + 38)
                     _log(f"STEP coord_switch_password near_resend {resend} attempt={attempt}")
                     time.sleep(1.6)
                 else:
-                    vis = click_sign_in_with_password_visual()
+                    vis = click_sign_in_with_password_visual(driver)
                     if vis:
                         time.sleep(1.8)
                     else:
-                        _log(f"STEP assume_password_xy attempt={attempt}")
-                        time.sleep(0.4)
+                        pt2 = find_named_center(switch_names, timeout=2.0)
+                        if pt2:
+                            click_xy(*pt2)
+                            _log(f"STEP coord_switch_password uia_retry {pt2} attempt={attempt}")
+                            time.sleep(1.6)
+                        else:
+                            # 视口坐标：origin 无效时禁止把视口坐标当屏幕坐标点；改 CDP
+                            origin = _chrome_client_origin()
+                            if origin and origin != (0, 0):
+                                sx, sy = origin[0] + 650, origin[1] + 515
+                                click_xy(sx, sy)
+                                _log(
+                                    f"STEP coord_switch_password viewport_xy ({sx},{sy}) "
+                                    f"origin={origin} attempt={attempt}"
+                                )
+                            elif driver is not None:
+                                try:
+                                    for typ in ("mouseMoved", "mousePressed", "mouseReleased"):
+                                        driver.execute_cdp_cmd(
+                                            "Input.dispatchMouseEvent",
+                                            {
+                                                "type": typ,
+                                                "x": 650.0,
+                                                "y": 515.0,
+                                                "button": "left",
+                                                "clickCount": 1 if typ != "mouseMoved" else 0,
+                                            },
+                                        )
+                                    _log(
+                                        f"STEP coord_switch_password cdp_xy (650,515) "
+                                        f"attempt={attempt}"
+                                    )
+                                except Exception as e:
+                                    click_xy(*XY["password_switch"])
+                                    _log(
+                                        f"STEP coord_switch_password fallback_xy "
+                                        f"{XY['password_switch']} err={e} attempt={attempt}"
+                                    )
+                            else:
+                                click_xy(*XY["password_switch"])
+                                _log(
+                                    f"STEP coord_switch_password fallback_xy {XY['password_switch']} "
+                                    f"attempt={attempt}"
+                                )
+                            time.sleep(1.8)
 
         focus_apple_chrome()
         switch_to_english_ime()
-        # iframe 里 Password 控件 UIA 经常扫不到；蓝字消失后再用坐标粘贴
-        pwd_pt = find_named_center(pwd_names, timeout=1.8)
+        # 优先 UIA 密码 Edit（屏幕坐标），避免把视口坐标当桌面坐标
+        pwd_pt = find_password_edit_center(timeout=2.0) or find_named_center(pwd_names, timeout=1.2)
         if not pwd_pt:
             still_code = find_named_center(code_page_names + switch_names, timeout=0.5)
             if still_code:
                 _log(f"STEP password_field_missing retry={attempt}")
                 continue
-            pwd_pt = XY["password"]
-            _log(f"STEP password_field_xy {pwd_pt} attempt={attempt}")
-        paste_at(pwd_pt[0], pwd_pt[1], password)
-        _log(f"STEP coord_password_pasted {pwd_pt} attempt={attempt}")
+            origin = _chrome_client_origin()
+            if driver is not None and (not origin or origin == (0, 0)):
+                try:
+                    for typ in ("mouseMoved", "mousePressed", "mouseReleased"):
+                        driver.execute_cdp_cmd(
+                            "Input.dispatchMouseEvent",
+                            {
+                                "type": typ,
+                                "x": 800.0,
+                                "y": 515.0,
+                                "button": "left",
+                                "clickCount": 1 if typ != "mouseMoved" else 0,
+                            },
+                        )
+                    time.sleep(0.25)
+                    set_clipboard(password)
+                    time.sleep(0.1)
+                    _key(VK_CONTROL, False)
+                    _key(VK_A, False)
+                    _key(VK_A, True)
+                    _key(VK_CONTROL, True)
+                    time.sleep(0.08)
+                    _key(VK_CONTROL, False)
+                    _key(VK_V, False)
+                    _key(VK_V, True)
+                    _key(VK_CONTROL, True)
+                    _log(f"STEP coord_password_pasted_cdp (800,515) attempt={attempt}")
+                    pwd_pt = (800, 515)
+                except Exception as e:
+                    pwd_pt = XY["password"]
+                    paste_at(pwd_pt[0], pwd_pt[1], password)
+                    _log(f"STEP coord_password_pasted {pwd_pt} cdp_fail={e} attempt={attempt}")
+            else:
+                if origin and origin != (0, 0):
+                    pwd_pt = (origin[0] + 800, origin[1] + 515)
+                else:
+                    pwd_pt = XY["password"]
+                _log(f"STEP password_field_xy {pwd_pt} attempt={attempt}")
+                paste_at(pwd_pt[0], pwd_pt[1], password)
+                _log(f"STEP coord_password_pasted {pwd_pt} attempt={attempt}")
+        else:
+            paste_at(pwd_pt[0], pwd_pt[1], password)
+            _log(f"STEP coord_password_pasted {pwd_pt} attempt={attempt}")
         time.sleep(0.35)
 
         submit_pt = find_named_center(["登入", "Sign In", "Continue", "繼續", "继续"], timeout=1.2)
@@ -386,6 +647,23 @@ def complete_password_phase(password: str) -> bool:
         if submit_pt and abs(submit_pt[1] - pwd_pt[1]) < 100 and submit_pt[0] > pwd_pt[0] - 20:
             click_xy(*submit_pt)
             _log(f"STEP coord_password_submit uia {submit_pt}")
+        elif driver is not None:
+            try:
+                for typ in ("mousePressed", "mouseReleased"):
+                    driver.execute_cdp_cmd(
+                        "Input.dispatchMouseEvent",
+                        {
+                            "type": typ,
+                            "x": 1010.0,
+                            "y": 520.0,
+                            "button": "left",
+                            "clickCount": 1,
+                        },
+                    )
+                _log("STEP coord_password_submit cdp")
+            except Exception:
+                click_xy(*XY["password_submit"])
+                _log("STEP coord_password_submit xy")
         else:
             click_xy(*XY["password_submit"])
             _log("STEP coord_password_submit xy")
