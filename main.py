@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.107"  # 数据：三平台艺人库加入 Wystan Corvelle / Lampwick Hours
+APP_VERSION = "0.1.108"  # 数据：Apple 艺人库补入 Elwen Thade / Prairie Justice Pages
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
