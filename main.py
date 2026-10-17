@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.110"  # 修复：Tidal 登录失败时不再把 Continue with Passkey 当成设备链接确认
+APP_VERSION = "0.1.111"  # 修复：Tidal 密码用键盘输入，密码错误时立刻停止不再空等授权
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -1384,6 +1384,7 @@ def _start_tidal_oauth_session(session):
 def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) -> bool:
     """全自动完成 Tidal OAuth：打开链接、填邮箱/密码、Continue。"""
     try:
+        from selenium.webdriver.common.keys import Keys
         print(f"  正在自动完成 OAuth 登录: {email}")
         driver.get(auth_url)
         time.sleep(3)
@@ -1433,15 +1434,28 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
 
         _tidal_try_switch_to_password_login(driver)
 
-        # 密码
+        # 密码：键盘输入。只改 value 时 Tidal 页面经常收不到，会报密码不正确。
         password_input = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "input#password, input[type='password']"))
         )
         password_input.click()
+        time.sleep(0.2)
+        password_input.send_keys(Keys.CONTROL, "a")
+        password_input.send_keys(Keys.BACKSPACE)
+        password_input.send_keys(password)
         time.sleep(0.3)
-        _tidal_set_input_value(driver, password_input, password)
-        time.sleep(0.5)
-        print("    ✓ 已输入密码")
+        got_len = 0
+        try:
+            got_len = len(password_input.get_attribute("value") or "")
+        except Exception:
+            pass
+        if got_len < 4:
+            _tidal_set_input_value(driver, password_input, password)
+            try:
+                got_len = len(password_input.get_attribute("value") or "")
+            except Exception:
+                pass
+        print(f"    ✓ 已输入密码 len={got_len}")
 
         if not _tidal_click_primary_continue(driver):
             login_btn = WebDriverWait(driver, 10).until(
@@ -1453,6 +1467,13 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
             login_btn.click()
         print("    ✓ 已点击 Log In")
         time.sleep(3)
+        try:
+            body_now = (driver.find_element(By.TAG_NAME, "body").text or "")
+        except Exception:
+            body_now = ""
+        if "password is incorrect" in body_now.lower() or "密码不正确" in body_now or "密碼不正確" in body_now:
+            print("    ✗ Tidal 提示登录名或密码不正确")
+            return False
 
         # 设备链接页 Continue
         try:
