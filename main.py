@@ -306,7 +306,7 @@ except ImportError:
 
 # 自定义参数：修改这里即可调整默认行为
 DEFAULT_PLATFORM = "A"           # 默认选择：A (Apple), T (Tidal), Q (Qobuz)
-APP_VERSION = "0.1.109"  # 数据：三平台 Elwen Thade 增加专辑 Glacial Rivet Pulse
+APP_VERSION = "0.1.110"  # 修复：Tidal 登录失败时不再把 Continue with Passkey 当成设备链接确认
 # 更新内容：欢迎窗 present 改为可见短标题；確認后才点繼續/坐标
 
 
@@ -1324,7 +1324,9 @@ def _tidal_click_primary_continue(driver, exclude_social: bool = True) -> bool:
     for btn in buttons:
         try:
             label = (btn.text or "").strip().lower()
-            if exclude_social and ("google" in label or "apple" in label):
+            if exclude_social and (
+                "google" in label or "apple" in label or "passkey" in label or label.startswith("continue with")
+            ):
                 continue
             if "continue" in label or label == "log in":
                 if btn.is_displayed() and btn.is_enabled():
@@ -1462,6 +1464,12 @@ def auto_complete_tidal_oauth(driver, auth_url: str, email: str, password: str) 
             )
             _tidal_click_primary_continue(driver)
             print("    ✓ 已点击 Continue（设备链接）")
+            try:
+                body = (driver.find_element(By.TAG_NAME, "body").text or "").replace("\n", " | ")
+                print(f"    · 设备链接页: {body[:240]}")
+                print(f"    · 设备链接URL: {driver.current_url}")
+            except Exception as e:
+                print(f"    · 设备链接页读取失败: {e}")
         except Exception:
             print("    ⚠ 未检测到设备链接页，可能已自动完成")
 
